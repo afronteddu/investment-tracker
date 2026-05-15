@@ -163,6 +163,7 @@ except Exception:
 
 
 def _build_portfolio_data() -> list[dict]:
+    from src.signals import get_rsi, rsi_signal, get_earnings_date
     positions = state.get("positions", {})
     if not positions:
         return []
@@ -175,6 +176,7 @@ def _build_portfolio_data() -> list[dict]:
         q = quotes.get(ticker, {})
         price = q.get("price")
         day_pct = day_change_pct(q)
+        rsi = get_rsi(ticker)
 
         pnl_eur = None
         pnl_pct = None
@@ -199,6 +201,9 @@ def _build_portfolio_data() -> list[dict]:
             "current_value_eur": current_value,
             "pnl_eur": pnl_eur,
             "pnl_pct": pnl_pct,
+            "rsi": rsi,
+            "rsi_signal": rsi_signal(rsi),
+            "earnings_date": get_earnings_date(ticker),
         })
 
     rows.sort(key=lambda x: (x["bucket"], x["ticker"]))
@@ -206,6 +211,7 @@ def _build_portfolio_data() -> list[dict]:
 
 
 def _build_scanner_data() -> list[dict]:
+    from src.signals import get_rsi, rsi_signal, get_earnings_date, get_news
     watchlist = state.get("watchlist", [])
     hot_picks = set(state.get("hot_picks", []))
     quotes = fetch_quotes(watchlist)
@@ -214,6 +220,8 @@ def _build_scanner_data() -> list[dict]:
     for ticker in watchlist:
         q = quotes.get(ticker, {})
         pct = day_change_pct(q)
+        rsi = get_rsi(ticker)
+        news = get_news(ticker, max_items=2)
         rows.append({
             "ticker": ticker,
             "name": TICKER_NAMES.get(ticker, ""),
@@ -224,6 +232,10 @@ def _build_scanner_data() -> list[dict]:
             "currency": q.get("currency", "?"),
             "signal": _signal(pct),
             "hot": ticker in hot_picks,
+            "rsi": rsi,
+            "rsi_signal": rsi_signal(rsi),
+            "earnings_date": get_earnings_date(ticker),
+            "news": news,
         })
 
     rows.sort(key=lambda x: x["day_pct"] if x["day_pct"] is not None else 0, reverse=True)

@@ -393,9 +393,11 @@
             <th class="r">Avg Cost</th>
             <th class="r">Price</th>
             <th class="r">Day</th>
+            <th class="r">RSI</th>
             <th class="r">Value</th>
             <th class="r">P&amp;L</th>
             <th class="r">Return</th>
+            <th>Earnings</th>
           </tr>
         </thead>
         <tbody id="portfolio-body">
@@ -443,16 +445,19 @@
             <th>Name</th>
             <th class="r">Price</th>
             <th class="r">Day %</th>
+            <th class="r">RSI</th>
             <th class="r">High</th>
             <th class="r">Low</th>
             <th>Signal</th>
+            <th>Earnings</th>
           </tr>
         </thead>
         <tbody id="scanner-body">
-          <tr><td colspan="7" class="muted" style="text-align:center;padding:40px">Loading...</td></tr>
+          <tr><td colspan="9" class="muted" style="text-align:center;padding:40px">Loading...</td></tr>
         </tbody>
       </table>
     </div>
+    <div id="news-feed" style="margin-top:16px"></div>
   </div>
 
   <!-- Briefing -->
@@ -850,6 +855,12 @@ function renderPortfolio(positions) {
     const bar = `<span class="bar-wrap"><span class="bar-fill" style="width:${barPct}%;background:${barColor}"></span></span>`;
     const idx = JSON.stringify(p).replace(/"/g, '&quot;');
 
+    const rsiVal = p.rsi != null ? p.rsi.toFixed(0) : '—';
+    const rsiCol = rsiColor(p.rsi_signal);
+    const earnCell = p.earnings_date
+      ? `<span style="font-size:10px;background:rgba(251,191,36,0.1);color:#fbbf24;border-radius:4px;padding:2px 6px">${p.earnings_date}</span>`
+      : '<span class="muted" style="font-size:11px">—</span>';
+
     return `<tr>
       <td>
         <button class="ticker-btn" onclick='openDrilldown("${p.ticker}", ${JSON.stringify(p)})'>${p.ticker}</button>
@@ -860,9 +871,11 @@ function renderPortfolio(positions) {
       <td class="r muted">€${fmt(p.avg_cost_eur)}</td>
       <td class="r"><strong>${p.price != null ? fmt(p.price) : '—'}</strong> <span class="muted" style="font-size:10px">${p.currency||''}</span></td>
       <td class="r"><span class="${dayC} pct-big">${p.day_pct != null ? sign(p.day_pct)+fmt(p.day_pct)+'%' : '—'}</span></td>
+      <td class="r"><span style="font-weight:700;color:${rsiCol}">${rsiVal}</span></td>
       <td class="r">${fmtK(p.current_value_eur)}</td>
       <td class="r ${pnlC}">${p.pnl_eur != null ? (p.pnl_eur>=0?'+':'')+fmtK(p.pnl_eur) : '—'}</td>
       <td class="r"><span class="${pnlC} pct-big">${p.pnl_pct != null ? sign(p.pnl_pct)+fmt(p.pnl_pct)+'%' : '—'}</span>${bar}</td>
+      <td>${earnCell}</td>
     </tr>`;
   });
 
@@ -872,19 +885,33 @@ function renderPortfolio(positions) {
     <td colspan="2"><strong>TOTAL</strong></td>
     <td></td>
     <td class="r muted">${fmtEur(totalCost)}</td>
-    <td></td><td></td>
+    <td></td><td></td><td></td>
     <td class="r"><strong>${fmtEur(totalValue)}</strong></td>
     <td class="r ${cc(totalPnl)}"><strong>${totalPnl>=0?'+':''}${fmtK(totalPnl)}</strong></td>
     <td class="r ${cc(totalPct)}"><strong>${sign(totalPct)}${fmt(totalPct)}%</strong></td>
+    <td></td>
   </tr>`);
 
   tbody.innerHTML = rows.join('');
 }
 
+// ── RSI badge helper ──────────────────────────────────────────────
+function rsiColor(sig) {
+  if (!sig) return 'var(--muted)';
+  if (sig.includes('strongly overbought')) return '#f87171';
+  if (sig.includes('overbought')) return '#fb923c';
+  if (sig.includes('strongly oversold')) return '#4ade80';
+  if (sig.includes('oversold')) return '#86efac';
+  return 'var(--muted)';
+}
+
 // ── Scanner table ─────────────────────────────────────────────────
+let _scannerData = [];
+
 function renderScanner(scanner) {
+  _scannerData = scanner;
   const tbody = E('scanner-body');
-  if (!scanner.length) { tbody.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center;padding:20px">No data</td></tr>'; return; }
+  if (!scanner.length) { tbody.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center;padding:20px">No data</td></tr>'; return; }
 
   const rows = scanner.map(s => {
     const pct = s.day_pct;
@@ -898,17 +925,43 @@ function renderScanner(scanner) {
       else                { sigClass = 'sig-neutral'; sigText = 'Neutral'; }
     }
     const hotBadge = s.hot ? ' <span style="font-size:10px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);border-radius:4px;padding:1px 5px;font-weight:700;">🔥 HOT</span>' : '';
+    const rsiVal = s.rsi != null ? s.rsi.toFixed(0) : '—';
+    const rsiCol = rsiColor(s.rsi_signal);
+    const earnCell = s.earnings_date
+      ? `<span style="font-size:10px;background:rgba(251,191,36,0.1);color:#fbbf24;border-radius:4px;padding:2px 6px">${s.earnings_date}</span>`
+      : '<span class="muted" style="font-size:11px">—</span>';
     return `<tr>
       <td><button class="ticker-btn" onclick='openDrilldown("${s.ticker}", null)'>${s.ticker}</button>${hotBadge}</td>
       <td style="font-size:11px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${s.name || ''}</td>
       <td class="r">${s.price != null ? fmt(s.price) : '—'}</td>
       <td class="r"><span class="${pC} pct-big">${pct != null ? sign(pct)+fmt(pct)+'%' : '—'}</span></td>
+      <td class="r"><span style="font-weight:700;color:${rsiCol}">${rsiVal}</span></td>
       <td class="r muted">${s.day_high != null ? fmt(s.day_high) : '—'}</td>
       <td class="r muted">${s.day_low != null ? fmt(s.day_low) : '—'}</td>
       <td><span class="sig ${sigClass}">${sigText}</span></td>
+      <td>${earnCell}</td>
     </tr>`;
   });
   tbody.innerHTML = rows.join('');
+
+  // News feed — most recent headlines from all tickers with news
+  const allNews = [];
+  scanner.forEach(s => {
+    (s.news || []).forEach(n => allNews.push({ ticker: s.ticker, ...n }));
+  });
+  const feed = E('news-feed');
+  if (allNews.length) {
+    const items = allNews.slice(0, 8).map(n =>
+      `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;font-weight:700;color:var(--blue);white-space:nowrap;padding-top:1px">${n.ticker}</span>
+        <span style="font-size:12px;color:#94a3b8;line-height:1.4">${n.title}</span>
+        ${n.publisher ? `<span style="font-size:10px;color:var(--muted);white-space:nowrap;margin-left:auto">${n.publisher}</span>` : ''}
+      </div>`
+    ).join('');
+    feed.innerHTML = `<div class="section-title" style="margin-bottom:8px">📰 Latest News</div>${items}`;
+  } else {
+    feed.innerHTML = '';
+  }
 }
 
 function renderMarket(status) {

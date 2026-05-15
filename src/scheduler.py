@@ -97,6 +97,7 @@ class Scheduler:
     async def _run_scan(self, market: str):
         from src.quotes import fetch_quotes, day_change_pct
         from src.positions import TICKER_NAMES
+        from src.signals import get_rsi, rsi_signal, days_until_earnings
         tickers = list(self.state.get("positions", {}).keys()) + self.state.get("watchlist", [])
         quotes = fetch_quotes(tickers)
 
@@ -111,17 +112,38 @@ class Scheduler:
 
         movers.sort(key=lambda x: abs(x[0]), reverse=True)
 
+        # Earnings warnings for holdings (within 7 days)
+        earn_warnings = []
+        for ticker in self.state.get("positions", {}):
+            d = days_until_earnings(ticker)
+            if d is not None and 0 <= d <= 7:
+                earn_warnings.append(f"⚠️ {ticker} earnings in {d}d")
+
+        # RSI extremes across all tickers
+        rsi_alerts = []
+        for ticker in tickers[:20]:  # cap to avoid slow startup
+            rsi = get_rsi(ticker)
+            sig = rsi_signal(rsi)
+            if sig and sig != "neutral":
+                rsi_alerts.append(f"RSI {ticker}: {rsi} ({sig})")
+
+        lines = []
         if movers:
-            lines = []
             for pct, ticker, name, price, currency in movers[:6]:
                 arrow = "🟢" if pct >= 0 else "🔴"
                 lines.append(f"{arrow} {ticker} ({name}): {pct:+.1f}% @ {price:.2f} {currency}")
-            notify(
-                f"📊 {market} Open — {len(movers)} mover{'s' if len(movers)>1 else ''}",
-                "\n".join(lines),
-            )
         else:
-            notify(f"📊 {market} Open", "No significant moves (all within ±3%).")
+            lines.append("No significant moves (all within ±3%).")
+
+        if earn_warnings:
+            lines.append("\n" + "\n".join(earn_warnings))
+        if rsi_alerts:
+            lines.append("\n📡 " + " | ".join(rsi_alerts[:4]))
+
+        notify(
+            f"📊 {market} Open{' — ' + str(len(movers)) + ' movers' if movers else ''}",
+            "\n".join(lines),
+        )
 
     async def _run_eod_briefing(self):
         from src.quotes import fetch_quotes, day_change_pct
@@ -158,6 +180,7 @@ class Scheduler:
     async def _check_alerts(self):
         from src.quotes import fetch_quotes, day_change_pct, to_eur
         from src.positions import TICKER_NAMES
+        from src.signals import get_rsi, rsi_signal, get_news, days_until_earnings
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
         threshold = float(os.getenv("ALERT_THRESHOLD_PCT", "5"))
@@ -181,15 +204,37 @@ class Scheduler:
             pnl_eur = round(value_eur - pos.total_cost_eur, 0) if value_eur else None
             pnl_sign = "+" if pnl_eur and pnl_eur >= 0 else ""
             emoji = "🚀" if pct >= extraordinary else ("📈" if pct > 0 else ("💥" if pct <= -extraordinary else "📉"))
-            msg = (
-                f"{name}\n"
-                f"Price: {price:.2f} {currency}  ({pct:+.1f}% today)\n"
-                f"You hold: {pos.shares:.0f} shares  ≈ €{value_eur:,.0f}\n"
-                f"Total P&L: {pnl_sign}€{abs(pnl_eur):,.0f} vs €{pos.total_cost_eur:,.0f} cost"
-            ) if value_eur else f"{name}\nPrice: {price} {currency}  ({pct:+.1f}% today)"
+
+            # RSI context
+            rsi = get_rsi(ticker)
+            rsi_str = f"RSI: {rsi} ({rsi_signal(rsi)})" if rsi else ""
+
+            # Upcoming earnings
+            earn_days = days_until_earnings(ticker)
+            earn_str = f"⚠️ Earnings in {earn_days}d" if earn_days is not None and earn_days <= 7 else ""
+
+            # Recent news
+            news = get_news(ticker, max_items=2)
+            news_str = "\n".join(f"• {n['title']}" for n in news) if news else ""
+
+            lines = []
+            if value_eur:
+                lines.append(f"{name}")
+                lines.append(f"Price: {price:.2f} {currency}  ({pct:+.1f}% today)")
+                lines.append(f"You hold: {pos.shares:.0f} shares  ≈ €{value_eur:,.0f}")
+                lines.append(f"Total P&L: {pnl_sign}€{abs(pnl_eur):,.0f} vs €{pos.total_cost_eur:,.0f} cost")
+            else:
+                lines.append(f"{name}\nPrice: {price} {currency}  ({pct:+.1f}% today)")
+            if rsi_str:
+                lines.append(rsi_str)
+            if earn_str:
+                lines.append(earn_str)
+            if news_str:
+                lines.append(f"\n📰 News:\n{news_str}")
+
             notify(
                 f"{emoji} {ticker} {direction} {abs(pct):.1f}%",
-                msg,
+                "\n".join(lines),
                 alert_key=f"{ticker}_{direction}_{int(abs(pct))}",
             )
 
@@ -205,8 +250,27 @@ class Scheduler:
             currency = q.get("currency", "")
             name = TICKER_NAMES.get(ticker, ticker)
             emoji = "🚀" if pct > 0 else "💥"
+
+            rsi = get_rsi(ticker)
+            rsi_str = f"RSI: {rsi} ({rsi_signal(rsi)})" if rsi else ""
+            earn_days = days_until_earnings(ticker)
+            earn_str = f"⚠️ Earnings in {earn_days}d" if earn_days is not None and earn_days <= 7 else ""
+            news = get_news(ticker, max_items=2)
+            news_str = "\n".join(f"• {n['title']}" for n in news) if news else ""
+
+            lines = [
+                f"{name}",
+                f"Price: {price:.2f} {currency}  |  Extraordinary move {pct:+.1f}%",
+            ]
+            if rsi_str:
+                lines.append(rsi_str)
+            if earn_str:
+                lines.append(earn_str)
+            if news_str:
+                lines.append(f"\n📰 News:\n{news_str}")
+
             notify(
                 f"{emoji} WATCHLIST: {ticker} {direction} {abs(pct):.1f}%",
-                f"{name}\nPrice: {price:.2f} {currency}  |  Extraordinary move",
+                "\n".join(lines),
                 alert_key=f"watch_{ticker}_{direction}_{int(abs(pct))}",
             )
