@@ -32,6 +32,7 @@ class Scheduler:
         self._last_eod = None
         self._last_alert_check = None
         self._last_midnight_reload = None
+        self._last_signals_refresh = None
 
     async def run(self):
         while True:
@@ -41,6 +42,11 @@ class Scheduler:
     async def _tick(self):
         now = now_dublin()
         date_str = now.strftime("%Y-%m-%d")
+
+        # Refresh signals cache every 30 min (non-blocking background task)
+        if self._last_signals_refresh is None or (now - self._last_signals_refresh).total_seconds() >= 1800:
+            self._last_signals_refresh = now
+            asyncio.create_task(self._refresh_signals())
 
         # Midnight reload — pick up new exports + refresh hot picks universe
         if now.hour == 0 and self._last_midnight_reload != date_str:
@@ -93,6 +99,21 @@ class Scheduler:
             _refresh_hot_picks()
         except Exception:
             pass
+
+    async def _refresh_signals(self):
+        """Compute RSI, earnings, news for all tickers in background. Never blocks requests."""
+        from src.signals import get_signals
+        positions = self.state.get("positions", {})
+        watchlist = self.state.get("watchlist", [])
+        all_tickers = list(set(list(positions.keys()) + watchlist))
+        cache = {}
+        for ticker in all_tickers:
+            try:
+                await asyncio.sleep(0)  # yield to event loop between tickers
+                cache[ticker] = get_signals(ticker)
+            except Exception:
+                pass
+        self.state["signals_cache"] = cache
 
     async def _run_scan(self, market: str):
         from src.quotes import fetch_quotes, day_change_pct
