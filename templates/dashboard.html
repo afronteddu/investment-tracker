@@ -409,24 +409,41 @@
   <div class="section-panel" id="panel-performance">
     <div class="section-header">
       <span class="section-title">Performance Charts</span>
-      <span class="muted" style="font-size:11px">since your first purchase</span>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('1w',this)">1W</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('1mo',this)">1M</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('3mo',this)">3M</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('6mo',this)">6M</button>
+        <button class="btn-ghost btn-sm active-period" id="btn-all" onclick="setChartPeriod('all',this)">All</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('1y',this)">1Y</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('2y',this)">2Y</button>
+      </div>
     </div>
 
-    <!-- Portfolio total value -->
+    <!-- Chart 1: Portfolio total value -->
     <div class="card" style="margin-bottom:16px;padding:20px">
       <div class="card-label" style="margin-bottom:4px">Total Portfolio Value (EUR)</div>
-      <div class="muted" style="font-size:11px;margin-bottom:12px">all holdings combined, weekly</div>
-      <div style="position:relative;height:220px">
+      <div class="muted" style="font-size:11px;margin-bottom:12px">all holdings combined — weekly</div>
+      <div style="position:relative;height:200px">
         <canvas id="chart-portfolio"></canvas>
       </div>
     </div>
 
-    <!-- Individual % return from buy date -->
+    <!-- Chart 2: % return from purchase date, each starting at 0 -->
     <div class="card" style="margin-bottom:16px;padding:20px">
-      <div class="card-label" style="margin-bottom:4px">Return per Holding (% from purchase date)</div>
-      <div class="muted" style="font-size:11px;margin-bottom:12px">each line starts at 0% on the day you bought — shows real gain/loss since your entry</div>
-      <div style="position:relative;height:280px">
+      <div class="card-label" style="margin-bottom:4px">Return per Holding from Purchase Date (%)</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">each line starts at 0% on your actual buy date</div>
+      <div style="position:relative;height:260px">
         <canvas id="chart-combined"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 3: Absolute EUR value per holding -->
+    <div class="card" style="margin-bottom:16px;padding:20px">
+      <div class="card-label" style="margin-bottom:4px">Holding Value in EUR</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">how much each position is worth over time</div>
+      <div style="position:relative;height:240px">
+        <canvas id="chart-values"></canvas>
       </div>
     </div>
 
@@ -506,7 +523,9 @@ function _tickerColor(ticker, bucket) {
 
 let _combinedChart = null;
 let _portfolioChart = null;
+let _valuesChart = null;
 let _historyCache = null;
+let _currentPeriod = 'all';
 
 // SVG sparkline — zero dependency, instant render
 function _svgSparkline(points, col, w, h) {
@@ -565,6 +584,31 @@ function _buildSparkCard(s, col) {
   return card;
 }
 
+function _cutoffDate(period) {
+  const now = new Date();
+  if (period === 'all') return null;
+  const d = new Date(now);
+  if (period === '1w')  d.setDate(d.getDate() - 7);
+  if (period === '1mo') d.setMonth(d.getMonth() - 1);
+  if (period === '3mo') d.setMonth(d.getMonth() - 3);
+  if (period === '6mo') d.setMonth(d.getMonth() - 6);
+  if (period === '1y')  d.setFullYear(d.getFullYear() - 1);
+  if (period === '2y')  d.setFullYear(d.getFullYear() - 2);
+  return d.toISOString().split('T')[0];
+}
+
+function _filterPoints(points, cutoff) {
+  if (!cutoff) return points;
+  return points.filter(p => p.date >= cutoff);
+}
+
+function setChartPeriod(period, btn) {
+  _currentPeriod = period;
+  document.querySelectorAll('#panel-performance .btn-ghost').forEach(b => b.classList.remove('active-period'));
+  btn.classList.add('active-period');
+  if (_historyCache) _renderCharts(_historyCache);
+}
+
 const _chartOpts = (yFmt, tooltipFmt) => ({
   responsive: true, maintainAspectRatio: false,
   interaction: { mode: 'index', intersect: false },
@@ -598,22 +642,24 @@ async function loadCharts() {
 function _renderCharts(d) {
   const series = d.series || [];
   const portfolio = d.portfolio || [];
+  const cutoff = _cutoffDate(_currentPeriod);
 
-  E('chart-portfolio').parentElement.style.opacity = '1';
-  E('chart-combined').parentElement.style.opacity = '1';
+  ['chart-portfolio','chart-combined','chart-values'].forEach(id => {
+    const el = E(id); if (el) el.parentElement.style.opacity = '1';
+  });
 
   // ── Chart 1: Portfolio total value ──────────────────────────────
-  if (portfolio.length) {
+  const portFiltered = _filterPoints(portfolio, cutoff);
+  if (portFiltered.length) {
     if (_portfolioChart) _portfolioChart.destroy();
     _portfolioChart = new Chart(E('chart-portfolio'), {
       type: 'line',
       data: {
-        labels: portfolio.map(p => p.date),
+        labels: portFiltered.map(p => p.date),
         datasets: [{
           label: 'Portfolio EUR',
-          data: portfolio.map(p => p.value_eur),
-          borderColor: '#60a5fa',
-          backgroundColor: 'rgba(96,165,250,0.08)',
+          data: portFiltered.map(p => p.value_eur),
+          borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)',
           borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: true,
         }]
       },
@@ -625,37 +671,53 @@ function _renderCharts(d) {
   }
 
   if (!series.length) return;
-
-  // ── Chart 2: % return from purchase date, each starting at 0 ────
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
 
-  // Build a union of all dates across all series
-  const allDates = [...new Set(series.flatMap(s => s.points.map(p => p.date)))].sort();
-
-  const datasets = series.map(s => {
+  // ── Chart 2: % return from purchase date ────────────────────────
+  const allDates2 = [...new Set(series.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date)))].sort();
+  const pctDatasets = series.map(s => {
     const col = _tickerColor(s.ticker, s.bucket);
-    // Map dates → pct, null for dates before this ticker's buy date
-    const byDate = Object.fromEntries(s.points.map(p => [p.date, p.pct]));
-    const data = allDates.map(d => byDate[d] ?? null);
+    const pts = _filterPoints(s.points, cutoff);
+    // Rebase to 0% at the first point in the filtered window
+    const base = pts.length ? pts[0].pct : 0;
+    const byDate = Object.fromEntries(pts.map(p => [p.date, p.pct - base]));
     return {
-      label: s.ticker,
-      data,
-      borderColor: col,
-      backgroundColor: col + '15',
-      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false,
-      spanGaps: false,
+      label: s.ticker, data: allDates2.map(d => byDate[d] ?? null),
+      borderColor: col, backgroundColor: col + '15',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: false,
     };
   });
-  // Zero line
-  datasets.unshift({ label: 'break-even', data: allDates.map(() => 0), borderColor: 'rgba(100,116,139,0.35)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
+  pctDatasets.unshift({ label: '0%', data: allDates2.map(() => 0), borderColor: 'rgba(100,116,139,0.3)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
 
   if (_combinedChart) _combinedChart.destroy();
   _combinedChart = new Chart(E('chart-combined'), {
-    type: 'line',
-    data: { labels: allDates, datasets },
+    type: 'line', data: { labels: allDates2, datasets: pctDatasets },
     options: _chartOpts(
-      v => (v >= 0 ? '+' : '') + v + '%',
+      v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%',
       ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(1) + '%'
+    )
+  });
+
+  // ── Chart 3: Absolute EUR value per holding ──────────────────────
+  Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
+  const allDates3 = [...new Set(series.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date)))].sort();
+  const valDatasets = series.map(s => {
+    const col = _tickerColor(s.ticker, s.bucket);
+    const pts = _filterPoints(s.points, cutoff);
+    const byDate = Object.fromEntries(pts.map(p => [p.date, p.value_eur]));
+    return {
+      label: s.ticker, data: allDates3.map(d => byDate[d] ?? null),
+      borderColor: col, backgroundColor: col + '10',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: false,
+    };
+  });
+
+  if (_valuesChart) _valuesChart.destroy();
+  _valuesChart = new Chart(E('chart-values'), {
+    type: 'line', data: { labels: allDates3, datasets: valDatasets },
+    options: _chartOpts(
+      v => '€' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0)),
+      ctx => ' ' + ctx.dataset.label + ': €' + (ctx.parsed.y ?? 0).toLocaleString('en-IE', {maximumFractionDigits: 0})
     )
   });
 
@@ -665,7 +727,8 @@ function _renderCharts(d) {
   grid.innerHTML = '';
   series.forEach(s => {
     const col = _tickerColor(s.ticker, s.bucket);
-    grid.appendChild(_buildSparkCard(s, col));
+    const filtered = { ...s, points: _filterPoints(s.points, cutoff) };
+    if (filtered.points.length) grid.appendChild(_buildSparkCard(filtered, col));
   });
 }
 
