@@ -8,31 +8,33 @@ import os
 from datetime import datetime
 
 
+_GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]
+
+
 def _ask(prompt: str, max_tokens: int = 900) -> str:
     google_key = os.getenv("GOOGLE_API_KEY", "")
     openai_key = os.getenv("OPENAI_API_KEY", "")
 
     if google_key:
-        try:
-            from google import genai
-            client = genai.Client(api_key=google_key)
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-            return response.text.strip()
-        except Exception as e:
-            err = str(e)
-            if "quota" in err.lower() or "429" in err:
-                return "Google API daily quota reached. Try again tomorrow or add OPENAI_API_KEY."
-            return f"Gemini error: {err[:200]}"
+        from google import genai
+        client = genai.Client(api_key=google_key)
+        for model in _GEMINI_MODELS:
+            try:
+                response = client.models.generate_content(model=model, contents=prompt)
+                return response.text.strip()
+            except Exception as e:
+                err = str(e).lower()
+                if "quota" in err or "429" in err or "resource_exhausted" in err:
+                    continue  # try next model
+                return f"Gemini error ({model}): {str(e)[:200]}"
+        # all Gemini models exhausted, fall through to OpenAI
 
     if openai_key:
         try:
             from openai import OpenAI
             client = OpenAI(api_key=openai_key)
             resp = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -40,7 +42,7 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
         except Exception as e:
             err = str(e)
             if "insufficient_quota" in err or "429" in err:
-                return "OpenAI quota exceeded — add billing credits at platform.openai.com/settings/billing."
+                return "All AI quotas reached. Add billing credits to OpenAI or wait for Gemini daily reset."
             return f"OpenAI error: {err[:200]}"
 
     return "No AI key configured — add GOOGLE_API_KEY (free) or OPENAI_API_KEY to .env."
