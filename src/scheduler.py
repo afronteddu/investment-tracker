@@ -35,6 +35,7 @@ class Scheduler:
         self._last_signals_refresh = None
 
     async def run(self):
+        await asyncio.sleep(5)  # let uvicorn finish startup before any fetches
         while True:
             await self._tick()
             await asyncio.sleep(30)
@@ -61,24 +62,24 @@ class Scheduler:
         # EU market open briefing (08:05 Dublin)
         if now.hour == 8 and now.minute >= 5 and self._last_eu_open != date_str and now.weekday() < 5:
             self._last_eu_open = date_str
-            await self._run_scan(market="EU")
+            asyncio.create_task(self._run_scan(market="EU"))
 
         # US market open briefing (15:35 Dublin)
         if now.hour == 15 and now.minute >= 35 and self._last_us_open != date_str and now.weekday() < 5:
             self._last_us_open = date_str
-            await self._run_scan(market="US")
+            asyncio.create_task(self._run_scan(market="US"))
 
         # EOD AI briefing (22:05 Dublin)
         if now.hour == 22 and now.minute >= 5 and self._last_eod != date_str and now.weekday() < 5:
             self._last_eod = date_str
-            await self._run_eod_briefing()
+            asyncio.create_task(self._run_eod_briefing())
 
         # During market hours: refresh every 5 min and check alerts
         if self._should_refresh(now):
             last = self._last_alert_check
             if last is None or (now - last).total_seconds() >= 300:
                 self._last_alert_check = now
-                await self._check_alerts()
+                asyncio.create_task(self._check_alerts())
 
     def _should_refresh(self, now: datetime) -> bool:
         if now.weekday() >= 5:
@@ -102,21 +103,20 @@ class Scheduler:
             pass
 
     async def _refresh_signals(self):
-        """Compute RSI, earnings, news in a thread pool so the event loop is never blocked."""
+        """Fetch RSI/earnings/news per ticker, one at a time in a thread, yielding between each."""
         from src.signals import get_signals
-        import concurrent.futures
         loop = asyncio.get_event_loop()
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
         all_tickers = list(set(list(positions.keys()) + watchlist))
-        cache = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            futures = {pool.submit(get_signals, t): t for t in all_tickers}
-            for fut, ticker in futures.items():
-                try:
-                    cache[ticker] = await loop.run_in_executor(None, fut.result)
-                except Exception:
-                    pass
+        cache = dict(self.state.get("signals_cache", {}))  # keep stale data while refreshing
+        for ticker in all_tickers:
+            try:
+                result = await loop.run_in_executor(None, get_signals, ticker)
+                cache[ticker] = result
+            except Exception:
+                pass
+            await asyncio.sleep(0.1)  # yield between tickers, don't hammer Yahoo
         self.state["signals_cache"] = cache
 
     async def _run_scan(self, market: str):
