@@ -408,25 +408,30 @@
   <!-- Performance charts -->
   <div class="section-panel" id="panel-performance">
     <div class="section-header">
-      <span class="section-title">Performance vs Cost Basis</span>
-      <div style="display:flex;gap:6px">
-        <button class="btn-ghost btn-sm" onclick="loadCharts('1mo')">1M</button>
-        <button class="btn-ghost btn-sm" onclick="loadCharts('3mo')">3M</button>
-        <button class="btn-ghost btn-sm active-period" id="period-1y" onclick="loadCharts('1y')">1Y</button>
-        <button class="btn-ghost btn-sm" onclick="loadCharts('2y')">2Y</button>
+      <span class="section-title">Performance Charts</span>
+      <span class="muted" style="font-size:11px">since your first purchase</span>
+    </div>
+
+    <!-- Portfolio total value -->
+    <div class="card" style="margin-bottom:16px;padding:20px">
+      <div class="card-label" style="margin-bottom:4px">Total Portfolio Value (EUR)</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">all holdings combined, weekly</div>
+      <div style="position:relative;height:220px">
+        <canvas id="chart-portfolio"></canvas>
       </div>
     </div>
 
-    <!-- Combined chart -->
+    <!-- Individual % return from buy date -->
     <div class="card" style="margin-bottom:16px;padding:20px">
-      <div class="card-label" style="margin-bottom:12px">All Holdings — % Return vs Avg Cost (normalised)</div>
-      <div style="position:relative;height:320px">
+      <div class="card-label" style="margin-bottom:4px">Return per Holding (% from purchase date)</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">each line starts at 0% on the day you bought — shows real gain/loss since your entry</div>
+      <div style="position:relative;height:280px">
         <canvas id="chart-combined"></canvas>
       </div>
     </div>
 
     <!-- Individual sparkline cards -->
-    <div id="sparkline-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+    <div id="sparkline-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
   </div>
 
   <!-- Scanner table -->
@@ -500,8 +505,8 @@ function _tickerColor(ticker, bucket) {
 }
 
 let _combinedChart = null;
-let _currentPeriod = '1y';
-let _historyCache = {};
+let _portfolioChart = null;
+let _historyCache = null;
 
 // SVG sparkline — zero dependency, instant render
 function _svgSparkline(points, col, w, h) {
@@ -560,58 +565,101 @@ function _buildSparkCard(s, col) {
   return card;
 }
 
-async function loadCharts(period) {
-  period = period || _currentPeriod;
-  _currentPeriod = period;
-
-  // Update active period button
-  document.querySelectorAll('#panel-performance .btn-ghost').forEach(b => {
-    b.classList.toggle('active-period', b.textContent === {'1mo':'1M','3mo':'3M','1y':'1Y','2y':'2Y'}[period]);
-  });
-
-  // Use cache if available
-  if (!_historyCache[period]) {
-    E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Loading charts…</div>';
-    const r = await fetch('/api/history?period=' + period);
-    const d = await r.json();
-    _historyCache[period] = d.series || [];
+const _chartOpts = (yFmt, tooltipFmt) => ({
+  responsive: true, maintainAspectRatio: false,
+  interaction: { mode: 'index', intersect: false },
+  plugins: {
+    legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } } },
+    tooltip: {
+      backgroundColor: '#1a1f2b', borderColor: '#222736', borderWidth: 1,
+      titleColor: '#e2e8f0', bodyColor: '#94a3b8',
+      callbacks: { label: tooltipFmt }
+    }
+  },
+  scales: {
+    x: { ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#1e2333' } },
+    y: { ticks: { color: '#64748b', callback: yFmt, font: { size: 10 } }, grid: { color: '#1e2333' } }
   }
-  const series = _historyCache[period];
+});
+
+async function loadCharts() {
+  if (_historyCache) { _renderCharts(_historyCache); return; }
+
+  E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Loading charts…</div>';
+  E('chart-portfolio').parentElement.style.opacity = '0.4';
+  E('chart-combined').parentElement.style.opacity = '0.4';
+
+  const r = await fetch('/api/history');
+  const d = await r.json();
+  _historyCache = d;
+  _renderCharts(d);
+}
+
+function _renderCharts(d) {
+  const series = d.series || [];
+  const portfolio = d.portfolio || [];
+
+  E('chart-portfolio').parentElement.style.opacity = '1';
+  E('chart-combined').parentElement.style.opacity = '1';
+
+  // ── Chart 1: Portfolio total value ──────────────────────────────
+  if (portfolio.length) {
+    if (_portfolioChart) _portfolioChart.destroy();
+    _portfolioChart = new Chart(E('chart-portfolio'), {
+      type: 'line',
+      data: {
+        labels: portfolio.map(p => p.date),
+        datasets: [{
+          label: 'Portfolio EUR',
+          data: portfolio.map(p => p.value_eur),
+          borderColor: '#60a5fa',
+          backgroundColor: 'rgba(96,165,250,0.08)',
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: true,
+        }]
+      },
+      options: _chartOpts(
+        v => '€' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0)),
+        ctx => ' €' + ctx.parsed.y.toLocaleString('en-IE', {maximumFractionDigits: 0})
+      )
+    });
+  }
+
   if (!series.length) return;
 
+  // ── Chart 2: % return from purchase date, each starting at 0 ────
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
 
-  // Combined chart
-  const labels = series[0].points.map(p => p.date);
+  // Build a union of all dates across all series
+  const allDates = [...new Set(series.flatMap(s => s.points.map(p => p.date)))].sort();
+
   const datasets = series.map(s => {
     const col = _tickerColor(s.ticker, s.bucket);
-    return { label: s.ticker, data: s.points.map(p => p.pct), borderColor: col, backgroundColor: col + '18', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false };
+    // Map dates → pct, null for dates before this ticker's buy date
+    const byDate = Object.fromEntries(s.points.map(p => [p.date, p.pct]));
+    const data = allDates.map(d => byDate[d] ?? null);
+    return {
+      label: s.ticker,
+      data,
+      borderColor: col,
+      backgroundColor: col + '15',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false,
+      spanGaps: false,
+    };
   });
-  datasets.unshift({ label: '0%', data: labels.map(() => 0), borderColor: 'rgba(100,116,139,0.4)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
+  // Zero line
+  datasets.unshift({ label: 'break-even', data: allDates.map(() => 0), borderColor: 'rgba(100,116,139,0.35)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
 
   if (_combinedChart) _combinedChart.destroy();
   _combinedChart = new Chart(E('chart-combined'), {
     type: 'line',
-    data: { labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } } },
-        tooltip: {
-          backgroundColor: '#1a1f2b', borderColor: '#222736', borderWidth: 1,
-          titleColor: '#e2e8f0', bodyColor: '#94a3b8',
-          callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(1) + '%' }
-        }
-      },
-      scales: {
-        x: { ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#222736' } },
-        y: { ticks: { color: '#64748b', callback: v => (v >= 0 ? '+' : '') + v + '%', font: { size: 10 } }, grid: { color: '#222736' } }
-      }
-    }
+    data: { labels: allDates, datasets },
+    options: _chartOpts(
+      v => (v >= 0 ? '+' : '') + v + '%',
+      ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(1) + '%'
+    )
   });
 
-  // SVG sparkline cards — instant, no canvas sizing issues
+  // ── Sparkline cards ───────────────────────────────────────────────
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
   const grid = E('sparkline-grid');
   grid.innerHTML = '';
@@ -963,7 +1011,7 @@ async function loadBriefing() {
 function _switchPanel(name) {
   document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
   E('panel-' + name).classList.add('active');
-  if (name === 'performance') loadCharts(_currentPeriod);
+  if (name === 'performance') loadCharts();
 }
 
 function showDesktopPanel(name, btn) {

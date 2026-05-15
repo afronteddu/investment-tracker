@@ -357,52 +357,85 @@ async def portfolio(request: Request):
 
 
 @app.get("/api/history")
-async def history(request: Request, period: str = "1y"):
+async def history(request: Request, period: str = "since_buy"):
     if (r := _auth_required(request)):
         return r
     import yfinance as yf
+    from datetime import date, datetime, timedelta
 
     positions = state.get("positions", {})
     tickers = list(positions.keys())
     if not tickers:
-        return {"series": []}
+        return {"series": [], "portfolio": []}
 
-    allowed = {"1mo", "3mo", "6mo", "1y", "2y"}
-    if period not in allowed:
-        period = "1y"
-
-    result = []
-    batch = yf.Tickers(" ".join(tickers))
     fx = get_fx_rates()
 
+    # Determine fetch period per ticker based on first buy date
+    # For portfolio total we need the earliest buy across all holdings
+    earliest = None
+    for pos in positions.values():
+        if pos.first_buy_date:
+            d = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date()
+            if earliest is None or d < earliest:
+                earliest = d
+
+    # Fetch weekly history since earliest buy (max 3 years to keep it fast)
+    if earliest is None:
+        earliest = date.today() - timedelta(days=365)
+    earliest = max(earliest, date.today() - timedelta(days=365 * 3))
+
+    result = []
+    # portfolio_by_date: date → total_value_eur
+    portfolio_by_date: dict[str, float] = {}
+
+    batch = yf.Tickers(" ".join(tickers))
+
     for ticker in tickers:
+        pos = positions[ticker]
         try:
-            hist = batch.tickers[ticker].history(period=period, interval="1wk")
+            t_obj = batch.tickers[ticker]
+            hist = t_obj.history(start=earliest.isoformat(), interval="1wk")
             if hist.empty:
                 continue
-            pos = positions[ticker]
-            currency = batch.tickers[ticker].fast_info.currency or "EUR"
+            currency = getattr(t_obj.fast_info, "currency", None) or "EUR"
+
+            # Only show points from actual buy date onwards
+            buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
 
             points = []
             for dt, row in hist.iterrows():
+                row_date = dt.date() if hasattr(dt, "date") else dt
+                if row_date < buy_date:
+                    continue
                 close = row["Close"]
                 close_eur = close * fx.get(currency, 1.0)
-                # normalize to % return vs avg cost
                 pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
-                points.append({"date": dt.strftime("%Y-%m-%d"), "pct": round(pct, 2), "price": round(close, 2)})
+                date_str = dt.strftime("%Y-%m-%d")
+                points.append({"date": date_str, "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(pos.shares * close_eur, 2)})
+                # Accumulate portfolio total
+                portfolio_by_date[date_str] = portfolio_by_date.get(date_str, 0) + pos.shares * close_eur
 
-            result.append({
-                "ticker": ticker,
-                "name": TICKER_NAMES.get(ticker, ticker),
-                "bucket": pos.bucket,
-                "avg_cost_eur": round(pos.avg_cost_eur, 2),
-                "points": points,
-            })
+            if points:
+                result.append({
+                    "ticker": ticker,
+                    "name": TICKER_NAMES.get(ticker, ticker),
+                    "bucket": pos.bucket,
+                    "avg_cost_eur": round(pos.avg_cost_eur, 2),
+                    "first_buy_date": pos.first_buy_date,
+                    "points": points,
+                })
         except Exception:
             continue
 
-    result.sort(key=lambda x: x["bucket"])
-    return {"series": result, "period": period}
+    result.sort(key=lambda x: x["first_buy_date"] or "")
+
+    # Portfolio total line — sorted dates
+    portfolio_points = [
+        {"date": d, "value_eur": round(v, 2)}
+        for d, v in sorted(portfolio_by_date.items())
+    ]
+
+    return {"series": result, "portfolio": portfolio_points}
 
 
 @app.get("/api/scan")

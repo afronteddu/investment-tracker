@@ -109,6 +109,7 @@ class Position:
     shares: float = 0.0
     total_cost_eur: float = 0.0   # total EUR spent (including fees)
     buy_count: int = 0
+    first_buy_date: str = ""      # YYYY-MM-DD of earliest buy
 
     @property
     def avg_cost_eur(self) -> float:
@@ -128,6 +129,7 @@ class Position:
             "total_cost_eur": round(self.total_cost_eur, 2),
             "buy_count": self.buy_count,
             "bucket": self.bucket,
+            "first_buy_date": self.first_buy_date,
         }
 
 
@@ -222,6 +224,11 @@ def compute_positions(data_dir: str = "data/transactions") -> dict[str, Position
         positions[ticker].shares += qty
         positions[ticker].total_cost_eur += abs(total_eur)
         positions[ticker].buy_count += 1
+        if not positions[ticker].first_buy_date:
+            try:
+                positions[ticker].first_buy_date = datetime.strptime(tx["date"], "%d-%m-%Y").strftime("%Y-%m-%d")
+            except Exception:
+                pass
 
     # Drop positions with 0 shares (fully sold)
     return {k: v for k, v in positions.items() if v.shares > 0.001}
