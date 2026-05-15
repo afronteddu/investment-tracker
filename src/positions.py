@@ -234,6 +234,61 @@ def compute_positions(data_dir: str = "data/transactions") -> dict[str, Position
     return {k: v for k, v in positions.items() if v.shares > 0.001}
 
 
+def compute_lifetime_stats(data_dir: str = "data/transactions") -> dict:
+    """Compute all-time realized P&L, total deployed, and monthly flows from raw transactions."""
+    import openpyxl
+    from collections import defaultdict
+
+    holdings: dict = defaultdict(lambda: {'shares': 0.0, 'cost': 0.0})
+    realized_pnl = 0.0
+    total_deployed = 0.0
+    total_returned = 0.0
+    monthly: dict = defaultdict(float)
+
+    seen: set = set()
+    files = sorted(glob.glob(os.path.join(data_dir, "*.xlsx")))
+    rows = []
+    for filepath in files:
+        wb = openpyxl.load_workbook(filepath)
+        ws = wb.active
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i == 0 or not row[0]:
+                continue
+            key = (row[0], row[2], row[6], row[15])
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append({'date': row[0], 'product': row[2], 'qty': float(row[6] or 0), 'total_eur': float(row[15] or 0)})
+
+    rows.sort(key=lambda x: datetime.strptime(x['date'], '%d-%m-%Y'))
+
+    for r in rows:
+        prod = r['product']
+        t = r['total_eur']
+        qty = r['qty']
+        month = datetime.strptime(r['date'], '%d-%m-%Y').strftime('%Y-%m')
+        if t < 0:
+            total_deployed += abs(t)
+            monthly[month] += abs(t)
+            holdings[prod]['shares'] += qty
+            holdings[prod]['cost'] += abs(t)
+        else:
+            total_returned += t
+            monthly[month] -= t
+            if holdings[prod]['shares'] > 0:
+                frac = abs(qty) / holdings[prod]['shares']
+                realized_pnl += t - holdings[prod]['cost'] * frac
+                holdings[prod]['cost'] *= (1 - frac)
+                holdings[prod]['shares'] -= abs(qty)
+
+    return {
+        "total_deployed": round(total_deployed, 2),
+        "total_returned": round(total_returned, 2),
+        "realized_pnl": round(realized_pnl, 2),
+        "monthly_flows": [{"month": m, "net": round(v, 2)} for m, v in sorted(monthly.items())],
+    }
+
+
 def add_new_export(src_path: str, data_dir: str = "data/transactions"):
     """Copy a new DeGiro export into the data directory."""
     import shutil

@@ -110,9 +110,18 @@ class Scheduler:
 
     def _refresh_quotes_sync(self):
         import json as _json
-        from src.quotes import fetch_quotes, day_change_pct, get_fx_rates, to_eur
-        from src.positions import TICKER_NAMES
-        from src.api import _compute_lifetime_stats, _signal, DEPLOYMENTS, is_market_open_us, is_market_open_eu
+        from src.quotes import fetch_quotes, day_change_pct, get_fx_rates, is_market_open_us, is_market_open_eu
+        from src.positions import TICKER_NAMES, compute_lifetime_stats  # noqa: F401 (used below)
+
+        def _signal(pct):
+            if pct is None: return "no data"
+            if pct >= 8: return "EXTRAORDINARY GAIN"
+            if pct <= -8: return "EXTRAORDINARY DROP"
+            if pct >= 3: return "strong up"
+            if pct <= -3: return "strong down"
+            return "neutral"
+
+        DEPLOYMENTS = self.state.get("deployments", [])
 
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
@@ -128,7 +137,7 @@ class Scheduler:
 
         # Lifetime stats (file read, fast)
         try:
-            self.state["lifetime_cache"] = _compute_lifetime_stats()
+            self.state["lifetime_cache"] = compute_lifetime_stats()
         except Exception:
             pass
 

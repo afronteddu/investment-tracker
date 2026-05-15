@@ -33,7 +33,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src.positions import compute_positions, TICKER_NAMES
+from src.positions import compute_positions, compute_lifetime_stats, TICKER_NAMES
 from src.quotes import fetch_quotes, day_change_pct, is_market_open_us, is_market_open_eu, to_eur, get_fx_rates
 from src.scheduler import Scheduler
 
@@ -269,58 +269,6 @@ async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
-def _compute_lifetime_stats() -> dict:
-    """Compute all-time realized P&L, total deployed, and monthly flows from raw transactions."""
-    import openpyxl, glob
-    from collections import defaultdict
-    from datetime import datetime
-
-    holdings = defaultdict(lambda: {'shares': 0.0, 'cost': 0.0})
-    realized_pnl = 0.0
-    total_deployed = 0.0
-    total_returned = 0.0
-    monthly = defaultdict(float)
-
-    seen = set()
-    files = sorted(glob.glob("data/transactions/*.xlsx"))
-    rows = []
-    for filepath in files:
-        wb = openpyxl.load_workbook(filepath)
-        ws = wb.active
-        for i, row in enumerate(ws.iter_rows(values_only=True)):
-            if i == 0 or not row[0]: continue
-            key = (row[0], row[2], row[6], row[15])
-            if key in seen: continue
-            seen.add(key)
-            rows.append({'date': row[0], 'product': row[2], 'qty': float(row[6] or 0), 'total_eur': float(row[15] or 0)})
-
-    rows.sort(key=lambda x: datetime.strptime(x['date'], '%d-%m-%Y'))
-
-    for r in rows:
-        prod = r['product']
-        t = r['total_eur']
-        qty = r['qty']
-        month = datetime.strptime(r['date'], '%d-%m-%Y').strftime('%Y-%m')
-        if t < 0:
-            total_deployed += abs(t)
-            monthly[month] += abs(t)
-            holdings[prod]['shares'] += qty
-            holdings[prod]['cost'] += abs(t)
-        else:
-            total_returned += t
-            monthly[month] -= t
-            if holdings[prod]['shares'] > 0:
-                frac = abs(qty) / holdings[prod]['shares']
-                realized_pnl += t - holdings[prod]['cost'] * frac
-                holdings[prod]['cost'] *= (1 - frac)
-                holdings[prod]['shares'] -= abs(qty)
-
-    return {
-        "total_deployed": round(total_deployed, 2),
-        "total_returned": round(total_returned, 2),
-        "realized_pnl": round(realized_pnl, 2),
-        "monthly_flows": [{"month": m, "net": round(v, 2)} for m, v in sorted(monthly.items())],
-    }
 
 
 def _portfolio_payload() -> dict:
