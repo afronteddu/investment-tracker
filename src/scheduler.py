@@ -34,6 +34,7 @@ class Scheduler:
         self._last_midnight_reload = None
         self._last_signals_refresh = None
         self._last_quotes_refresh = None
+        self._last_history_refresh = None
 
     async def run(self):
         await asyncio.sleep(5)  # let uvicorn finish startup before any fetches
@@ -49,6 +50,11 @@ class Scheduler:
         if self._last_quotes_refresh is None or (now - self._last_quotes_refresh).total_seconds() >= 60:
             self._last_quotes_refresh = now
             asyncio.create_task(self._refresh_quotes())
+
+        # Refresh history charts every 6 hours (weekly data, no need for more)
+        if self._last_history_refresh is None or (now - self._last_history_refresh).total_seconds() >= 21600:
+            self._last_history_refresh = now
+            asyncio.create_task(self._refresh_history())
 
         # Refresh signals (RSI/earnings/news) every 30 min
         if self._last_signals_refresh is None or (now - self._last_signals_refresh).total_seconds() >= 1800:
@@ -216,6 +222,81 @@ class Scheduler:
             await loop.run_in_executor(None, _refresh_hot_picks)
         except Exception:
             pass
+
+    async def _refresh_history(self):
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(None, self._refresh_history_sync)
+        except Exception:
+            pass
+
+    def _refresh_history_sync(self):
+        import yfinance as yf
+        from datetime import date, datetime, timedelta
+        from src.quotes import get_fx_rates
+        from src.positions import TICKER_NAMES
+
+        positions = self.state.get("positions", {})
+        if not positions:
+            return
+
+        fx = get_fx_rates()
+        tickers = list(positions.keys())
+
+        earliest = None
+        for pos in positions.values():
+            if pos.first_buy_date:
+                d = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date()
+                if earliest is None or d < earliest:
+                    earliest = d
+        if earliest is None:
+            earliest = date.today() - timedelta(days=365)
+        earliest = max(earliest, date.today() - timedelta(days=365 * 3))
+
+        result = []
+        portfolio_by_date: dict = {}
+
+        try:
+            batch = yf.Tickers(" ".join(tickers))
+        except Exception:
+            return
+
+        for ticker in tickers:
+            pos = positions[ticker]
+            try:
+                t_obj = batch.tickers[ticker]
+                hist = t_obj.history(start=earliest.isoformat(), interval="1wk")
+                if hist.empty:
+                    continue
+                currency = getattr(t_obj.fast_info, "currency", None) or "EUR"
+                buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
+                points = []
+                for dt, row in hist.iterrows():
+                    row_date = dt.date() if hasattr(dt, "date") else dt
+                    if row_date < buy_date:
+                        continue
+                    close = float(row["Close"])
+                    close_eur = close * fx.get(currency, 1.0)
+                    pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
+                    date_str = dt.strftime("%Y-%m-%d")
+                    val = pos.shares * close_eur
+                    points.append({"date": date_str, "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
+                    portfolio_by_date[date_str] = portfolio_by_date.get(date_str, 0) + val
+                if points:
+                    result.append({
+                        "ticker": ticker,
+                        "name": TICKER_NAMES.get(ticker, ticker),
+                        "bucket": pos.bucket,
+                        "avg_cost_eur": round(pos.avg_cost_eur, 2),
+                        "first_buy_date": pos.first_buy_date,
+                        "points": points,
+                    })
+            except Exception:
+                continue
+
+        result.sort(key=lambda x: x["first_buy_date"] or "")
+        portfolio_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_by_date.items())]
+        self.state["history_cache"] = {"series": result, "portfolio": portfolio_points}
 
     async def _refresh_signals(self):
         """Fetch RSI/earnings/news per ticker, one at a time in a thread, yielding between each."""

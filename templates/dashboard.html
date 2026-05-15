@@ -629,14 +629,19 @@ const _chartOpts = (yFmt, tooltipFmt) => ({
 async function loadCharts() {
   if (_historyCache) { _renderCharts(_historyCache); return; }
 
-  E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Loading charts…</div>';
-  E('chart-portfolio').parentElement.style.opacity = '0.4';
-  E('chart-combined').parentElement.style.opacity = '0.4';
+  E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Loading charts… (ready in ~30s after first deploy)</div>';
 
-  const r = await fetch('/api/history');
-  const d = await r.json();
-  _historyCache = d;
-  _renderCharts(d);
+  const tryFetch = async () => {
+    const r = await fetch('/api/history');
+    const d = await r.json();
+    if (d.loading) {
+      setTimeout(tryFetch, 5000); // retry in 5s while background is building
+      return;
+    }
+    _historyCache = d;
+    _renderCharts(d);
+  };
+  tryFetch();
 }
 
 function _renderCharts(d) {
