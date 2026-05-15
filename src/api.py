@@ -62,12 +62,14 @@ state: dict = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup — keep it fast, defer heavy fetches to background
     state["positions"] = compute_positions()
     state["watchlist"] = list(WATCHLIST_BASE)
     state["deployments"] = DEPLOYMENTS
     state["latest_briefing"] = None
-    _refresh_hot_picks()
+    state["hot_picks"] = []
+    state["signals_cache"] = {}
+    # Hot picks and signals run in background so startup is instant
     scheduler = Scheduler(state)
     task = asyncio.create_task(scheduler.run())
     yield
