@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio</title>
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #13161d;
+      --surface2: #1a1f2b;
+      --border: #222736;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #4ade80;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --blue: #60a5fa;
+      --purple: #c084fc;
+      --cyan: #22d3ee;
+      --orange: #fb923c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      font-size: 14px; min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--blue); }
+    .market-pills { display: flex; gap: 6px; }
+    .pill {
+      font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+    .pill-open { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .pill-closed { background: rgba(100,116,139,0.1); color: var(--muted); border: 1px solid var(--border); }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .update-time { font-size: 11px; color: var(--muted); }
+    .btn {
+      background: var(--blue); color: #000; border: none; border-radius: 6px;
+      padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn-ghost {
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── Layout ── */
+    .page { max-width: 1440px; margin: 0 auto; padding: 20px; }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .card-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+    .card-value { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; }
+    .card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .muted { color: var(--muted); }
+
+    /* ── Deployment strip ── */
+    .deploy-strip {
+      display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .deploy-item {
+      background: rgba(251,191,36,0.06);
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 8px; padding: 8px 14px;
+      font-size: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .deploy-label { color: var(--yellow); font-weight: 700; }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; margin-top: 24px;
+    }
+    .section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted);
+    }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--surface2); }
+    th {
+      text-align: left; font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 10px 14px; white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    th.r, td.r { text-align: right; }
+    td {
+      padding: 12px 14px; border-bottom: 1px solid rgba(34,39,54,0.6);
+      white-space: nowrap; background: var(--surface);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    .ticker-btn {
+      font-size: 15px; font-weight: 700;
+      color: var(--blue); cursor: pointer; text-decoration: none;
+      background: none; border: none; padding: 0;
+    }
+    .ticker-btn:hover { text-decoration: underline; }
+    .name { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .b-high { background: rgba(192,132,252,0.15); color: var(--purple); }
+    .b-growth { background: rgba(251,191,36,0.12); color: var(--yellow); }
+    .b-retirement { background: rgba(34,211,238,0.12); color: var(--cyan); }
+
+    .pct-big { font-size: 15px; font-weight: 700; }
+    .bar-wrap { width: 60px; height: 4px; background: var(--border); border-radius: 2px; display: inline-block; vertical-align: middle; margin-left: 6px; }
+    .bar-fill { height: 100%; border-radius: 2px; }
+
+    .totals td { font-weight: 700; font-size: 15px; background: var(--surface2) !important; border-top: 1px solid var(--border); }
+
+    .sig { font-size: 11px; font-weight: 700; }
+    .sig-gain { color: var(--green); }
+    .sig-drop { color: var(--red); }
+    .sig-up { color: #86efac; }
+    .sig-down { color: #fca5a5; }
+    .sig-neutral { color: var(--muted); }
+
+    /* ── Briefing ── */
+    .briefing-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px; margin-top: 24px;
+    }
+    .briefing-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    #briefing-text {
+      line-height: 1.75; color: #94a3b8; white-space: pre-wrap; font-size: 13px;
+    }
+    #briefing-text.loaded { color: var(--text); }
+
+    /* ── Drilldown Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 200;
+      align-items: flex-start; justify-content: center;
+      padding: 40px 20px; overflow-y: auto;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; width: 100%; max-width: 780px;
+      padding: 28px; position: relative;
+      animation: slideUp .2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px;
+      width: 28px; height: 28px; cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { color: var(--text); border-color: var(--muted); }
+    .modal-ticker { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+    .modal-meta { font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 20px; }
+    .modal-loading {
+      color: var(--muted); font-size: 13px; padding: 40px 0;
+      text-align: center;
+    }
+    .modal-loading .spinner {
+      width: 24px; height: 24px; border: 2px solid var(--border);
+      border-top-color: var(--blue); border-radius: 50%;
+      animation: spin 0.7s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Markdown content styles */
+    .md-content { line-height: 1.75; font-size: 13.5px; color: #cbd5e1; }
+    .md-content h2 {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--blue);
+      margin: 22px 0 8px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md-content h2:first-child { margin-top: 0; }
+    .md-content p { margin-bottom: 10px; color: #94a3b8; }
+    .md-content strong { color: var(--text); font-weight: 600; }
+    .md-content ul { padding-left: 18px; margin-bottom: 10px; }
+    .md-content li { margin-bottom: 4px; color: #94a3b8; }
+    .md-content li strong { color: var(--text); }
+
+    /* Position snapshot inside modal */
+    .position-snap {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px; margin-bottom: 20px;
+    }
+    .snap-item {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .snap-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .snap-value { font-size: 16px; font-weight: 700; }
+
+    /* ── Tabs (mobile) ── */
+    .tabs { display: none; gap: 4px; margin-bottom: 16px; }
+    .tab {
+      flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600;
+      border-radius: 8px; cursor: pointer; border: 1px solid var(--border);
+      color: var(--muted); background: var(--surface);
+    }
+    .tab.active { background: var(--blue); color: #000; border-color: var(--blue); }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .page { padding: 12px; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .card-value { font-size: 20px; }
+      .tabs { display: flex; }
+      .section-panel { display: none; }
+      .section-panel.active { display: block; }
+      header { padding: 0 12px; }
+      .logo-text { display: none; }
+      .modal { padding: 18px; }
+      .modal-ticker { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Drilldown Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-ticker" id="modal-ticker">—</div>
+    <div class="modal-meta" id="modal-meta"></div>
+    <div id="modal-position"></div>
+    <div id="modal-body">
+      <div class="modal-loading">
+        <div class="spinner"></div>
+        Asking GPT-4o for a Buffett-style analysis…
+      </div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-left">
+    <div class="logo">Portfolio<span>.</span></div>
+    <div class="market-pills" id="market-pills"></div>
+  </div>
+  <div class="header-right">
+    <span class="update-time" id="update-time">connecting...</span>
+    <button class="btn btn-sm" id="briefing-btn" onclick="generateBriefing()">AI Briefing</button>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- Summary -->
+  <div class="summary-grid">
+    <div class="card">
+      <div class="card-label">Total Invested</div>
+      <div class="card-value" id="s-cost">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Current Value</div>
+      <div class="card-value" id="s-value">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Total P&amp;L</div>
+      <div class="card-value" id="s-pnl">—</div>
+      <div class="card-sub" id="s-pnl-sub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">FX Rate</div>
+      <div class="card-value" id="s-fx" style="font-size:18px">—</div>
+      <div class="card-sub" id="s-fx-sub"></div>
+    </div>
+  </div>
+
+  <!-- Deployments -->
+  <div class="deploy-strip" id="deploy-strip"></div>
+
+  <!-- Mobile tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('portfolio',event)">Portfolio</div>
+    <div class="tab" onclick="switchTab('scanner',event)">Scanner</div>
+    <div class="tab" onclick="switchTab('briefing',event)">Briefing</div>
+  </div>
+
+  <!-- Portfolio table -->
+  <div class="section-panel active" id="panel-portfolio">
+    <div class="section-header">
+      <span class="section-title">Holdings</span>
+      <span class="muted" style="font-size:11px" id="portfolio-count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Bucket</th>
+            <th class="r">Shares</th>
+            <th class="r">Avg Cost</th>
+            <th class="r">Price</th>
+            <th class="r">Day</th>
+            <th class="r">Value</th>
+            <th class="r">P&amp;L</th>
+            <th class="r">Return</th>
+          </tr>
+        </thead>
+        <tbody id="portfolio-body">
+          <tr><td colspan="9" class="muted" style="text-align:center;padding:40px">Connecting...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scanner table -->
+  <div class="section-panel" id="panel-scanner">
+    <div class="section-header">
+      <span class="section-title">Watchlist Scanner</span>
+      <span class="muted" style="font-size:11px">sorted by day move — click ticker for analysis</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th class="r">Price</th>
+            <th class="r">Day %</th>
+            <th class="r">High</th>
+            <th class="r">Low</th>
+            <th>Signal</th>
+          </tr>
+        </thead>
+        <tbody id="scanner-body">
+          <tr><td colspan="6" class="muted" style="text-align:center;padding:40px">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Briefing -->
+  <div class="briefing-card section-panel" id="panel-briefing">
+    <div class="briefing-header">
+      <span class="section-title">AI Daily Briefing</span>
+      <button class="btn btn-sm" onclick="generateBriefing()">Generate</button>
+    </div>
+    <div id="briefing-text">No briefing yet — click Generate or wait for market close (22:05 Dublin). Requires OPENAI_API_KEY in .env.</div>
+  </div>
+
+</div>
+
+<script>
+const E = id => document.getElementById(id);
+const fmt = (n, d=2) => n != null ? n.toFixed(d) : '—';
+const fmtK = n => {
+  if (n == null) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1000) return sign + '€' + (abs/1000).toFixed(1) + 'k';
+  return sign + '€' + abs.toFixed(0);
+};
+const fmtEur = n => n != null ? '€' + Math.abs(n).toLocaleString('en-IE', {minimumFractionDigits:0, maximumFractionDigits:0}) : '—';
+const sign = n => n != null && n >= 0 ? '+' : '';
+const cc = n => n == null ? '' : n >= 0 ? 'green' : 'red';
+
+// ── Drilldown modal ──────────────────────────────────────────────
+let _drilldownCache = {};
+
+function openDrilldown(ticker, positionData) {
+  const overlay = E('modal-overlay');
+  E('modal-ticker').textContent = ticker;
+
+  // Position snapshot
+  const posEl = E('modal-position');
+  if (positionData) {
+    const pnlC = cc(positionData.pnl_pct);
+    const dayC = cc(positionData.day_pct);
+    posEl.innerHTML = `<div class="position-snap">
+      <div class="snap-item">
+        <div class="snap-label">Shares</div>
+        <div class="snap-value">${positionData.shares}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Avg Cost</div>
+        <div class="snap-value">€${fmt(positionData.avg_cost_eur)}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Price</div>
+        <div class="snap-value">${positionData.price != null ? fmt(positionData.price) : '—'} <span style="font-size:11px;color:var(--muted)">${positionData.currency||''}</span></div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Today</div>
+        <div class="snap-value ${dayC}">${positionData.day_pct != null ? sign(positionData.day_pct)+fmt(positionData.day_pct)+'%' : '—'}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Value</div>
+        <div class="snap-value">${fmtEur(positionData.current_value_eur)}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Total P&L</div>
+        <div class="snap-value ${pnlC}">${positionData.pnl_pct != null ? sign(positionData.pnl_pct)+fmt(positionData.pnl_pct)+'%' : '—'}</div>
+      </div>
+    </div>`;
+    E('modal-meta').textContent = positionData.name || ticker;
+  } else {
+    posEl.innerHTML = '';
+    E('modal-meta').textContent = 'Watchlist';
+  }
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Use cache if we have it
+  if (_drilldownCache[ticker]) {
+    renderAnalysis(_drilldownCache[ticker]);
+    return;
+  }
+
+  E('modal-body').innerHTML = `<div class="modal-loading"><div class="spinner"></div>Asking GPT-4o for a Buffett-style analysis…</div>`;
+
+  fetch(`/api/drilldown/${ticker}`)
+    .then(r => r.json())
+    .then(d => {
+      _drilldownCache[ticker] = d.analysis;
+      renderAnalysis(d.analysis);
+    })
+    .catch(() => {
+      E('modal-body').innerHTML = '<p style="color:var(--red)">Error loading analysis. Check OPENAI_API_KEY in .env.</p>';
+    });
+}
+
+function renderAnalysis(text) {
+  // Simple markdown → HTML: ## headers, **bold**, bullet lists, paragraphs
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>(\n|$))+/gs, m => '<ul>' + m + '</ul>')
+    .replace(/\n\n+/g, '\n\n')
+    .split('\n\n')
+    .map(block => {
+      block = block.trim();
+      if (!block) return '';
+      if (block.startsWith('<h2>') || block.startsWith('<ul>')) return block;
+      return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+    })
+    .join('\n');
+
+  E('modal-body').innerHTML = `<div class="md-content">${html}</div>`;
+}
+
+function closeModal() {
+  E('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Summary ──────────────────────────────────────────────────────
+function renderSummary(positions, fx) {
+  let cost = 0, value = 0;
+  positions.forEach(p => {
+    cost += p.total_cost_eur || 0;
+    value += p.current_value_eur || 0;
+  });
+  const pnl = value - cost;
+  const pct = cost > 0 ? pnl/cost*100 : 0;
+
+  E('s-cost').textContent = fmtEur(cost);
+  E('s-value').textContent = fmtEur(value);
+  E('s-pnl').textContent = (pnl >= 0 ? '+' : '') + fmtEur(pnl);
+  E('s-pnl').className = 'card-value ' + cc(pnl);
+  E('s-pnl-sub').textContent = sign(pct) + fmt(pct) + '%';
+  E('s-pnl-sub').className = 'card-sub ' + cc(pct);
+
+  if (fx && fx.USD) {
+    E('s-fx').textContent = '1.00 EUR';
+    E('s-fx-sub').textContent = `= ${(1/fx.USD).toFixed(4)} USD`;
+  }
+  if (positions.length) E('portfolio-count').textContent = `${positions.length} positions`;
+}
+
+// ── Portfolio table ───────────────────────────────────────────────
+let _latestPortfolio = [];
+
+function renderPortfolio(positions) {
+  _latestPortfolio = positions;
+  const tbody = E('portfolio-body');
+  if (!positions.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center;padding:40px">No positions</td></tr>';
+    return;
+  }
+
+  let totalCost = 0, totalValue = 0;
+  const rows = positions.map(p => {
+    totalCost += p.total_cost_eur || 0;
+    totalValue += p.current_value_eur || 0;
+
+    const dayC = p.day_pct == null ? 'muted' : p.day_pct >= 0 ? 'green' : 'red';
+    const pnlC = cc(p.pnl_pct);
+    const bClass = p.bucket === 'high_conviction' ? 'b-high' : p.bucket === 'growth' ? 'b-growth' : 'b-retirement';
+    const bLabel = p.bucket === 'high_conviction' ? 'High Conv.' : p.bucket === 'growth' ? 'Growth' : 'Retirement';
+
+    const barPct = p.pnl_pct != null ? Math.min(Math.abs(p.pnl_pct), 100) : 0;
+    const barColor = p.pnl_pct >= 0 ? 'var(--green)' : 'var(--red)';
+    const bar = `<span class="bar-wrap"><span class="bar-fill" style="width:${barPct}%;background:${barColor}"></span></span>`;
+    const idx = JSON.stringify(p).replace(/"/g, '&quot;');
+
+    return `<tr>
+      <td>
+        <button class="ticker-btn" onclick='openDrilldown("${p.ticker}", ${JSON.stringify(p)})'>${p.ticker}</button>
+        <div class="name">${p.name || ''}</div>
+      </td>
+      <td><span class="badge ${bClass}">${bLabel}</span></td>
+      <td class="r">${fmt(p.shares, p.shares % 1 === 0 ? 0 : 2)}</td>
+      <td class="r muted">€${fmt(p.avg_cost_eur)}</td>
+      <td class="r"><strong>${p.price != null ? fmt(p.price) : '—'}</strong> <span class="muted" style="font-size:10px">${p.currency||''}</span></td>
+      <td class="r"><span class="${dayC} pct-big">${p.day_pct != null ? sign(p.day_pct)+fmt(p.day_pct)+'%' : '—'}</span></td>
+      <td class="r">${fmtK(p.current_value_eur)}</td>
+      <td class="r ${pnlC}">${p.pnl_eur != null ? (p.pnl_eur>=0?'+':'')+fmtK(p.pnl_eur) : '—'}</td>
+      <td class="r"><span class="${pnlC} pct-big">${p.pnl_pct != null ? sign(p.pnl_pct)+fmt(p.pnl_pct)+'%' : '—'}</span>${bar}</td>
+    </tr>`;
+  });
+
+  const totalPnl = totalValue - totalCost;
+  const totalPct = totalCost > 0 ? totalPnl/totalCost*100 : 0;
+  rows.push(`<tr class="totals">
+    <td colspan="2"><strong>TOTAL</strong></td>
+    <td></td>
+    <td class="r muted">${fmtEur(totalCost)}</td>
+    <td></td><td></td>
+    <td class="r"><strong>${fmtEur(totalValue)}</strong></td>
+    <td class="r ${cc(totalPnl)}"><strong>${totalPnl>=0?'+':''}${fmtK(totalPnl)}</strong></td>
+    <td class="r ${cc(totalPct)}"><strong>${sign(totalPct)}${fmt(totalPct)}%</strong></td>
+  </tr>`);
+
+  tbody.innerHTML = rows.join('');
+}
+
+// ── Scanner table ─────────────────────────────────────────────────
+function renderScanner(scanner) {
+  const tbody = E('scanner-body');
+  if (!scanner.length) { tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">No data</td></tr>'; return; }
+
+  const rows = scanner.map(s => {
+    const pct = s.day_pct;
+    const pC = pct == null ? 'muted' : pct >= 0 ? 'green' : 'red';
+    let sigClass = 'sig-neutral', sigText = '—';
+    if (pct != null) {
+      if (pct >= 8)       { sigClass = 'sig-gain'; sigText = '▲ EXTRAORDINARY'; }
+      else if (pct <= -8) { sigClass = 'sig-drop'; sigText = '▼ EXTRAORDINARY'; }
+      else if (pct >= 3)  { sigClass = 'sig-up';   sigText = '↑ Strong up'; }
+      else if (pct <= -3) { sigClass = 'sig-down';  sigText = '↓ Strong down'; }
+      else                { sigClass = 'sig-neutral'; sigText = 'Neutral'; }
+    }
+    return `<tr>
+      <td><button class="ticker-btn" onclick='openDrilldown("${s.ticker}", null)'>${s.ticker}</button></td>
+      <td class="r">${s.price != null ? fmt(s.price) : '—'}</td>
+      <td class="r"><span class="${pC} pct-big">${pct != null ? sign(pct)+fmt(pct)+'%' : '—'}</span></td>
+      <td class="r muted">${s.day_high != null ? fmt(s.day_high) : '—'}</td>
+      <td class="r muted">${s.day_low != null ? fmt(s.day_low) : '—'}</td>
+      <td><span class="sig ${sigClass}">${sigText}</span></td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows.join('');
+}
+
+function renderMarket(status) {
+  E('market-pills').innerHTML = [
+    status.eu_open ? '<span class="pill pill-open">EU Open</span>' : '<span class="pill pill-closed">EU Closed</span>',
+    status.us_open ? '<span class="pill pill-open">US Open</span>' : '<span class="pill pill-closed">US Closed</span>',
+  ].join('');
+}
+
+function renderDeployments(deployments) {
+  const today = new Date().toISOString().split('T')[0];
+  E('deploy-strip').innerHTML = (deployments || []).map(d => {
+    const days = Math.round((new Date(d.date) - new Date(today)) / 86400000);
+    if (days < -14) return '';
+    const label = days < 0 ? 'Past' : days === 0 ? '🔔 TODAY' : `in ${days}d`;
+    return `<div class="deploy-item"><span class="deploy-label">${label}</span><span>${d.date} — ${d.note}</span></div>`;
+  }).join('');
+}
+
+// ── Briefing ─────────────────────────────────────────────────────
+async function generateBriefing() {
+  const btn = E('briefing-btn');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  E('briefing-text').textContent = 'Generating your briefing...';
+  E('briefing-text').className = '';
+  try {
+    const r = await fetch('/api/briefing/generate', {method:'POST'});
+    const d = await r.json();
+    E('briefing-text').textContent = d.briefing;
+    E('briefing-text').className = 'loaded';
+    btn.textContent = 'Regenerate';
+  } catch(e) {
+    E('briefing-text').textContent = 'Error — check OPENAI_API_KEY in .env';
+  }
+  btn.disabled = false;
+}
+
+async function loadBriefing() {
+  const r = await fetch('/api/briefing');
+  const d = await r.json();
+  if (d.briefing && !d.briefing.startsWith('No briefing')) {
+    E('briefing-text').textContent = d.briefing;
+    E('briefing-text').className = 'loaded';
+    E('briefing-btn').textContent = 'Regenerate';
+  }
+}
+
+function switchTab(name, ev) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  ev.target.classList.add('active');
+  E('panel-' + name).classList.add('active');
+}
+
+// ── WebSocket + live countdown ────────────────────────────────────
+let _nextRefresh = null;
+
+function startCountdown() {
+  _nextRefresh = Date.now() + 60000;
+  const tick = () => {
+    if (!_nextRefresh) return;
+    const secs = Math.max(0, Math.round((_nextRefresh - Date.now()) / 1000));
+    const el = E('update-time');
+    if (el) el.textContent = secs > 0 ? `Live · next in ${secs}s` : 'Updating…';
+    setTimeout(tick, 1000);
+  };
+  tick();
+}
+
+function connect() {
+  // Pass Basic Auth credentials as a base64 token in the WS query string
+  const wsUrl = `ws${location.protocol === 'https:' ? 's' : ''}://${location.host}/ws${_wsToken ? '?token=' + _wsToken : ''}`;
+  const ws = new WebSocket(wsUrl);
+  ws.onopen = () => { E('update-time').textContent = 'Live'; startCountdown(); };
+
+  ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    renderPortfolio(d.portfolio || []);
+    renderScanner(d.scanner || []);
+    renderMarket(d.market_status || {});
+    renderSummary(d.portfolio || [], d.fx_rates || {});
+    if (d.deployments) renderDeployments(d.deployments);
+    // Invalidate drilldown cache so re-opens get fresh data
+    _drilldownCache = {};
+    startCountdown();
+  };
+
+  ws.onclose = () => {
+    _nextRefresh = null;
+    E('update-time').textContent = 'Reconnecting…';
+    setTimeout(connect, 3000);
+  };
+}
+
+async function bootstrapDeployments() {
+  const r = await fetch('/api/portfolio');
+  const d = await r.json();
+  renderDeployments(d.deployments);
+  if (d.fx_rates) renderSummary([], d.fx_rates);
+}
+
+let _wsToken = '';
+
+async function init() {
+  try {
+    const r = await fetch('/api/ws-token');
+    if (r.ok) _wsToken = (await r.json()).token;
+  } catch(e) {}
+  loadBriefing();
+  bootstrapDeployments();
+  connect();
+}
+
+init();
+</script>
+</body>
+</html>

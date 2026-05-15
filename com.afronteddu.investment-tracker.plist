@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.afronteddu.investment-tracker</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/afronteddu/dev/investment-tracker/venv/bin/python</string>
+    <string>/Users/afronteddu/dev/investment-tracker/main.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/afronteddu/dev/investment-tracker</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/afronteddu/dev/investment-tracker/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <!-- Restart automatically if it crashes -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Start on login -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/afronteddu/dev/investment-tracker/logs/tracker.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/afronteddu/dev/investment-tracker/logs/tracker-error.log</string>
+</dict>
+</plist>

@@ -1,0 +1,79 @@
+# Investment Tracker — Portfolio Config
+# Fill in your actual positions. ticker must be the Yahoo Finance symbol.
+# For EU ETFs on Euronext/Xetra, append .AS (Amsterdam) or .DE (Frankfurt)
+# e.g. VWRL.AS, CNDX.AS
+
+settings:
+  refresh_seconds: 60          # how often the dashboard refreshes
+  alert_threshold_pct: 5       # alert when any holding moves >X% in a session
+  scanner_gainers_pct: 8       # scanner flags tickers up >X% in a session
+  scanner_losers_pct: -8       # scanner flags tickers down >X% in a session
+  currency: EUR                # display currency (informational only)
+
+# --- YOUR POSITIONS ---
+# cost_basis: average price you paid per share (EUR or USD, match the ticker)
+# shares: number of shares held
+# target_price: your exit / take-profit level
+# stop_loss: optional — alert if price drops below this
+# bucket: retirement | growth | high_conviction
+# notes: free text
+
+positions:
+  - ticker: NBIS       # Neurobiological Sciences (US)
+    shares: 0          # fill in
+    cost_basis: 0      # fill in
+    target_price: 0    # fill in — your 6-12mo target
+    stop_loss: 0       # fill in
+    bucket: high_conviction
+    notes: "30% of 6-12mo bet. Deploying remaining tranches May 19 + May 26."
+
+  - ticker: VRT        # Vertiv Holdings
+    shares: 0
+    cost_basis: 0
+    target_price: 0
+    stop_loss: 0
+    bucket: high_conviction
+    notes: "Part of AI infrastructure 6-12mo bet."
+
+  - ticker: APLD       # Applied Digital
+    shares: 0
+    cost_basis: 0
+    target_price: 0
+    stop_loss: 0
+    bucket: high_conviction
+    notes: "Part of AI infrastructure 6-12mo bet."
+
+  # --- Add your ETFs / retirement positions below ---
+  # - ticker: VWRL.AS
+  #   shares: 10
+  #   cost_basis: 105.20
+  #   target_price: 0       # 0 = long-hold, no exit target
+  #   stop_loss: 0
+  #   bucket: retirement
+  #   notes: "Monthly DCA"
+
+# --- WATCHLIST ---
+# Tickers you don't own but want the scanner to track
+watchlist:
+  # AI / data center theme
+  - SMCI
+  - NVDA
+  - AMD
+  - PLTR
+  - IONQ
+  - RGTI
+  - QUBT
+  - TSM
+  - ARM
+  # Broad market / retirement
+  - SPY
+  - QQQ
+  - VWRL.AS
+
+# --- DEPLOYMENT SCHEDULE ---
+# Reminder of planned buys — shows on dashboard header
+upcoming_deployments:
+  - date: "2026-05-19"
+    note: "Deploy 2nd tranche ~30% of 6-12mo bet (NBIS/VRT/APLD or new)"
+  - date: "2026-05-26"
+    note: "Deploy 3rd tranche ~33% of 6-12mo bet"
