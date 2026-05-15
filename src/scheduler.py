@@ -42,10 +42,15 @@ class Scheduler:
         now = now_dublin()
         date_str = now.strftime("%Y-%m-%d")
 
-        # Midnight reload — pick up any new transaction exports dropped into data/
+        # Midnight reload — pick up new exports + refresh hot picks universe
         if now.hour == 0 and self._last_midnight_reload != date_str:
             self._last_midnight_reload = date_str
             await self._reload_positions()
+            await self._refresh_hot_picks()
+
+        # Also refresh hot picks at 08:00 (fresh data for EU open)
+        if now.hour == 8 and now.minute < 5 and self._last_midnight_reload == date_str:
+            await self._refresh_hot_picks()
 
         # EU market open briefing (08:05 Dublin)
         if now.hour == 8 and now.minute >= 5 and self._last_eu_open != date_str and now.weekday() < 5:
@@ -81,6 +86,13 @@ class Scheduler:
         from src import positions as pos_module
         importlib.reload(pos_module)
         self.state["positions"] = pos_module.compute_positions()
+
+    async def _refresh_hot_picks(self):
+        from src.api import _refresh_hot_picks
+        try:
+            _refresh_hot_picks()
+        except Exception:
+            pass
 
     async def _run_scan(self, market: str):
         from src.quotes import fetch_quotes, day_change_pct

@@ -37,8 +37,17 @@ from src.positions import compute_positions, TICKER_NAMES
 from src.quotes import fetch_quotes, day_change_pct, is_market_open_us, is_market_open_eu, to_eur, get_fx_rates
 from src.scheduler import Scheduler
 
-WATCHLIST = [
-    "SMCI", "NVDA", "AMD", "PLTR", "IONQ", "RGTI", "QUBT", "TSM", "ARM",
+# Base watchlist — always scanned
+WATCHLIST_BASE = [
+    # AI infrastructure
+    "NVDA", "AMD", "TSM", "ARM", "SMCI",
+    # Quantum computing
+    "IONQ", "RGTI", "QUBT",
+    # AI software / data
+    "PLTR", "SOUN", "BBAI",
+    # Mag 7 / broad market
+    "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL",
+    # Indices & ETFs
     "SPY", "QQQ", "VWRL.AS", "ASML.AS",
 ]
 
@@ -55,9 +64,10 @@ state: dict = {}
 async def lifespan(app: FastAPI):
     # Startup
     state["positions"] = compute_positions()
-    state["watchlist"] = WATCHLIST
+    state["watchlist"] = list(WATCHLIST_BASE)
     state["deployments"] = DEPLOYMENTS
     state["latest_briefing"] = None
+    _refresh_hot_picks()
     scheduler = Scheduler(state)
     task = asyncio.create_task(scheduler.run())
     yield
@@ -106,6 +116,45 @@ def _valid_ws_token(token: str) -> bool:
     if not os.getenv("DASHBOARD_USER"):
         return True
     return secrets.compare_digest(token, _make_ws_token())
+
+
+# Hot-picks universe — scanned daily to surface the biggest movers/momentum names
+_HOT_PICKS_UNIVERSE = [
+    # AI chips & infra
+    "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "INTC", "QCOM",
+    # AI software & data
+    "PLTR", "AI", "SOUN", "BBAI", "UPST", "PATH", "SNOW",
+    # Quantum
+    "IONQ", "RGTI", "QUBT", "QBTS",
+    # High-growth tech
+    "META", "GOOGL", "MSFT", "AMZN", "TSLA", "AAPL",
+    # Energy / data centre power
+    "VRT", "VST", "CEG", "NRG",
+    # Biotech / speculative AI-adjacent
+    "RXRX", "TMDX",
+    # ETFs
+    "ARKK", "BOTZ", "AIQ",
+]
+
+
+def _refresh_hot_picks():
+    """Pull yesterday's top movers from the universe and merge into watchlist."""
+    try:
+        quotes = fetch_quotes(_HOT_PICKS_UNIVERSE)
+        # Score by absolute day move
+        scored = []
+        for ticker, q in quotes.items():
+            pct = day_change_pct(q)
+            if pct is not None:
+                scored.append((abs(pct), ticker))
+        scored.sort(reverse=True)
+        # Top 8 movers always in watchlist
+        hot = [t for _, t in scored[:8]]
+        merged = list(dict.fromkeys(WATCHLIST_BASE + hot))  # deduplicate, base first
+        state["watchlist"] = merged
+        state["hot_picks"] = hot
+    except Exception:
+        state["watchlist"] = list(WATCHLIST_BASE)
 
 try:
     app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -158,6 +207,7 @@ def _build_portfolio_data() -> list[dict]:
 
 def _build_scanner_data() -> list[dict]:
     watchlist = state.get("watchlist", [])
+    hot_picks = set(state.get("hot_picks", []))
     quotes = fetch_quotes(watchlist)
 
     rows = []
@@ -166,12 +216,14 @@ def _build_scanner_data() -> list[dict]:
         pct = day_change_pct(q)
         rows.append({
             "ticker": ticker,
+            "name": TICKER_NAMES.get(ticker, ""),
             "price": q.get("price"),
             "day_pct": pct,
             "day_high": q.get("day_high"),
             "day_low": q.get("day_low"),
             "currency": q.get("currency", "?"),
             "signal": _signal(pct),
+            "hot": ticker in hot_picks,
         })
 
     rows.sort(key=lambda x: x["day_pct"] if x["day_pct"] is not None else 0, reverse=True)
@@ -199,6 +251,60 @@ async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
+def _compute_lifetime_stats() -> dict:
+    """Compute all-time realized P&L, total deployed, and monthly flows from raw transactions."""
+    import openpyxl, glob
+    from collections import defaultdict
+    from datetime import datetime
+
+    holdings = defaultdict(lambda: {'shares': 0.0, 'cost': 0.0})
+    realized_pnl = 0.0
+    total_deployed = 0.0
+    total_returned = 0.0
+    monthly = defaultdict(float)
+
+    seen = set()
+    files = sorted(glob.glob("data/transactions/*.xlsx"))
+    rows = []
+    for filepath in files:
+        wb = openpyxl.load_workbook(filepath)
+        ws = wb.active
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i == 0 or not row[0]: continue
+            key = (row[0], row[2], row[6], row[15])
+            if key in seen: continue
+            seen.add(key)
+            rows.append({'date': row[0], 'product': row[2], 'qty': float(row[6] or 0), 'total_eur': float(row[15] or 0)})
+
+    rows.sort(key=lambda x: datetime.strptime(x['date'], '%d-%m-%Y'))
+
+    for r in rows:
+        prod = r['product']
+        t = r['total_eur']
+        qty = r['qty']
+        month = datetime.strptime(r['date'], '%d-%m-%Y').strftime('%Y-%m')
+        if t < 0:
+            total_deployed += abs(t)
+            monthly[month] += abs(t)
+            holdings[prod]['shares'] += qty
+            holdings[prod]['cost'] += abs(t)
+        else:
+            total_returned += t
+            monthly[month] -= t
+            if holdings[prod]['shares'] > 0:
+                frac = abs(qty) / holdings[prod]['shares']
+                realized_pnl += t - holdings[prod]['cost'] * frac
+                holdings[prod]['cost'] *= (1 - frac)
+                holdings[prod]['shares'] -= abs(qty)
+
+    return {
+        "total_deployed": round(total_deployed, 2),
+        "total_returned": round(total_returned, 2),
+        "realized_pnl": round(realized_pnl, 2),
+        "monthly_flows": [{"month": m, "net": round(v, 2)} for m, v in sorted(monthly.items())],
+    }
+
+
 @app.get("/api/portfolio")
 async def portfolio(request: Request):
     if (r := _auth_required(request)):
@@ -206,6 +312,10 @@ async def portfolio(request: Request):
     rows = _build_portfolio_data()
     total_cost = sum(r["total_cost_eur"] for r in rows)
     total_value = sum(r["current_value_eur"] for r in rows if r["current_value_eur"])
+    unrealized_pnl = total_value - total_cost
+    lifetime = _compute_lifetime_stats()
+    total_pnl = lifetime["realized_pnl"] + unrealized_pnl
+    total_deployed = lifetime["total_deployed"]
     return {
         "positions": rows,
         "summary": {
@@ -214,6 +324,15 @@ async def portfolio(request: Request):
             "total_pnl_eur": round(total_value - total_cost, 2),
             "total_pnl_pct": round((total_value - total_cost) / total_cost * 100, 2) if total_cost else 0,
         },
+        "lifetime": {
+            "total_deployed": total_deployed,
+            "total_returned": lifetime["total_returned"],
+            "realized_pnl": lifetime["realized_pnl"],
+            "unrealized_pnl": round(unrealized_pnl, 2),
+            "total_pnl": round(total_pnl, 2),
+            "total_pnl_pct": round(total_pnl / total_deployed * 100, 2) if total_deployed else 0,
+            "monthly_flows": lifetime["monthly_flows"],
+        },
         "market_status": {
             "us_open": is_market_open_us(),
             "eu_open": is_market_open_eu(),
@@ -221,6 +340,55 @@ async def portfolio(request: Request):
         "fx_rates": get_fx_rates(),
         "deployments": state.get("deployments", []),
     }
+
+
+@app.get("/api/history")
+async def history(request: Request, period: str = "1y"):
+    if (r := _auth_required(request)):
+        return r
+    import yfinance as yf
+
+    positions = state.get("positions", {})
+    tickers = list(positions.keys())
+    if not tickers:
+        return {"series": []}
+
+    allowed = {"1mo", "3mo", "6mo", "1y", "2y"}
+    if period not in allowed:
+        period = "1y"
+
+    result = []
+    batch = yf.Tickers(" ".join(tickers))
+    fx = get_fx_rates()
+
+    for ticker in tickers:
+        try:
+            hist = batch.tickers[ticker].history(period=period, interval="1wk")
+            if hist.empty:
+                continue
+            pos = positions[ticker]
+            currency = batch.tickers[ticker].fast_info.currency or "EUR"
+
+            points = []
+            for dt, row in hist.iterrows():
+                close = row["Close"]
+                close_eur = close * fx.get(currency, 1.0)
+                # normalize to % return vs avg cost
+                pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
+                points.append({"date": dt.strftime("%Y-%m-%d"), "pct": round(pct, 2), "price": round(close, 2)})
+
+            result.append({
+                "ticker": ticker,
+                "name": TICKER_NAMES.get(ticker, ticker),
+                "bucket": pos.bucket,
+                "avg_cost_eur": round(pos.avg_cost_eur, 2),
+                "points": points,
+            })
+        except Exception:
+            continue
+
+    result.sort(key=lambda x: x["bucket"])
+    return {"series": result, "period": period}
 
 
 @app.get("/api/scan")
@@ -311,8 +479,13 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             import json
+            portfolio_data = _build_portfolio_data()
+            total_cost = sum(r["total_cost_eur"] for r in portfolio_data)
+            total_value = sum(r["current_value_eur"] for r in portfolio_data if r["current_value_eur"])
+            unrealized_pnl = total_value - total_cost
+            lifetime = _compute_lifetime_stats()
             payload = {
-                "portfolio": _build_portfolio_data(),
+                "portfolio": portfolio_data,
                 "scanner": _build_scanner_data(),
                 "market_status": {
                     "us_open": is_market_open_us(),
@@ -320,6 +493,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 },
                 "fx_rates": get_fx_rates(),
                 "deployments": state.get("deployments", []),
+                "lifetime": {
+                    "total_deployed": lifetime["total_deployed"],
+                    "total_returned": lifetime["total_returned"],
+                    "realized_pnl": lifetime["realized_pnl"],
+                    "unrealized_pnl": round(unrealized_pnl, 2),
+                    "total_pnl": round(lifetime["realized_pnl"] + unrealized_pnl, 2),
+                    "total_pnl_pct": round((lifetime["realized_pnl"] + unrealized_pnl) / lifetime["total_deployed"] * 100, 2) if lifetime["total_deployed"] else 0,
+                    "monthly_flows": lifetime["monthly_flows"],
+                },
             }
             await websocket.send_text(json.dumps(payload))
             await asyncio.sleep(60)

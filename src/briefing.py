@@ -88,59 +88,156 @@ Be direct and specific. No generic disclaimers. Like a smart friend who knows ma
     return _ask(prompt, max_tokens=400)
 
 
+def _fetch_fundamentals(ticker: str) -> dict:
+    """Pull live fundamentals from yfinance for a ticker."""
+    try:
+        import yfinance as yf
+        info = yf.Ticker(ticker).info
+
+        def fmt_billions(v):
+            if v is None: return "N/A"
+            if abs(v) >= 1e9: return f"${v/1e9:.1f}B"
+            if abs(v) >= 1e6: return f"${v/1e6:.0f}M"
+            return f"${v:.0f}"
+
+        def fmt_pct(v):
+            return f"{v*100:.1f}%" if v is not None else "N/A"
+
+        def fmt_x(v, suffix="x"):
+            return f"{v:.1f}{suffix}" if v is not None else "N/A"
+
+        rec_map = {1: "Strong Buy", 2: "Buy", 3: "Hold", 4: "Sell", 5: "Strong Sell"}
+        rec_score = info.get("recommendationMean")
+        recommendation = rec_map.get(round(rec_score) if rec_score else 0, "N/A")
+
+        return {
+            "name": info.get("shortName", ticker),
+            "sector": info.get("sector", "N/A"),
+            "industry": info.get("industry", "N/A"),
+            "market_cap": fmt_billions(info.get("marketCap")),
+            "price": info.get("currentPrice") or info.get("previousClose"),
+            "currency": info.get("currency", "USD"),
+            "52w_high": info.get("fiftyTwoWeekHigh"),
+            "52w_low": info.get("fiftyTwoWeekLow"),
+            "52w_change": fmt_pct(info.get("52WeekChange")),
+            "beta": fmt_x(info.get("beta"), ""),
+            "trailing_pe": fmt_x(info.get("trailingPE")),
+            "forward_pe": fmt_x(info.get("forwardPE")),
+            "price_to_book": fmt_x(info.get("priceToBook")),
+            "ev_ebitda": fmt_x(info.get("enterpriseToEbitda")),
+            "trailing_eps": info.get("trailingEps"),
+            "forward_eps": info.get("forwardEps"),
+            "revenue": fmt_billions(info.get("totalRevenue")),
+            "revenue_growth": fmt_pct(info.get("revenueGrowth")),
+            "earnings_growth": fmt_pct(info.get("earningsGrowth")),
+            "gross_margin": fmt_pct(info.get("grossMargins")),
+            "operating_margin": fmt_pct(info.get("operatingMargins")),
+            "profit_margin": fmt_pct(info.get("profitMargins")),
+            "free_cashflow": fmt_billions(info.get("freeCashflow")),
+            "total_cash": fmt_billions(info.get("totalCash")),
+            "total_debt": fmt_billions(info.get("totalDebt")),
+            "debt_to_equity": fmt_x(info.get("debtToEquity")),
+            "current_ratio": fmt_x(info.get("currentRatio")),
+            "roe": fmt_pct(info.get("returnOnEquity")),
+            "roa": fmt_pct(info.get("returnOnAssets")),
+            "analyst_target": info.get("targetMeanPrice"),
+            "analyst_count": info.get("numberOfAnalystOpinions"),
+            "recommendation": recommendation,
+            "dividend_yield": fmt_pct(info.get("dividendYield")),
+        }
+    except Exception as e:
+        return {"error": str(e)[:100]}
+
+
 def generate_drilldown(ticker: str, position: dict | None, quote: dict | None) -> str:
     name = position.get("name", ticker) if position else ticker
     bucket = position.get("bucket", "watchlist") if position else "watchlist"
 
+    # Live fundamentals from yfinance
+    fundamentals = _fetch_fundamentals(ticker)
+    live_name = fundamentals.get("name", name)
+
+    # Format fundamentals block
+    if "error" not in fundamentals:
+        price = fundamentals.get("price")
+        currency = fundamentals.get("currency", "")
+        analyst_target = fundamentals.get("analyst_target")
+        upside = f"{((analyst_target/price)-1)*100:+.1f}%" if price and analyst_target else "N/A"
+        fundamentals_block = f"""
+LIVE MARKET DATA (as of {datetime.now().strftime('%d %b %Y')}):
+- Sector: {fundamentals['sector']} | Industry: {fundamentals['industry']}
+- Market Cap: {fundamentals['market_cap']} | Price: {price} {currency}
+- 52-week range: {fundamentals['52w_low']} – {fundamentals['52w_high']} | 52w change: {fundamentals['52w_change']}
+- Beta: {fundamentals['beta']}
+
+Valuation multiples:
+- Trailing P/E: {fundamentals['trailing_pe']} | Forward P/E: {fundamentals['forward_pe']}
+- Price/Book: {fundamentals['price_to_book']} | EV/EBITDA: {fundamentals['ev_ebitda']}
+- Trailing EPS: {fundamentals['trailing_eps']} | Forward EPS: {fundamentals['forward_eps']}
+
+Financials:
+- Revenue: {fundamentals['revenue']} | Revenue growth YoY: {fundamentals['revenue_growth']}
+- Earnings growth: {fundamentals['earnings_growth']}
+- Gross margin: {fundamentals['gross_margin']} | Operating margin: {fundamentals['operating_margin']} | Net margin: {fundamentals['profit_margin']}
+- Free cash flow: {fundamentals['free_cashflow']} | Cash: {fundamentals['total_cash']} | Debt: {fundamentals['total_debt']}
+- Debt/Equity: {fundamentals['debt_to_equity']} | Current ratio: {fundamentals['current_ratio']}
+- ROE: {fundamentals['roe']} | ROA: {fundamentals['roa']}
+
+Analyst consensus ({fundamentals['analyst_count']} analysts):
+- Recommendation: {fundamentals['recommendation']} | Mean target: {analyst_target} {currency} ({upside} upside)
+- Dividend yield: {fundamentals['dividend_yield']}"""
+    else:
+        fundamentals_block = f"(Live data unavailable: {fundamentals['error']})"
+
+    # Investor position context
     holding_context = ""
     if position and quote:
         shares = position.get("shares", 0)
         avg_cost = position.get("avg_cost_eur", 0)
-        price = quote.get("price")
-        currency = quote.get("currency", "")
+        price_q = quote.get("price")
+        currency_q = quote.get("currency", "")
         day_pct = quote.get("day_pct") or 0
         pnl_pct = position.get("pnl_pct")
         value_eur = position.get("current_value_eur")
         holding_context = f"""
-Investor's position:
-- Shares held: {shares:.0f}
-- Avg cost: €{avg_cost:.2f}/share
-- Current price: {price:.2f} {currency}  ({day_pct:+.1f}% today)
-- Current value: €{value_eur:,.0f}
-- P&L: {pnl_pct:+.1f}%
-- Bucket: {bucket}
-"""
+YOUR POSITION:
+- {shares:.0f} shares held | Avg cost: €{avg_cost:.2f}/share
+- Current price: {price_q:.2f} {currency_q} ({day_pct:+.1f}% today)
+- Current value: €{value_eur:,.0f} | Total P&L: {pnl_pct:+.1f}%
+- Bucket: {bucket}"""
     elif quote and quote.get("price"):
-        price = quote.get("price")
-        currency = quote.get("currency", "")
+        price_q = quote.get("price")
+        currency_q = quote.get("currency", "")
         day_pct = quote.get("day_pct") or 0
-        holding_context = f"\nWatchlist only (not held). Price: {price:.2f} {currency}, day: {day_pct:+.1f}%\n"
+        holding_context = f"\nNOT HELD (watchlist only). Price: {price_q:.2f} {currency_q} ({day_pct:+.1f}% today)"
 
-    prompt = f"""Analyse {ticker} ({name}) for a long-term retail investor in Dublin, Ireland.
+    prompt = f"""You are analysing {ticker} ({live_name}) for a long-term retail investor in Dublin, Ireland.
+{fundamentals_block}
 {holding_context}
-Give a Warren Buffett-style deep analysis. Use these exact markdown headers:
+
+Using the live data above as your factual foundation, give a Warren Buffett-style analysis. Use these exact markdown headers:
 
 ## Business Model
-What does the company actually do to make money? Revenue streams, customers, competitive moat.
+What does the company actually do to make money? Revenue streams, customers, moat.
 
 ## Financial Health
-Key metrics: revenue growth trend, profitability (margins, EPS), debt load, cash position, FCF. Use real numbers.
+Interpret the live numbers above: is revenue growth accelerating or slowing? Are margins expanding? Is the balance sheet strong? Quote the actual figures.
 
 ## Competitive Position
-Main competitors. What is the moat (brand, network effects, switching costs, cost advantage, patents)? Widening or eroding?
+Main competitors. Is the moat widening or eroding? What keeps customers locked in?
 
 ## Growth Catalysts
-The 2-3 biggest drivers of future value. Near-term (12 months) and long-term.
+The 2-3 biggest drivers of future value over the next 1-3 years.
 
 ## Key Risks
-Top 3 specific risks that could impair the thesis. Be concrete.
+Top 3 concrete risks that could impair this thesis. Be specific.
 
 ## Valuation
-Cheap, fair, or expensive? Bull/bear case. What multiple are investors paying and is it justified?
+Is it cheap, fair, or expensive based on the live multiples above? How does the forward P/E compare to growth rate? What does the analyst target imply?
 
 ## Verdict
-One paragraph: buy, hold, or avoid — and why? Frame for a 3-5 year horizon.
+One paragraph: buy, hold, or avoid for a 3-5 year horizon — and why? If held, is the current P&L a reason to trim or add?
 
-Plain English. Specific numbers. No disclaimers. Max 600 words total."""
+Plain English. Reference the actual numbers. No disclaimers. Max 650 words."""
 
-    return _ask(prompt, max_tokens=900)
+    return _ask(prompt, max_tokens=1000)

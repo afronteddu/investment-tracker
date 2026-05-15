@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Portfolio</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg: #0a0c10;
@@ -62,6 +63,7 @@
       cursor: pointer; transition: all .15s;
     }
     .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-ghost.active-period { border-color: var(--blue); color: var(--blue); background: rgba(96,165,250,0.1); }
 
     /* ── Layout ── */
     .page { max-width: 1440px; margin: 0 auto; padding: 20px; }
@@ -85,6 +87,15 @@
     .green { color: var(--green); }
     .red { color: var(--red); }
     .muted { color: var(--muted); }
+
+    /* ── Lifetime grid ── */
+    .lifetime-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 900px) { .lifetime-grid { grid-template-columns: repeat(2, 1fr); } }
 
     /* ── Deployment strip ── */
     .deploy-strip {
@@ -229,6 +240,10 @@
     .snap-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
     .snap-value { font-size: 16px; font-weight: 700; }
 
+    /* ── Desktop nav ── */
+    .desktop-nav { flex-wrap: wrap; }
+    @media (max-width: 600px) { .desktop-nav { display: none !important; } }
+
     /* ── Tabs (mobile) ── */
     .tabs { display: none; gap: 4px; margin-bottom: 16px; }
     .tab {
@@ -309,14 +324,57 @@
     </div>
   </div>
 
+  <!-- Lifetime ROI -->
+  <div class="lifetime-grid" id="lifetime-grid" style="display:none">
+    <div class="card">
+      <div class="card-label">Total Ever Deployed</div>
+      <div class="card-value" id="l-deployed">—</div>
+      <div class="card-sub" id="l-returned"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Realized P&amp;L (banked)</div>
+      <div class="card-value" id="l-realized">—</div>
+      <div class="card-sub muted">from closed positions</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Unrealized P&amp;L (paper)</div>
+      <div class="card-value" id="l-unrealized">—</div>
+      <div class="card-sub muted">current holdings</div>
+    </div>
+    <div class="card" style="border-color: var(--blue)">
+      <div class="card-label">All-Time Total Return</div>
+      <div class="card-value" id="l-total">—</div>
+      <div class="card-sub" id="l-total-pct"></div>
+    </div>
+  </div>
+
+  <!-- Monthly flow chart -->
+  <div id="flow-chart-wrap" style="display:none; margin-bottom:20px">
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Monthly Cash Flow</span>
+      <span class="muted" style="font-size:11px">green = deployed, red = withdrawn via sales</span>
+    </div>
+    <div id="flow-chart" style="display:flex; align-items:flex-end; gap:3px; height:80px; padding:0 4px; overflow-x:auto"></div>
+    <div id="flow-labels" style="display:flex; gap:3px; padding:4px 4px 0; overflow-x:auto"></div>
+  </div>
+
   <!-- Deployments -->
   <div class="deploy-strip" id="deploy-strip"></div>
 
   <!-- Mobile tabs -->
   <div class="tabs">
     <div class="tab active" onclick="switchTab('portfolio',event)">Portfolio</div>
+    <div class="tab" onclick="switchTab('performance',event)">Charts</div>
     <div class="tab" onclick="switchTab('scanner',event)">Scanner</div>
     <div class="tab" onclick="switchTab('briefing',event)">Briefing</div>
+  </div>
+
+  <!-- Desktop section nav -->
+  <div style="display:flex;gap:8px;margin-bottom:20px" class="desktop-nav">
+    <button class="btn-ghost" onclick="showDesktopPanel('portfolio',this)">Portfolio</button>
+    <button class="btn-ghost" onclick="showDesktopPanel('performance',this)">Charts</button>
+    <button class="btn-ghost" onclick="showDesktopPanel('scanner',this)">Scanner</button>
+    <button class="btn-ghost" onclick="showDesktopPanel('briefing',this)">Briefing</button>
   </div>
 
   <!-- Portfolio table -->
@@ -347,6 +405,30 @@
     </div>
   </div>
 
+  <!-- Performance charts -->
+  <div class="section-panel" id="panel-performance">
+    <div class="section-header">
+      <span class="section-title">Performance vs Cost Basis</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-ghost btn-sm" onclick="loadCharts('1mo')">1M</button>
+        <button class="btn-ghost btn-sm" onclick="loadCharts('3mo')">3M</button>
+        <button class="btn-ghost btn-sm active-period" id="period-1y" onclick="loadCharts('1y')">1Y</button>
+        <button class="btn-ghost btn-sm" onclick="loadCharts('2y')">2Y</button>
+      </div>
+    </div>
+
+    <!-- Combined chart -->
+    <div class="card" style="margin-bottom:16px;padding:20px">
+      <div class="card-label" style="margin-bottom:12px">All Holdings — % Return vs Avg Cost (normalised)</div>
+      <div style="position:relative;height:320px">
+        <canvas id="chart-combined"></canvas>
+      </div>
+    </div>
+
+    <!-- Individual sparkline cards -->
+    <div id="sparkline-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+  </div>
+
   <!-- Scanner table -->
   <div class="section-panel" id="panel-scanner">
     <div class="section-header">
@@ -358,6 +440,7 @@
         <thead>
           <tr>
             <th>Ticker</th>
+            <th>Name</th>
             <th class="r">Price</th>
             <th class="r">Day %</th>
             <th class="r">High</th>
@@ -366,7 +449,7 @@
           </tr>
         </thead>
         <tbody id="scanner-body">
-          <tr><td colspan="6" class="muted" style="text-align:center;padding:40px">Loading...</td></tr>
+          <tr><td colspan="7" class="muted" style="text-align:center;padding:40px">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -396,6 +479,191 @@ const fmtK = n => {
 const fmtEur = n => n != null ? '€' + Math.abs(n).toLocaleString('en-IE', {minimumFractionDigits:0, maximumFractionDigits:0}) : '—';
 const sign = n => n != null && n >= 0 ? '+' : '';
 const cc = n => n == null ? '' : n >= 0 ? 'green' : 'red';
+
+// ── Performance charts ───────────────────────────────────────────
+const BUCKET_COLORS = {
+  high_conviction: ['#c084fc','#a855f7','#7c3aed','#6d28d9'],
+  growth:          ['#fbbf24','#f59e0b','#d97706'],
+  retirement:      ['#22d3ee','#06b6d4','#0891b2','#0e7490','#155e75'],
+};
+const _bucketIdx = {};
+
+function _tickerColor(ticker, bucket) {
+  if (!_bucketIdx[bucket]) _bucketIdx[bucket] = 0;
+  const palette = BUCKET_COLORS[bucket] || ['#60a5fa'];
+  const col = palette[_bucketIdx[bucket] % palette.length];
+  _bucketIdx[bucket]++;
+  return col;
+}
+
+let _combinedChart = null;
+let _sparkCharts = {};
+let _currentPeriod = '1y';
+
+function _buildSparkCard(s, col) {
+  const lastPct = s.points[s.points.length - 1]?.pct ?? 0;
+  const pctSign = lastPct >= 0 ? '+' : '';
+  const minPct = Math.min(...s.points.map(p => p.pct));
+  const maxPct = Math.max(...s.points.map(p => p.pct));
+  const canvasId = 'spark-' + s.ticker.replace('.', '_');
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = 'padding:14px 16px';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px';
+
+  const left = document.createElement('div');
+  const tickerBtn = document.createElement('button');
+  tickerBtn.className = 'ticker-btn';
+  tickerBtn.style.fontSize = '14px';
+  tickerBtn.textContent = s.ticker;
+  tickerBtn.onclick = () => openDrilldown(s.ticker, null);
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'name';
+  nameDiv.textContent = s.name;
+  left.appendChild(tickerBtn);
+  left.appendChild(nameDiv);
+
+  const right = document.createElement('div');
+  right.style.textAlign = 'right';
+  const pctDiv = document.createElement('div');
+  pctDiv.className = lastPct >= 0 ? 'green' : 'red';
+  pctDiv.style.cssText = 'font-size:16px;font-weight:700';
+  pctDiv.textContent = pctSign + lastPct.toFixed(1) + '%';
+  const subDiv = document.createElement('div');
+  subDiv.className = 'muted';
+  subDiv.style.fontSize = '10px';
+  subDiv.textContent = 'vs avg cost';
+  right.appendChild(pctDiv);
+  right.appendChild(subDiv);
+
+  header.appendChild(left);
+  header.appendChild(right);
+
+  const canvas = document.createElement('canvas');
+  canvas.id = canvasId;
+  canvas.height = 60;
+
+  const footer = document.createElement('div');
+  footer.style.cssText = 'display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted)';
+  const lo = document.createElement('span'); lo.textContent = 'Low: ' + minPct.toFixed(1) + '%';
+  const mid = document.createElement('span'); mid.textContent = 'Avg cost: €' + s.avg_cost_eur;
+  const hi = document.createElement('span'); hi.textContent = 'High: +' + maxPct.toFixed(1) + '%';
+  footer.appendChild(lo); footer.appendChild(mid); footer.appendChild(hi);
+
+  card.appendChild(header);
+  card.appendChild(canvas);
+  card.appendChild(footer);
+  return { card, canvasId };
+}
+
+async function loadCharts(period) {
+  period = period || _currentPeriod;
+  _currentPeriod = period;
+
+  document.querySelectorAll('.section-header .btn-ghost').forEach(b => b.classList.remove('active-period'));
+  const labelMap = {'1mo':'1M','3mo':'3M','1y':'1Y','2y':'2Y'};
+  document.querySelectorAll('.section-header .btn-ghost').forEach(b => {
+    if (b.textContent === (labelMap[period] || period)) b.classList.add('active-period');
+  });
+
+  const r = await fetch('/api/history?period=' + period);
+  const d = await r.json();
+  const series = d.series || [];
+  if (!series.length) return;
+
+  Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
+
+  const labels = series[0].points.map(p => p.date);
+  const datasets = series.map(s => {
+    const col = _tickerColor(s.ticker, s.bucket);
+    return {
+      label: s.ticker,
+      data: s.points.map(p => p.pct),
+      borderColor: col,
+      backgroundColor: col + '18',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+      fill: false,
+    };
+  });
+  datasets.unshift({
+    label: 'Break-even (0%)',
+    data: labels.map(() => 0),
+    borderColor: 'rgba(100,116,139,0.4)',
+    borderWidth: 1,
+    borderDash: [4,4],
+    pointRadius: 0,
+    fill: false,
+  });
+
+  if (_combinedChart) _combinedChart.destroy();
+  _combinedChart = new Chart(E('chart-combined'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          backgroundColor: '#1a1f2b', borderColor: '#222736', borderWidth: 1,
+          titleColor: '#e2e8f0', bodyColor: '#94a3b8',
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(1) + '%'
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#222736' } },
+        y: { ticks: { color: '#64748b', callback: v => (v >= 0 ? '+' : '') + v + '%', font: { size: 10 } }, grid: { color: '#222736' } }
+      }
+    }
+  });
+
+  Object.values(_sparkCharts).forEach(c => c.destroy());
+  _sparkCharts = {};
+  Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
+
+  const grid = E('sparkline-grid');
+  grid.innerHTML = '';
+
+  series.forEach(s => {
+    const col = _tickerColor(s.ticker, s.bucket);
+    const { card, canvasId } = _buildSparkCard(s, col);
+    grid.appendChild(card);
+
+    requestAnimationFrame(() => {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+      _sparkCharts[s.ticker] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: s.points.map(p => p.date),
+          datasets: [{
+            data: s.points.map(p => p.pct),
+            borderColor: col,
+            backgroundColor: col + '20',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } },
+          animation: false,
+        }
+      });
+    });
+  });
+}
 
 // ── Drilldown modal ──────────────────────────────────────────────
 let _drilldownCache = {};
@@ -491,6 +759,47 @@ function closeModal() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+// ── Lifetime ROI ─────────────────────────────────────────────────
+function renderLifetime(lt) {
+  if (!lt) return;
+  E('lifetime-grid').style.display = 'grid';
+  E('flow-chart-wrap').style.display = 'block';
+
+  E('l-deployed').textContent = fmtEur(lt.total_deployed);
+  E('l-returned').textContent = `${fmtEur(lt.total_returned)} returned via sales`;
+
+  E('l-realized').textContent = (lt.realized_pnl >= 0 ? '+' : '') + fmtEur(lt.realized_pnl);
+  E('l-realized').className = 'card-value ' + cc(lt.realized_pnl);
+
+  E('l-unrealized').textContent = (lt.unrealized_pnl >= 0 ? '+' : '') + fmtEur(lt.unrealized_pnl);
+  E('l-unrealized').className = 'card-value ' + cc(lt.unrealized_pnl);
+
+  E('l-total').textContent = (lt.total_pnl >= 0 ? '+' : '') + fmtEur(lt.total_pnl);
+  E('l-total').className = 'card-value ' + cc(lt.total_pnl);
+  E('l-total-pct').textContent = (lt.total_pnl_pct >= 0 ? '+' : '') + fmt(lt.total_pnl_pct) + '% on all capital deployed';
+  E('l-total-pct').className = 'card-sub ' + cc(lt.total_pnl_pct);
+
+  // Flow chart
+  const flows = lt.monthly_flows || [];
+  if (!flows.length) return;
+  const maxAbs = Math.max(...flows.map(f => Math.abs(f.net)), 1);
+  const chartH = 72;
+
+  const bars = flows.map(f => {
+    const h = Math.max(2, Math.round(Math.abs(f.net) / maxAbs * chartH));
+    const col = f.net >= 0 ? 'rgba(74,222,128,0.7)' : 'rgba(248,113,113,0.7)';
+    return `<div title="${f.month}: €${f.net.toLocaleString()}" style="flex:1;min-width:8px;height:${h}px;background:${col};border-radius:2px 2px 0 0;cursor:default"></div>`;
+  }).join('');
+
+  const labels = flows.map(f => {
+    const short = f.month.slice(2).replace('-', '/');
+    return `<div style="flex:1;min-width:8px;font-size:8px;color:var(--muted);text-align:center;overflow:hidden">${short}</div>`;
+  }).join('');
+
+  E('flow-chart').innerHTML = bars;
+  E('flow-labels').innerHTML = labels;
+}
+
 // ── Summary ──────────────────────────────────────────────────────
 function renderSummary(positions, fx) {
   let cost = 0, value = 0;
@@ -575,7 +884,7 @@ function renderPortfolio(positions) {
 // ── Scanner table ─────────────────────────────────────────────────
 function renderScanner(scanner) {
   const tbody = E('scanner-body');
-  if (!scanner.length) { tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">No data</td></tr>'; return; }
+  if (!scanner.length) { tbody.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center;padding:20px">No data</td></tr>'; return; }
 
   const rows = scanner.map(s => {
     const pct = s.day_pct;
@@ -588,8 +897,10 @@ function renderScanner(scanner) {
       else if (pct <= -3) { sigClass = 'sig-down';  sigText = '↓ Strong down'; }
       else                { sigClass = 'sig-neutral'; sigText = 'Neutral'; }
     }
+    const hotBadge = s.hot ? ' <span style="font-size:10px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);border-radius:4px;padding:1px 5px;font-weight:700;">🔥 HOT</span>' : '';
     return `<tr>
-      <td><button class="ticker-btn" onclick='openDrilldown("${s.ticker}", null)'>${s.ticker}</button></td>
+      <td><button class="ticker-btn" onclick='openDrilldown("${s.ticker}", null)'>${s.ticker}</button>${hotBadge}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${s.name || ''}</td>
       <td class="r">${s.price != null ? fmt(s.price) : '—'}</td>
       <td class="r"><span class="${pC} pct-big">${pct != null ? sign(pct)+fmt(pct)+'%' : '—'}</span></td>
       <td class="r muted">${s.day_high != null ? fmt(s.day_high) : '—'}</td>
@@ -645,11 +956,20 @@ async function loadBriefing() {
   }
 }
 
+function showDesktopPanel(name, btn) {
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.desktop-nav .btn-ghost').forEach(b => b.classList.remove('active-period'));
+  E('panel-' + name).classList.add('active');
+  btn.classList.add('active-period');
+  if (name === 'performance') loadCharts(_currentPeriod);
+}
+
 function switchTab(name, ev) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
   ev.target.classList.add('active');
   E('panel-' + name).classList.add('active');
+  if (name === 'performance') loadCharts(_currentPeriod);
 }
 
 // ── WebSocket + live countdown ────────────────────────────────────
@@ -680,7 +1000,7 @@ function connect() {
     renderMarket(d.market_status || {});
     renderSummary(d.portfolio || [], d.fx_rates || {});
     if (d.deployments) renderDeployments(d.deployments);
-    // Invalidate drilldown cache so re-opens get fresh data
+    if (d.lifetime) renderLifetime(d.lifetime);
     _drilldownCache = {};
     startCountdown();
   };
@@ -697,6 +1017,7 @@ async function bootstrapDeployments() {
   const d = await r.json();
   renderDeployments(d.deployments);
   if (d.fx_rates) renderSummary([], d.fx_rates);
+  if (d.lifetime) renderLifetime(d.lifetime);
 }
 
 let _wsToken = '';
