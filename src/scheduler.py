@@ -95,24 +95,28 @@ class Scheduler:
 
     async def _refresh_hot_picks(self):
         from src.api import _refresh_hot_picks
+        loop = asyncio.get_event_loop()
         try:
-            _refresh_hot_picks()
+            await loop.run_in_executor(None, _refresh_hot_picks)
         except Exception:
             pass
 
     async def _refresh_signals(self):
-        """Compute RSI, earnings, news for all tickers in background. Never blocks requests."""
+        """Compute RSI, earnings, news in a thread pool so the event loop is never blocked."""
         from src.signals import get_signals
+        import concurrent.futures
+        loop = asyncio.get_event_loop()
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
         all_tickers = list(set(list(positions.keys()) + watchlist))
         cache = {}
-        for ticker in all_tickers:
-            try:
-                await asyncio.sleep(0)  # yield to event loop between tickers
-                cache[ticker] = get_signals(ticker)
-            except Exception:
-                pass
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {pool.submit(get_signals, t): t for t in all_tickers}
+            for fut, ticker in futures.items():
+                try:
+                    cache[ticker] = await loop.run_in_executor(None, fut.result)
+                except Exception:
+                    pass
         self.state["signals_cache"] = cache
 
     async def _run_scan(self, market: str):
