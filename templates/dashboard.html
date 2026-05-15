@@ -240,12 +240,11 @@
     .snap-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
     .snap-value { font-size: 16px; font-weight: 700; }
 
-    /* ── Desktop nav ── */
+    /* ── Nav ── */
     .desktop-nav { flex-wrap: wrap; }
-    @media (max-width: 600px) { .desktop-nav { display: none !important; } }
 
-    /* ── Tabs (mobile) ── */
-    .tabs { display: none; gap: 4px; margin-bottom: 16px; }
+    /* ── Tabs (mobile fallback, hidden — nav replaces it) ── */
+    .tabs { display: none; }
     .tab {
       flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600;
       border-radius: 8px; cursor: pointer; border: 1px solid var(--border);
@@ -261,7 +260,6 @@
       .page { padding: 12px; }
       .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .card-value { font-size: 20px; }
-      .tabs { display: flex; }
       .section-panel { display: none; }
       .section-panel.active { display: block; }
       header { padding: 0 12px; }
@@ -369,12 +367,12 @@
     <div class="tab" onclick="switchTab('briefing',event)">Briefing</div>
   </div>
 
-  <!-- Desktop section nav -->
-  <div style="display:flex;gap:8px;margin-bottom:20px" class="desktop-nav">
-    <button class="btn-ghost" onclick="showDesktopPanel('portfolio',this)">Portfolio</button>
-    <button class="btn-ghost" onclick="showDesktopPanel('performance',this)">Charts</button>
-    <button class="btn-ghost" onclick="showDesktopPanel('scanner',this)">Scanner</button>
-    <button class="btn-ghost" onclick="showDesktopPanel('briefing',this)">Briefing</button>
+  <!-- Section nav -->
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap" class="desktop-nav">
+    <button class="btn-ghost active-period" id="nav-portfolio" onclick="showDesktopPanel('portfolio',this)">Portfolio</button>
+    <button class="btn-ghost" id="nav-performance" onclick="showDesktopPanel('performance',this)">Charts</button>
+    <button class="btn-ghost" id="nav-scanner" onclick="showDesktopPanel('scanner',this)">Scanner</button>
+    <button class="btn-ghost" id="nav-briefing" onclick="showDesktopPanel('briefing',this)">Briefing</button>
   </div>
 
   <!-- Portfolio table -->
@@ -502,109 +500,94 @@ function _tickerColor(ticker, bucket) {
 }
 
 let _combinedChart = null;
-let _sparkCharts = {};
 let _currentPeriod = '1y';
+let _historyCache = {};
+
+// SVG sparkline — zero dependency, instant render
+function _svgSparkline(points, col, w, h) {
+  if (!points.length) return '';
+  const vals = points.map(p => p.pct);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const range = mx - mn || 1;
+  const pad = 4;
+  const coords = vals.map((v, i) => {
+    const x = pad + (i / (vals.length - 1 || 1)) * (w - pad * 2);
+    const y = h - pad - ((v - mn) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const zeroY = h - pad - ((0 - mn) / range) * (h - pad * 2);
+  const fillPts = `${pad},${h} ` + coords + ` ${w - pad},${h}`;
+  const colFill = col + '25';
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">
+    <polygon points="${fillPts}" fill="${colFill}"/>
+    <line x1="${pad}" y1="${zeroY.toFixed(1)}" x2="${w-pad}" y2="${zeroY.toFixed(1)}" stroke="rgba(100,116,139,0.3)" stroke-width="1" stroke-dasharray="3,3"/>
+    <polyline points="${coords}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
 
 function _buildSparkCard(s, col) {
-  const lastPct = s.points[s.points.length - 1]?.pct ?? 0;
+  const pts = s.points;
+  const lastPct = pts.length ? pts[pts.length - 1].pct : 0;
+  const minPct = Math.min(...pts.map(p => p.pct));
+  const maxPct = Math.max(...pts.map(p => p.pct));
   const pctSign = lastPct >= 0 ? '+' : '';
-  const minPct = Math.min(...s.points.map(p => p.pct));
-  const maxPct = Math.max(...s.points.map(p => p.pct));
-  const canvasId = 'spark-' + s.ticker.replace('.', '_');
+  const pctCol = lastPct >= 0 ? 'var(--green)' : 'var(--red)';
 
   const card = document.createElement('div');
   card.className = 'card';
-  card.style.cssText = 'padding:14px 16px';
+  card.style.cssText = 'padding:12px 14px;cursor:pointer';
+  card.onclick = () => openDrilldown(s.ticker, null);
 
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px';
+  const svg = _svgSparkline(pts, col, 260, 56);
 
-  const left = document.createElement('div');
-  const tickerBtn = document.createElement('button');
-  tickerBtn.className = 'ticker-btn';
-  tickerBtn.style.fontSize = '14px';
-  tickerBtn.textContent = s.ticker;
-  tickerBtn.onclick = () => openDrilldown(s.ticker, null);
-  const nameDiv = document.createElement('div');
-  nameDiv.className = 'name';
-  nameDiv.textContent = s.name;
-  left.appendChild(tickerBtn);
-  left.appendChild(nameDiv);
-
-  const right = document.createElement('div');
-  right.style.textAlign = 'right';
-  const pctDiv = document.createElement('div');
-  pctDiv.className = lastPct >= 0 ? 'green' : 'red';
-  pctDiv.style.cssText = 'font-size:16px;font-weight:700';
-  pctDiv.textContent = pctSign + lastPct.toFixed(1) + '%';
-  const subDiv = document.createElement('div');
-  subDiv.className = 'muted';
-  subDiv.style.fontSize = '10px';
-  subDiv.textContent = 'vs avg cost';
-  right.appendChild(pctDiv);
-  right.appendChild(subDiv);
-
-  header.appendChild(left);
-  header.appendChild(right);
-
-  const canvas = document.createElement('canvas');
-  canvas.id = canvasId;
-  canvas.height = 60;
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted)';
-  const lo = document.createElement('span'); lo.textContent = 'Low: ' + minPct.toFixed(1) + '%';
-  const mid = document.createElement('span'); mid.textContent = 'Avg cost: €' + s.avg_cost_eur;
-  const hi = document.createElement('span'); hi.textContent = 'High: +' + maxPct.toFixed(1) + '%';
-  footer.appendChild(lo); footer.appendChild(mid); footer.appendChild(hi);
-
-  card.appendChild(header);
-  card.appendChild(canvas);
-  card.appendChild(footer);
-  return { card, canvasId };
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--blue)">${s.ticker}</div>
+        <div style="font-size:10px;color:var(--muted)">${s.name || ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:15px;font-weight:700;color:${pctCol}">${pctSign}${lastPct.toFixed(1)}%</div>
+        <div style="font-size:10px;color:var(--muted)">vs avg cost</div>
+      </div>
+    </div>
+    ${svg}
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)">
+      <span>Low ${minPct.toFixed(1)}%</span>
+      <span>€${s.avg_cost_eur} avg</span>
+      <span>High +${maxPct.toFixed(1)}%</span>
+    </div>`;
+  return card;
 }
 
 async function loadCharts(period) {
   period = period || _currentPeriod;
   _currentPeriod = period;
 
-  document.querySelectorAll('.section-header .btn-ghost').forEach(b => b.classList.remove('active-period'));
-  const labelMap = {'1mo':'1M','3mo':'3M','1y':'1Y','2y':'2Y'};
-  document.querySelectorAll('.section-header .btn-ghost').forEach(b => {
-    if (b.textContent === (labelMap[period] || period)) b.classList.add('active-period');
+  // Update active period button
+  document.querySelectorAll('#panel-performance .btn-ghost').forEach(b => {
+    b.classList.toggle('active-period', b.textContent === {'1mo':'1M','3mo':'3M','1y':'1Y','2y':'2Y'}[period]);
   });
 
-  const r = await fetch('/api/history?period=' + period);
-  const d = await r.json();
-  const series = d.series || [];
+  // Use cache if available
+  if (!_historyCache[period]) {
+    E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Loading charts…</div>';
+    const r = await fetch('/api/history?period=' + period);
+    const d = await r.json();
+    _historyCache[period] = d.series || [];
+  }
+  const series = _historyCache[period];
   if (!series.length) return;
 
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
 
+  // Combined chart
   const labels = series[0].points.map(p => p.date);
   const datasets = series.map(s => {
     const col = _tickerColor(s.ticker, s.bucket);
-    return {
-      label: s.ticker,
-      data: s.points.map(p => p.pct),
-      borderColor: col,
-      backgroundColor: col + '18',
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-      tension: 0.3,
-      fill: false,
-    };
+    return { label: s.ticker, data: s.points.map(p => p.pct), borderColor: col, backgroundColor: col + '18', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false };
   });
-  datasets.unshift({
-    label: 'Break-even (0%)',
-    data: labels.map(() => 0),
-    borderColor: 'rgba(100,116,139,0.4)',
-    borderWidth: 1,
-    borderDash: [4,4],
-    pointRadius: 0,
-    fill: false,
-  });
+  datasets.unshift({ label: '0%', data: labels.map(() => 0), borderColor: 'rgba(100,116,139,0.4)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
 
   if (_combinedChart) _combinedChart.destroy();
   _combinedChart = new Chart(E('chart-combined'), {
@@ -614,13 +597,11 @@ async function loadCharts(period) {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } },
+        legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } } },
         tooltip: {
           backgroundColor: '#1a1f2b', borderColor: '#222736', borderWidth: 1,
           titleColor: '#e2e8f0', bodyColor: '#94a3b8',
-          callbacks: {
-            label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(1) + '%'
-          }
+          callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(1) + '%' }
         }
       },
       scales: {
@@ -630,43 +611,13 @@ async function loadCharts(period) {
     }
   });
 
-  Object.values(_sparkCharts).forEach(c => c.destroy());
-  _sparkCharts = {};
+  // SVG sparkline cards — instant, no canvas sizing issues
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
-
   const grid = E('sparkline-grid');
   grid.innerHTML = '';
-
   series.forEach(s => {
     const col = _tickerColor(s.ticker, s.bucket);
-    const { card, canvasId } = _buildSparkCard(s, col);
-    grid.appendChild(card);
-
-    requestAnimationFrame(() => {
-      const ctx = document.getElementById(canvasId);
-      if (!ctx) return;
-      _sparkCharts[s.ticker] = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: s.points.map(p => p.date),
-          datasets: [{
-            data: s.points.map(p => p.pct),
-            borderColor: col,
-            backgroundColor: col + '20',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            tension: 0.3,
-            fill: true,
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { enabled: false } },
-          scales: { x: { display: false }, y: { display: false } },
-          animation: false,
-        }
-      });
-    });
+    grid.appendChild(_buildSparkCard(s, col));
   });
 }
 
@@ -1009,20 +960,22 @@ async function loadBriefing() {
   }
 }
 
-function showDesktopPanel(name, btn) {
+function _switchPanel(name) {
   document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.desktop-nav .btn-ghost').forEach(b => b.classList.remove('active-period'));
   E('panel-' + name).classList.add('active');
-  btn.classList.add('active-period');
   if (name === 'performance') loadCharts(_currentPeriod);
+}
+
+function showDesktopPanel(name, btn) {
+  document.querySelectorAll('.desktop-nav .btn-ghost').forEach(b => b.classList.remove('active-period'));
+  btn.classList.add('active-period');
+  _switchPanel(name);
 }
 
 function switchTab(name, ev) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
   ev.target.classList.add('active');
-  E('panel-' + name).classList.add('active');
-  if (name === 'performance') loadCharts(_currentPeriod);
+  _switchPanel(name);
 }
 
 // ── WebSocket + live countdown ────────────────────────────────────
