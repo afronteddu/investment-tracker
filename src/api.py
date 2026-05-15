@@ -62,18 +62,22 @@ state: dict = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup — keep it fast, defer heavy fetches to background
+    # Startup — sync-only work, zero network calls
     state["positions"] = compute_positions()
     state["watchlist"] = list(WATCHLIST_BASE)
     state["deployments"] = DEPLOYMENTS
     state["latest_briefing"] = None
     state["hot_picks"] = []
     state["signals_cache"] = {}
-    # Hot picks and signals run in background so startup is instant
+    state["quotes_cache"] = {}
+    state["fx_cache"] = {"USD": 0.92, "GBP": 1.17, "EUR": 1.0}  # rough fallback until scheduler fills it
+    state["lifetime_cache"] = {"total_deployed": 0, "total_returned": 0, "realized_pnl": 0, "monthly_flows": []}
+    state["scanner_cache"] = []
+    state["ws_payload_cache"] = None
+    # All network fetches happen in scheduler background tasks
     scheduler = Scheduler(state)
     task = asyncio.create_task(scheduler.run())
     yield
-    # Shutdown
     task.cancel()
 
 
@@ -165,13 +169,13 @@ except Exception:
 
 
 def _build_portfolio_data() -> list[dict]:
+    """Read entirely from pre-cached state — zero blocking calls."""
     positions = state.get("positions", {})
     if not positions:
         return []
-
-    tickers = list(positions.keys())
-    quotes = fetch_quotes(tickers)
+    quotes = state.get("quotes_cache", {})
     signals = state.get("signals_cache", {})
+    fx = state.get("fx_cache", {})
 
     rows = []
     for ticker, pos in positions.items():
@@ -179,15 +183,14 @@ def _build_portfolio_data() -> list[dict]:
         price = q.get("price")
         day_pct = day_change_pct(q)
         sig = signals.get(ticker, {})
-        rsi = sig.get("rsi")
 
         pnl_eur = None
         pnl_pct = None
         current_value = None
         currency = q.get("currency", "EUR")
         if price is not None:
-            # Convert current price to EUR before comparing against EUR cost basis
-            price_eur = to_eur(price, currency)
+            rate = fx.get(currency, 1.0)
+            price_eur = price * rate
             current_value = round(pos.shares * price_eur, 2)
             pnl_eur = round(current_value - pos.total_cost_eur, 2)
             if pos.total_cost_eur > 0:
@@ -197,14 +200,14 @@ def _build_portfolio_data() -> list[dict]:
             **pos.to_dict(),
             "name": TICKER_NAMES.get(ticker, pos.name),
             "price": price,
-            "currency": q.get("currency", "?"),
+            "currency": currency,
             "day_pct": day_pct,
             "day_high": q.get("day_high"),
             "day_low": q.get("day_low"),
             "current_value_eur": current_value,
             "pnl_eur": pnl_eur,
             "pnl_pct": pnl_pct,
-            "rsi": rsi,
+            "rsi": sig.get("rsi"),
             "rsi_signal": sig.get("rsi_signal"),
             "earnings_date": sig.get("earnings_date"),
         })
@@ -214,9 +217,10 @@ def _build_portfolio_data() -> list[dict]:
 
 
 def _build_scanner_data() -> list[dict]:
+    """Read entirely from pre-cached state — zero blocking calls."""
     watchlist = state.get("watchlist", [])
     hot_picks = set(state.get("hot_picks", []))
-    quotes = fetch_quotes(watchlist)
+    quotes = state.get("quotes_cache", {})
     signals = state.get("signals_cache", {})
 
     rows = []
@@ -319,15 +323,12 @@ def _compute_lifetime_stats() -> dict:
     }
 
 
-@app.get("/api/portfolio")
-async def portfolio(request: Request):
-    if (r := _auth_required(request)):
-        return r
+def _portfolio_payload() -> dict:
     rows = _build_portfolio_data()
     total_cost = sum(r["total_cost_eur"] for r in rows)
     total_value = sum(r["current_value_eur"] for r in rows if r["current_value_eur"])
     unrealized_pnl = total_value - total_cost
-    lifetime = _compute_lifetime_stats()
+    lifetime = state.get("lifetime_cache", {"total_deployed": 0, "total_returned": 0, "realized_pnl": 0, "monthly_flows": []})
     total_pnl = lifetime["realized_pnl"] + unrealized_pnl
     total_deployed = lifetime["total_deployed"]
     return {
@@ -351,9 +352,16 @@ async def portfolio(request: Request):
             "us_open": is_market_open_us(),
             "eu_open": is_market_open_eu(),
         },
-        "fx_rates": get_fx_rates(),
+        "fx_rates": state.get("fx_cache", {}),
         "deployments": state.get("deployments", []),
     }
+
+
+@app.get("/api/portfolio")
+async def portfolio(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    return _portfolio_payload()
 
 
 @app.get("/api/history")
@@ -442,7 +450,7 @@ async def history(request: Request, period: str = "since_buy"):
 async def scan(request: Request):
     if (r := _auth_required(request)):
         return r
-    return {"scanner": _build_scanner_data()}
+    return {"scanner": state.get("scanner_cache", [])}
 
 
 @app.get("/api/briefing")
@@ -516,7 +524,6 @@ connected: list[WebSocket] = []
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    # Browsers can't send Authorization headers on WS upgrade, so we use a short-lived HMAC token
     token = websocket.query_params.get("token", "")
     if not _valid_ws_token(token):
         await websocket.close(code=1008)
@@ -526,34 +533,14 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             import json
-            portfolio_data = _build_portfolio_data()
-            total_cost = sum(r["total_cost_eur"] for r in portfolio_data)
-            total_value = sum(r["current_value_eur"] for r in portfolio_data if r["current_value_eur"])
-            unrealized_pnl = total_value - total_cost
-            lifetime = _compute_lifetime_stats()
-            payload = {
-                "portfolio": portfolio_data,
-                "scanner": _build_scanner_data(),
-                "market_status": {
-                    "us_open": is_market_open_us(),
-                    "eu_open": is_market_open_eu(),
-                },
-                "fx_rates": get_fx_rates(),
-                "deployments": state.get("deployments", []),
-                "lifetime": {
-                    "total_deployed": lifetime["total_deployed"],
-                    "total_returned": lifetime["total_returned"],
-                    "realized_pnl": lifetime["realized_pnl"],
-                    "unrealized_pnl": round(unrealized_pnl, 2),
-                    "total_pnl": round(lifetime["realized_pnl"] + unrealized_pnl, 2),
-                    "total_pnl_pct": round((lifetime["realized_pnl"] + unrealized_pnl) / lifetime["total_deployed"] * 100, 2) if lifetime["total_deployed"] else 0,
-                    "monthly_flows": lifetime["monthly_flows"],
-                },
-            }
-            await websocket.send_text(json.dumps(payload))
+            # Everything reads from pre-built cache — instant, no yfinance calls here
+            payload = state.get("ws_payload_cache")
+            if payload:
+                await websocket.send_text(payload)
             await asyncio.sleep(60)
     except WebSocketDisconnect:
-        connected.remove(websocket)
+        if websocket in connected:
+            connected.remove(websocket)
     except Exception:
         if websocket in connected:
             connected.remove(websocket)
