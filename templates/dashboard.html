@@ -1216,7 +1216,7 @@ async function init() {
 
 // ── Strategy Advisor ─────────────────────────────────────────────
 const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25 };
-const BUCKET_COLORS  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6' };
+const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6' };
 const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction' };
 
 // Sector/geography metadata for held tickers
@@ -1274,8 +1274,8 @@ function renderStrategy(positions, lifetime) {
     const fillW = Math.min(pct / (target * 1.5) * 100, 100);
     return `<div class="alloc-bar-wrap">
       <div class="alloc-bar-label">${BUCKET_LABELS[b]}</div>
-      <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${fillW}%;background:${BUCKET_COLORS[b]}"></div></div>
-      <div class="alloc-bar-pct" style="color:${BUCKET_COLORS[b]}">${pct.toFixed(1)}%</div>
+      <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${fillW}%;background:${BUCKET_ACCENT[b]}"></div></div>
+      <div class="alloc-bar-pct" style="color:${BUCKET_ACCENT[b]}">${pct.toFixed(1)}%</div>
       <div style="width:54px;font-size:11px;color:${diffCol};text-align:right">target ${target}% <span style="font-weight:700">${diffStr}</span></div>
     </div>`;
   }).join('');
