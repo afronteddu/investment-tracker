@@ -108,14 +108,17 @@ class Scheduler:
 
     async def _refresh_quotes(self):
         """Fetch all quotes + FX + lifetime stats in a thread, then build portfolio/scanner/WS caches."""
+        import logging
         loop = asyncio.get_event_loop()
         try:
             await loop.run_in_executor(None, self._refresh_quotes_sync)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).error("_refresh_quotes failed: %s", e, exc_info=True)
 
     def _refresh_quotes_sync(self):
         import json as _json
+        import logging
+        _log = logging.getLogger(__name__)
         from src.quotes import fetch_quotes, day_change_pct, get_fx_rates, is_market_open_us, is_market_open_eu
         from src.positions import TICKER_NAMES, compute_lifetime_stats  # noqa: F401 (used below)
 
@@ -144,8 +147,8 @@ class Scheduler:
         # Lifetime stats (file read, fast)
         try:
             self.state["lifetime_cache"] = compute_lifetime_stats()
-        except Exception:
-            pass
+        except Exception as e:
+            _log.error("compute_lifetime_stats failed: %s", e)
 
         # Portfolio rows
         portfolio_rows = []
@@ -216,10 +219,44 @@ class Scheduler:
         self.state["ws_payload_cache"] = _json.dumps(payload)
 
     async def _refresh_hot_picks(self):
-        from src.api import _refresh_hot_picks
         loop = asyncio.get_event_loop()
         try:
-            await loop.run_in_executor(None, _refresh_hot_picks)
+            await loop.run_in_executor(None, self._refresh_hot_picks_sync)
+        except Exception:
+            pass
+
+    def _refresh_hot_picks_sync(self):
+        from src.quotes import fetch_quotes, day_change_pct
+        from src.positions import TICKER_NAMES
+
+        HOT_PICKS_UNIVERSE = [
+            "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "INTC", "QCOM",
+            "PLTR", "AI", "SOUN", "BBAI", "UPST", "PATH", "SNOW",
+            "IONQ", "RGTI", "QUBT", "QBTS",
+            "META", "GOOGL", "MSFT", "AMZN", "TSLA", "AAPL",
+            "VRT", "VST", "CEG", "NRG",
+            "RXRX", "TMDX",
+            "ARKK", "BOTZ", "AIQ",
+        ]
+        WATCHLIST_BASE = [
+            "NVDA", "AMD", "TSM", "ARM", "SMCI",
+            "IONQ", "RGTI", "QUBT",
+            "PLTR", "SOUN", "BBAI",
+            "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL",
+            "SPY", "QQQ", "VWRL.AS", "ASML.AS",
+        ]
+        try:
+            quotes = fetch_quotes(HOT_PICKS_UNIVERSE)
+            scored = []
+            for ticker, q in quotes.items():
+                pct = day_change_pct(q)
+                if pct is not None:
+                    scored.append((abs(pct), ticker))
+            scored.sort(reverse=True)
+            hot = [t for _, t in scored[:8]]
+            merged = list(dict.fromkeys(WATCHLIST_BASE + hot))
+            self.state["watchlist"] = merged
+            self.state["hot_picks"] = hot
         except Exception:
             pass
 
@@ -343,7 +380,7 @@ class Scheduler:
 
         # RSI extremes across all tickers
         rsi_alerts = []
-        for ticker in tickers[:20]:  # cap to avoid slow startup
+        for ticker in all_tickers[:20]:  # cap to avoid slow startup
             rsi = get_rsi(ticker)
             sig = rsi_signal(rsi)
             if sig and sig != "neutral":
