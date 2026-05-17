@@ -301,14 +301,27 @@ class Scheduler:
         except Exception:
             return
 
+        # Daily for last 3 months, weekly for older — gives 1W/1M/3M resolution
+        daily_start = (date.today() - timedelta(days=90)).isoformat()
+
         for ticker in tickers:
             pos = positions[ticker]
             try:
                 t_obj = batch.tickers[ticker]
-                hist = t_obj.history(start=earliest.isoformat(), interval="1wk")
+                # Fetch weekly history from earliest buy date
+                hist_wk = t_obj.history(start=earliest.isoformat(), end=daily_start, interval="1wk")
+                # Fetch daily for last 90 days
+                hist_d = t_obj.history(start=daily_start, interval="1d")
+                # Merge: weekly first, then daily (daily takes precedence for overlap)
+                import pandas as pd
+                hist = pd.concat([hist_wk, hist_d])
+                hist = hist[~hist.index.duplicated(keep="last")].sort_index()
                 if hist.empty:
                     continue
-                currency = getattr(t_obj.fast_info, "currency", None) or "EUR"
+                try:
+                    currency = t_obj.fast_info.currency or "EUR"
+                except Exception:
+                    currency = "EUR"
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
                 for dt, row in hist.iterrows():
