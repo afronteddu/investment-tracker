@@ -1244,16 +1244,24 @@ const TICKER_META = {
   'SNDK':    { sector:'Storage',      geo:'US',     type:'stock (33% CGT)', desc:'SanDisk — flash storage' },
 };
 
-// Suggested additions — stocks only (33% CGT). No ETFs/ETCs (41% IE tax).
-const SUGGESTIONS = [
-  { ticker:'MSFT',     sector:'AI Software',    geo:'US',     why:'Azure + Copilot revenue. Diversifies away from pure-hardware bets. Stock — 33% CGT.' },
-  { ticker:'TSM',      sector:'Semiconductors', geo:'Asia',   why:'TSMC makes every NVDA chip. Asian semi exposure with different geopolitical risk profile. Stock — 33% CGT.' },
-  { ticker:'XOM',      sector:'Energy',         geo:'US',     why:'Defensive cash-flow + inflation hedge. Truly uncorrelated to AI cycle. Stock — 33% CGT.' },
-  { ticker:'NVO',      sector:'Healthcare',     geo:'Europe', why:'Novo Nordisk ADR — GLP-1 leader. Defensive EU healthcare growth, uncorrelated to tech. Stock — 33% CGT.' },
-  { ticker:'PLTR',     sector:'AI Software',    geo:'US',     why:'AI/data platform with government moat. Software layer on top of your infra bets. Stock — 33% CGT.' },
-  { ticker:'BRK-B',    sector:'Financials',     geo:'US',     why:'More Berkshire adds broad defensive exposure — 60+ companies, no ETF tax treatment. Stock — 33% CGT.' },
-  { ticker:'GOOGL',    sector:'AI Software',    geo:'US',     why:'DeepMind + search + cloud. Cheapest Mag-7 on earnings. Diversifies AI software exposure. Stock — 33% CGT.' },
-  { ticker:'CEG',      sector:'Energy/Nuclear', geo:'US',     why:'Constellation Energy — nuclear power for AI data centres. Uncorrelated, high-conviction infrastructure. Stock — 33% CGT.' },
+// Suggested additions — computed dynamically in renderStrategy() based on current gaps.
+// Defined as a pool; the function picks the most relevant ones based on live portfolio composition.
+const SUGGESTION_POOL = [
+  // ── Geographic diversification (non-US) ──
+  { ticker:'TSM',       sector:'Semiconductors', geo:'Asia',          priority:'geo', why:'Taiwan Semi — makes every NVDA/AMD chip. Your only Asian exposure. Reduces US single-country risk. Stock — 33% CGT.' },
+  { ticker:'NVO',       sector:'Healthcare',     geo:'Europe (DK)',   priority:'geo', why:'Novo Nordisk — GLP-1 monopoly. European healthcare, zero correlation to AI or US politics. Stock — 33% CGT.' },
+  { ticker:'SAP',       sector:'Enterprise SW',  geo:'Europe (DE)',   priority:'geo', why:'SAP — European cloud ERP leader. Stable recurring revenue, trades at discount to US peers. Stock — 33% CGT.' },
+  { ticker:'SHEL',      sector:'Energy',         geo:'Europe (UK)',   priority:'geo', why:'Shell — European oil major. Defensive dividend, hedges against energy shocks. Different risk profile from US energy. Stock — 33% CGT.' },
+  { ticker:'RIO',       sector:'Materials',      geo:'Europe/Global', priority:'geo', why:'Rio Tinto — global mining (copper, lithium, iron). Inflation hedge, China demand play, zero AI correlation. Stock — 33% CGT.' },
+  // ── Sector diversification ──
+  { ticker:'XOM',       sector:'Energy',         geo:'US',            priority:'sector', why:'Exxon — defensive cash-flow, inflation hedge. Uncorrelated to AI cycle. But adds to US concentration — prefer SHEL if already US-heavy. Stock — 33% CGT.' },
+  { ticker:'JNJ',       sector:'Healthcare',     geo:'US',            priority:'sector', why:'Johnson & Johnson — pharma + medtech. Defensive, pays dividend, low beta. Only add if non-US healthcare already covered. Stock — 33% CGT.' },
+  { ticker:'GOOGL',     sector:'AI Software',    geo:'US',            priority:'sector', why:'Alphabet — cheapest Mag-7 on earnings. Adds AI software layer but increases US/AI concentration. Only if geographic risk is managed. Stock — 33% CGT.' },
+  { ticker:'MSFT',      sector:'AI Software',    geo:'US',            priority:'sector', why:'Microsoft — Azure + Copilot. Defensive tech with recurring revenue. Increases US concentration — pair with a non-US pick. Stock — 33% CGT.' },
+  // ── Uncorrelated / alternative ──
+  { ticker:'CEG',       sector:'Nuclear Energy', geo:'US',            priority:'theme', why:'Constellation Energy — nuclear baseload for AI data centres. High-conviction infrastructure bet with different risk to your AI stack. Stock — 33% CGT.' },
+  { ticker:'NOVO-B.CO', sector:'Healthcare',     geo:'Europe (DK)',   priority:'theme', why:'Novo Nordisk on Copenhagen exchange (avoid ADR premium). GLP-1 dominance, 10yr growth runway. Stock — 33% CGT.' },
+  { ticker:'2330.TW',   sector:'Semiconductors', geo:'Asia (TW)',     priority:'theme', why:'TSMC on Taiwan exchange — direct listing, no ADR premium. If you can access via DeGiro. Stock — 33% CGT.' },
 ];
 
 function renderStrategy(positions, lifetime) {
@@ -1440,10 +1448,45 @@ function renderStrategy(positions, lifetime) {
       <div class="risk-badge risk-${r.level}">${r.badge}</div>
     </div>`).join('')}</div>`;
 
-  // ── Suggestions ─────────────────────────────────────────────────
+  // ── Suggestions — picked based on actual portfolio gaps ──────────
   const held = new Set(positions.map(p => p.ticker));
-  const suggestions = SUGGESTIONS.filter(s => !held.has(s.ticker));
-  E('strat-suggestions').innerHTML = `<div class="strat-card">${suggestions.map(s => `
+  const available = SUGGESTION_POOL.filter(s => !held.has(s.ticker));
+
+  // Score each suggestion: geo-diversifying picks score higher when US is heavy
+  const pickedSuggestions = [];
+  const needsGeo   = usConc > 55;  // portfolio is US-heavy
+  const needsSector = aiConc > 35; // portfolio is AI-heavy
+
+  // Always include top non-US picks if US-heavy
+  if (needsGeo) {
+    available.filter(s => s.priority === 'geo').slice(0, 3).forEach(s => pickedSuggestions.push(s));
+  }
+  // Include sector diversifiers if AI-heavy and not already in list
+  if (needsSector) {
+    available.filter(s => s.priority === 'sector' && !s.geo.startsWith('US'))
+      .slice(0, 1).forEach(s => { if (!pickedSuggestions.find(p=>p.ticker===s.ticker)) pickedSuggestions.push(s); });
+    // Only add US sector picks if geo is already balanced
+    if (!needsGeo) {
+      available.filter(s => s.priority === 'sector' && s.geo.startsWith('US'))
+        .slice(0, 1).forEach(s => { if (!pickedSuggestions.find(p=>p.ticker===s.ticker)) pickedSuggestions.push(s); });
+    }
+  }
+  // Fill remaining slots with theme/uncorrelated picks
+  available.filter(s => s.priority === 'theme' && !pickedSuggestions.find(p=>p.ticker===s.ticker))
+    .slice(0, Math.max(0, 5 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
+  // If still short, fill with remaining regardless of priority
+  available.filter(s => !pickedSuggestions.find(p=>p.ticker===s.ticker))
+    .slice(0, Math.max(0, 5 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
+
+  const gapNote = needsGeo && needsSector
+    ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is US-heavy and AI-concentrated — suggestions ranked to address both gaps first.</div>'
+    : needsGeo
+    ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is US-heavy — non-US picks ranked first.</div>'
+    : needsSector
+    ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is AI/tech-concentrated — diversifying sectors ranked first.</div>'
+    : '<div style="font-size:12px;color:var(--green);margin-bottom:10px">✓ Geographic and sector balance is reasonable.</div>';
+
+  E('strat-suggestions').innerHTML = `<div class="strat-card">${gapNote}${pickedSuggestions.map(s => `
     <div class="suggest-row">
       <div>
         <div class="suggest-ticker">${s.ticker}</div>
