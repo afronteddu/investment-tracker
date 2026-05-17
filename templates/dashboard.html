@@ -166,6 +166,34 @@
     .sig-down { color: #fca5a5; }
     .sig-neutral { color: var(--muted); }
 
+    /* ── Strategy ── */
+    .strat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+    }
+    .strat-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; }
+    .strat-card-body { font-size: 13px; line-height: 1.7; color: var(--text); }
+    .strat-card-body strong { color: #f1f5f9; }
+    .strat-card-body .hint { color: var(--muted); font-size: 12px; }
+    .strat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .alloc-bar-wrap { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .alloc-bar-label { width:110px; font-size:12px; color:var(--muted); flex-shrink:0; }
+    .alloc-bar-track { flex:1; height:8px; background:var(--surface2); border-radius:4px; overflow:hidden; }
+    .alloc-bar-fill { height:100%; border-radius:4px; transition:width .4s; }
+    .alloc-bar-pct { width:42px; text-align:right; font-size:12px; font-weight:700; flex-shrink:0; }
+    .risk-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+    .risk-row:last-child { border-bottom:none; }
+    .risk-icon { font-size:16px; flex-shrink:0; }
+    .risk-label { font-size:13px; flex:1; }
+    .risk-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; }
+    .risk-ok { background:rgba(74,222,128,0.1); color:var(--green); }
+    .risk-warn { background:rgba(251,191,36,0.1); color:#fbbf24; }
+    .risk-danger { background:rgba(248,113,113,0.1); color:var(--red); }
+    .suggest-row { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+    .suggest-row:last-child { border-bottom:none; }
+    .suggest-ticker { font-weight:700; font-size:13px; width:70px; flex-shrink:0; }
+    .suggest-why { font-size:12px; color:var(--muted); line-height:1.5; }
+
     /* ── Briefing ── */
     .briefing-card {
       background: var(--surface); border: 1px solid var(--border);
@@ -364,6 +392,7 @@
     <div class="tab active" onclick="switchTab('portfolio',event)">Portfolio</div>
     <div class="tab" onclick="switchTab('performance',event)">Charts</div>
     <div class="tab" onclick="switchTab('scanner',event)">Scanner</div>
+    <div class="tab" onclick="switchTab('strategy',event)">Strategy</div>
     <div class="tab" onclick="switchTab('briefing',event)">Briefing</div>
   </div>
 
@@ -372,6 +401,7 @@
     <button class="btn-ghost active-period" id="nav-portfolio" onclick="showDesktopPanel('portfolio',this)">Portfolio</button>
     <button class="btn-ghost" id="nav-performance" onclick="showDesktopPanel('performance',this)">Charts</button>
     <button class="btn-ghost" id="nav-scanner" onclick="showDesktopPanel('scanner',this)">Scanner</button>
+    <button class="btn-ghost" id="nav-strategy" onclick="showDesktopPanel('strategy',this)">Strategy</button>
     <button class="btn-ghost" id="nav-briefing" onclick="showDesktopPanel('briefing',this)">Briefing</button>
   </div>
 
@@ -476,6 +506,39 @@
       </table>
     </div>
     <div id="news-feed" style="margin-top:16px"></div>
+  </div>
+
+  <!-- Strategy -->
+  <div class="section-panel" id="panel-strategy">
+    <div class="section-header">
+      <span class="section-title">Strategy Advisor</span>
+      <span class="muted" style="font-size:11px">live · updates with portfolio</span>
+    </div>
+
+    <!-- Bucket allocation bars -->
+    <div id="strat-alloc" style="margin-bottom:24px"></div>
+
+    <!-- Three bucket cards -->
+    <div id="strat-buckets" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:24px"></div>
+
+    <!-- Diversification breakdown -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Diversification</span>
+    </div>
+    <div id="strat-diversification" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:24px"></div>
+
+    <!-- Risk dashboard -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Risk Signals</span>
+    </div>
+    <div id="strat-risk" style="margin-bottom:24px"></div>
+
+    <!-- Suggested watchlist additions -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Suggested Additions</span>
+      <span class="muted" style="font-size:11px">to improve diversification</span>
+    </div>
+    <div id="strat-suggestions"></div>
   </div>
 
   <!-- Briefing -->
@@ -1118,6 +1181,7 @@ function connect() {
     renderSummary(d.portfolio || [], d.fx_rates || {});
     if (d.deployments) renderDeployments(d.deployments);
     if (d.lifetime) renderLifetime(d.lifetime);
+    renderStrategy(d.portfolio || [], d.lifetime || {});
     _drilldownCache = {};
     startCountdown();
   };
@@ -1135,6 +1199,7 @@ async function bootstrapDeployments() {
   renderDeployments(d.deployments);
   if (d.fx_rates) renderSummary([], d.fx_rates);
   if (d.lifetime) renderLifetime(d.lifetime);
+  if (d.positions) renderStrategy(d.positions, d.lifetime || {});
 }
 
 let _wsToken = '';
@@ -1147,6 +1212,227 @@ async function init() {
   loadBriefing();
   bootstrapDeployments();
   connect();
+}
+
+// ── Strategy Advisor ─────────────────────────────────────────────
+const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25 };
+const BUCKET_COLORS  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6' };
+const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction' };
+
+// Sector/geography metadata for held tickers
+const TICKER_META = {
+  // Retirement
+  'BRK-B':   { sector:'Financials',   geo:'US',     type:'stock',  desc:'Berkshire Hathaway B' },
+  'IGLN.L':  { sector:'Commodities',  geo:'Global', type:'etc',    desc:'Physical Gold ETC' },
+  'ISLN.L':  { sector:'Commodities',  geo:'Global', type:'etc',    desc:'Physical Silver ETC' },
+  'IWDA.AS': { sector:'Diversified',  geo:'Global', type:'etf',    desc:'MSCI World ETF' },
+  'VUSA.AS': { sector:'Diversified',  geo:'US',     type:'etf',    desc:'S&P 500 ETF' },
+  'IMAE.AS': { sector:'Diversified',  geo:'Europe', type:'etf',    desc:'MSCI Europe ETF' },
+  'AEME.PA': { sector:'Diversified',  geo:'EM',     type:'etf',    desc:'MSCI EM ex-China ETF' },
+  'IEAG.AS': { sector:'Fixed Income', geo:'Europe', type:'bond',   desc:'EUR Govt Bond ETF' },
+  // Growth
+  'NVDA':    { sector:'Semiconductors', geo:'US', type:'stock', desc:'Nvidia — AI GPUs' },
+  'ASML.AS': { sector:'Semiconductors', geo:'Europe', type:'stock', desc:'ASML — EUV lithography' },
+  // High conviction
+  'NBIS':    { sector:'AI Infra',     geo:'Global', type:'stock', desc:'Nebius — AI cloud (ex-Yandex)' },
+  'VRT':     { sector:'Data Centres', geo:'US',     type:'stock', desc:'Vertiv — power/cooling infra' },
+  'APLD':    { sector:'AI Infra',     geo:'US',     type:'stock', desc:'Applied Digital — HPC hosting' },
+  'SNDK':    { sector:'Storage',      geo:'US',     type:'stock', desc:'SanDisk — flash storage' },
+};
+
+// Suggested additions to improve diversification
+const SUGGESTIONS = [
+  { ticker:'MSFT',    sector:'AI Software',  geo:'US',     why:'Anchor cloud+AI position. Azure + Copilot revenue diversifies away from pure-hardware bets.' },
+  { ticker:'VWRL.AS', sector:'Diversified',  geo:'Global', why:'Broadens retirement layer to all-world. Reduces US concentration in the defensive bucket.' },
+  { ticker:'TSM',     sector:'Semiconductors',geo:'Asia',  why:'TSMC — sole manufacturer of NVDA/AMD chips. Exposure to Asian semi with different risk profile.' },
+  { ticker:'XOM',     sector:'Energy',       geo:'US',     why:'Oil major adds true defensive cash-flow and inflation hedge. Uncorrelated to AI cycle.' },
+  { ticker:'NOVO-B.CO',sector:'Healthcare',  geo:'Europe', why:'Novo Nordisk — healthcare/GLP-1 leader. Adds defensive EU growth uncorrelated to tech.' },
+  { ticker:'BTC-USD', sector:'Crypto',       geo:'Global', why:'Small Bitcoin allocation (3–5%) as asymmetric bet. Uncorrelated to equity drawdowns on a 3y horizon.' },
+  { ticker:'PLTR',    sector:'AI Software',  geo:'US',     why:'Palantir — AI/data platform with government and enterprise moats. Software layer on top of your infra bets.' },
+  { ticker:'VGOV.L',  sector:'Fixed Income', geo:'UK/EU',  why:'UK Gilt ETF — increases bond allocation for rate-sensitive hedging, broadens IEAG coverage.' },
+];
+
+function renderStrategy(positions, lifetime) {
+  if (!positions || !positions.length) return;
+
+  const totalValue = positions.reduce((s, p) => s + (p.current_value_eur || 0), 0);
+  if (!totalValue) return;
+
+  // ── Bucket allocation ──────────────────────────────────────────
+  const bucketValues = { retirement:0, growth:0, high_conviction:0 };
+  positions.forEach(p => {
+    const b = p.bucket || 'growth';
+    bucketValues[b] = (bucketValues[b] || 0) + (p.current_value_eur || 0);
+  });
+
+  const allocHtml = Object.entries(BUCKET_TARGETS).map(([b, target]) => {
+    const val = bucketValues[b] || 0;
+    const pct = totalValue > 0 ? val / totalValue * 100 : 0;
+    const diff = pct - target;
+    const diffStr = diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
+    const diffCol = Math.abs(diff) > 10 ? 'var(--red)' : Math.abs(diff) > 5 ? '#fbbf24' : 'var(--green)';
+    const fillW = Math.min(pct / (target * 1.5) * 100, 100);
+    return `<div class="alloc-bar-wrap">
+      <div class="alloc-bar-label">${BUCKET_LABELS[b]}</div>
+      <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${fillW}%;background:${BUCKET_COLORS[b]}"></div></div>
+      <div class="alloc-bar-pct" style="color:${BUCKET_COLORS[b]}">${pct.toFixed(1)}%</div>
+      <div style="width:54px;font-size:11px;color:${diffCol};text-align:right">target ${target}% <span style="font-weight:700">${diffStr}</span></div>
+    </div>`;
+  }).join('');
+  E('strat-alloc').innerHTML = `
+    <div class="strat-label">Bucket Allocation vs Target</div>
+    ${allocHtml}`;
+
+  // ── Bucket cards ────────────────────────────────────────────────
+  const retPos = positions.filter(p => p.bucket === 'retirement');
+  const growPos = positions.filter(p => p.bucket === 'growth');
+  const hcPos  = positions.filter(p => p.bucket === 'high_conviction');
+
+  const retVal   = retPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const growVal  = growPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const hcVal    = hcPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const retPct   = totalValue ? retVal/totalValue*100 : 0;
+  const growPct  = totalValue ? growVal/totalValue*100 : 0;
+  const hcPct    = totalValue ? hcVal/totalValue*100 : 0;
+
+  const retPnl   = retPos.reduce((s,p)=>s+(p.pnl_pct||0)*((p.current_value_eur||0)/retVal||0),0);
+  const growPnl  = growPos.reduce((s,p)=>s+(p.pnl_pct||0)*((p.current_value_eur||0)/growVal||0),0);
+  const hcPnlAbs = hcPos.reduce((s,p)=>s+(p.pnl_eur||0),0);
+  const hcCost   = hcPos.reduce((s,p)=>s+(p.total_cost_eur||0),0);
+  const hcPnlPct = hcCost > 0 ? hcPnlAbs/hcCost*100 : 0;
+
+  const retTargetPct = BUCKET_TARGETS.retirement;
+  const retDiff = retPct - retTargetPct;
+  const retAction = retDiff < -10
+    ? `<strong style="color:#fbbf24">Underweight by ${Math.abs(retDiff).toFixed(0)}%.</strong> Suggested DCA: <strong>€${Math.round((totalValue * retTargetPct/100 - retVal)/12)}/mo</strong> into VWRL.AS or IWDA.AS to close gap in 12 months.`
+    : retDiff > 10
+    ? `<strong style="color:var(--red)">Overweight by ${retDiff.toFixed(0)}%.</strong> Pause DCA into defensive ETFs until growth/conviction buckets catch up.`
+    : `<strong style="color:var(--green)">On target.</strong> Maintain current DCA cadence. Consider adding VGOV.L for bond diversification.`;
+
+  const growNvdaPe = '~35x fwd P/E'; // static until drilldown data flows here
+  const growAction = growPnl > 30
+    ? `Up <strong>${growPnl.toFixed(1)}%</strong> blended. Buffett rule: let winners run but set a mental stop at 2× fair value. NVDA ${growNvdaPe} — watch for multiple compression. <span class="hint">Consider MSFT or TSM to diversify semi-concentration.</span>`
+    : `Up <strong>${growPnl.toFixed(1)}%</strong> blended. Still reasonable multiples — hold and add on dips. <span class="hint">ASML pullbacks near €1,200 are historically good entries.</span>`;
+
+  // High conviction: deployed, remaining, exit target
+  const TOTAL_HC_BUDGET = 7500; // approximate from context
+  const remaining = Math.max(0, TOTAL_HC_BUDGET - hcCost);
+  const exitTarget = 17500;
+  const needed = exitTarget - hcVal;
+  const hcAction = `<strong>€${Math.round(hcCost).toLocaleString()}</strong> deployed at cost · current value <strong>€${Math.round(hcVal).toLocaleString()}</strong> · return <strong style="color:${hcPnlPct>=0?'var(--green)':'var(--red)'}">${hcPnlPct>=0?'+':''}${hcPnlPct.toFixed(1)}%</strong>.
+    <br>Remaining tranches: <strong>~€${Math.round(remaining).toLocaleString()}</strong> (May 19 + May 26).
+    <br>Exit target €${exitTarget.toLocaleString()} — need <strong style="color:${needed<=0?'var(--green)':'#fbbf24'}">€${Math.max(0,Math.round(needed)).toLocaleString()} more</strong> gain. At ${hcPct.toFixed(1)}% of portfolio — <strong>${hcPct < 15 ? 'add room available' : hcPct > 30 ? 'size is large — manage risk' : 'appropriate sizing'}</strong>.
+    <br><span class="hint">For next moonshot outside AI: consider NOVO-B.CO (healthcare), XOM (energy), or BTC-USD (asymmetric).</span>`;
+
+  E('strat-buckets').innerHTML = [
+    { title:'🛡️ Retirement / Defensive', color:'#60a5fa', pct:retPct, tickers:retPos.map(p=>p.ticker).join(' · '), body:retAction },
+    { title:'📈 Growth', color:'#34d399', pct:growPct, tickers:growPos.map(p=>p.ticker).join(' · '), body:growAction },
+    { title:'🚀 High Conviction', color:'#f472b6', pct:hcPct, tickers:hcPos.map(p=>p.ticker).join(' · '), body:hcAction },
+  ].map(c => `<div class="strat-card" style="border-color:${c.color}20">
+    <div class="strat-card-title" style="color:${c.color}">${c.title} <span style="float:right;font-size:13px;font-weight:700;color:${c.color}">${c.pct.toFixed(1)}%</span></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${c.tickers}</div>
+    <div class="strat-card-body">${c.body}</div>
+  </div>`).join('');
+
+  // ── Diversification ─────────────────────────────────────────────
+  const sectorMap = {}, geoMap = {}, typeMap = {};
+  positions.forEach(p => {
+    const m = TICKER_META[p.ticker];
+    const val = p.current_value_eur || 0;
+    if (!m) return;
+    sectorMap[m.sector] = (sectorMap[m.sector]||0) + val;
+    geoMap[m.geo]       = (geoMap[m.geo]||0) + val;
+    typeMap[m.type]      = (typeMap[m.type]||0) + val;
+  });
+
+  const _divCard = (title, map, color) => {
+    const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+    const total = sorted.reduce((s,[,v])=>s+v,0);
+    const bars = sorted.map(([k,v]) => {
+      const pct = total > 0 ? v/total*100 : 0;
+      return `<div class="alloc-bar-wrap" style="margin-bottom:5px">
+        <div class="alloc-bar-label" style="width:130px;font-size:11px">${k}</div>
+        <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="alloc-bar-pct" style="font-size:11px;color:${color}">${pct.toFixed(0)}%</div>
+      </div>`;
+    }).join('');
+    return `<div class="strat-card"><div class="strat-card-title">${title}</div>${bars}</div>`;
+  };
+
+  E('strat-diversification').innerHTML =
+    _divCard('By Sector', sectorMap, '#60a5fa') +
+    _divCard('By Geography', geoMap, '#34d399') +
+    _divCard('By Asset Type', typeMap, '#a78bfa');
+
+  // ── Risk signals ────────────────────────────────────────────────
+  const usVal = positions.filter(p => (TICKER_META[p.ticker]||{}).geo === 'US').reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const usConc = totalValue > 0 ? usVal/totalValue*100 : 0;
+
+  const aiVal = positions.filter(p => ['NVDA','NBIS','VRT','APLD','ASML.AS'].includes(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const aiConc = totalValue > 0 ? aiVal/totalValue*100 : 0;
+
+  const bondVal = positions.filter(p => (TICKER_META[p.ticker]||{}).type === 'bond').reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const bondPct = totalValue > 0 ? bondVal/totalValue*100 : 0;
+
+  const singleMax = Math.max(...positions.map(p => totalValue>0 ? (p.current_value_eur||0)/totalValue*100 : 0));
+  const singleName = positions.find(p => totalValue>0 && Math.abs((p.current_value_eur||0)/totalValue*100 - singleMax) < 0.01)?.ticker || '?';
+
+  const hcPctRisk = hcPct;
+
+  const risks = [
+    {
+      icon: '🇺🇸', label: `US concentration: ${usConc.toFixed(0)}% of portfolio in US assets`,
+      level: usConc > 75 ? 'danger' : usConc > 60 ? 'warn' : 'ok',
+      badge: usConc > 75 ? 'HIGH' : usConc > 60 ? 'MODERATE' : 'OK',
+      note: usConc > 60 ? 'Add VWRL.AS, IMAE.AS or NOVO-B.CO to reduce.' : 'Well diversified geographically.',
+    },
+    {
+      icon: '🤖', label: `AI/tech theme: ${aiConc.toFixed(0)}% in AI-linked positions`,
+      level: aiConc > 50 ? 'danger' : aiConc > 35 ? 'warn' : 'ok',
+      badge: aiConc > 50 ? 'HIGH' : aiConc > 35 ? 'MODERATE' : 'OK',
+      note: aiConc > 35 ? 'Cyclical risk — AI capex cycle could reverse. Energy (XOM) or healthcare (NOVO) reduce this.' : 'Balanced.',
+    },
+    {
+      icon: '🎯', label: `Largest single position: ${singleName} at ${singleMax.toFixed(1)}%`,
+      level: singleMax > 25 ? 'danger' : singleMax > 18 ? 'warn' : 'ok',
+      badge: singleMax > 25 ? 'HIGH' : singleMax > 18 ? 'WATCH' : 'OK',
+      note: singleMax > 18 ? `Consider trimming ${singleName} above 25% or adding new positions to dilute concentration.` : 'Single-name concentration within bounds.',
+    },
+    {
+      icon: '🏦', label: `Bond/fixed income: ${bondPct.toFixed(1)}% of portfolio`,
+      level: bondPct < 5 ? 'warn' : 'ok',
+      badge: bondPct < 5 ? 'LOW' : 'OK',
+      note: bondPct < 5 ? 'Consider increasing IEAG.AS or adding VGOV.L as rate hedge.' : 'Adequate fixed income buffer.',
+    },
+    {
+      icon: '🚀', label: `Speculative bucket: ${hcPctRisk.toFixed(1)}% in high-conviction bets`,
+      level: hcPctRisk > 35 ? 'danger' : hcPctRisk > 25 ? 'warn' : 'ok',
+      badge: hcPctRisk > 35 ? 'OVERSIZED' : hcPctRisk > 25 ? 'WATCH' : 'OK',
+      note: hcPctRisk > 25 ? 'Moonshot positions are appropriately sized but monitor. Set exit levels before deploying next tranche.' : 'Speculative exposure within risk budget.',
+    },
+  ];
+
+  E('strat-risk').innerHTML = `<div class="strat-card">${risks.map(r => `
+    <div class="risk-row">
+      <div class="risk-icon">${r.icon}</div>
+      <div class="risk-label">
+        <div>${r.label}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${r.note}</div>
+      </div>
+      <div class="risk-badge risk-${r.level}">${r.badge}</div>
+    </div>`).join('')}</div>`;
+
+  // ── Suggestions ─────────────────────────────────────────────────
+  const held = new Set(positions.map(p => p.ticker));
+  const suggestions = SUGGESTIONS.filter(s => !held.has(s.ticker));
+  E('strat-suggestions').innerHTML = `<div class="strat-card">${suggestions.map(s => `
+    <div class="suggest-row">
+      <div>
+        <div class="suggest-ticker">${s.ticker}</div>
+        <div style="font-size:10px;color:var(--muted)">${s.sector} · ${s.geo}</div>
+      </div>
+      <div class="suggest-why">${s.why}</div>
+    </div>`).join('')}</div>`;
 }
 
 init();
