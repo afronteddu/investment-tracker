@@ -1,13 +1,15 @@
 """
-Live quotes via yfinance + curl_cffi (Chrome impersonation bypasses Yahoo bot detection).
-curl_cffi must be installed — yfinance uses it automatically when available.
+Live quotes via Yahoo Finance v8 API with cookie+crumb auth.
+Bypasses yfinance entirely — works from datacenter IPs where curl_cffi is unavailable.
 """
 from __future__ import annotations
 
 import time
+import json
+import threading
 from typing import Optional
 
-import yfinance as yf
+import requests
 
 _cache: dict[str, dict] = {}
 _cache_time: dict[str, float] = {}
@@ -16,34 +18,108 @@ _fx_cache_time: float = 0
 CACHE_TTL = 60
 FX_TTL = 300
 
+# Yahoo cookie+crumb state (refreshed when expired)
+_crumb: str = ""
+_session = requests.Session()
+_session_lock = threading.Lock()
+_session_init_time: float = 0
+SESSION_TTL = 3600  # re-authenticate every hour
 
-def _fetch_ticker(ticker: str) -> dict:
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+}
+
+
+def _init_session():
+    """Get Yahoo cookie and crumb. Must be called before any quote fetch."""
+    global _crumb, _session_init_time
     try:
-        t = yf.Ticker(ticker)
-        hist = t.history(period="5d", interval="1d", auto_adjust=True)
-        if hist.empty:
+        # Step 1: hit Yahoo Finance to get cookie
+        r = _session.get("https://fc.yahoo.com", headers=_HEADERS, timeout=10, allow_redirects=True)
+        # Step 2: get crumb
+        r2 = _session.get(
+            "https://query2.finance.yahoo.com/v1/test/getcrumb",
+            headers={**_HEADERS, "Accept": "text/plain"},
+            timeout=10,
+        )
+        if r2.status_code == 200 and r2.text and r2.text != "":
+            _crumb = r2.text.strip()
+            _session_init_time = time.time()
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _ensure_session():
+    with _session_lock:
+        if not _crumb or time.time() - _session_init_time > SESSION_TTL:
+            _init_session()
+
+
+def _yahoo_quote(ticker: str) -> dict:
+    _ensure_session()
+    url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+    params = {"interval": "1d", "range": "5d"}
+    if _crumb:
+        params["crumb"] = _crumb
+    try:
+        r = _session.get(url, headers=_HEADERS, params=params, timeout=10)
+        if r.status_code == 401 or r.status_code == 403:
+            # Session expired — re-auth and retry once
+            with _session_lock:
+                _init_session()
+            params["crumb"] = _crumb
+            r = _session.get(url, headers=_HEADERS, params=params, timeout=10)
+        if r.status_code != 200:
             return {}
-        closes = hist["Close"].dropna()
-        if len(closes) < 1:
-            return {}
-        price = float(closes.iloc[-1])
-        prev_close = float(closes.iloc[-2]) if len(closes) >= 2 else price
-        day_high = float(hist["High"].iloc[-1]) if "High" in hist.columns else None
-        day_low = float(hist["Low"].iloc[-1]) if "Low" in hist.columns else None
-        try:
-            currency = t.fast_info.currency or "?"
-        except Exception:
-            currency = "?"
+        data = r.json()
+        result = data["chart"]["result"][0]
+        meta = result["meta"]
+        quotes_data = result.get("indicators", {}).get("quote", [{}])[0]
+        closes = [c for c in (quotes_data.get("close") or []) if c is not None]
+        highs  = [h for h in (quotes_data.get("high")  or []) if h is not None]
+        lows   = [l for l in (quotes_data.get("low")   or []) if l is not None]
+        if not closes:
+            # fallback to meta regularMarketPrice
+            price = meta.get("regularMarketPrice") or meta.get("chartPreviousClose")
+            if not price:
+                return {}
+            return {
+                "price": price,
+                "prev_close": meta.get("chartPreviousClose") or price,
+                "day_high": None, "day_low": None,
+                "currency": meta.get("currency", "?"),
+                "market_cap": None,
+            }
         return {
-            "price": price,
-            "prev_close": prev_close,
-            "day_high": day_high,
-            "day_low": day_low,
-            "currency": currency,
+            "price": closes[-1],
+            "prev_close": closes[-2] if len(closes) >= 2 else meta.get("chartPreviousClose", closes[-1]),
+            "day_high": highs[-1] if highs else None,
+            "day_low":  lows[-1]  if lows  else None,
+            "currency": meta.get("currency", "?"),
             "market_cap": None,
         }
     except Exception:
         return {}
+
+
+def _fetch_batch(tickers: list[str]) -> dict[str, dict]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    results = {}
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = {ex.submit(_yahoo_quote, t): t for t in tickers}
+        for fut in as_completed(futures):
+            ticker = futures[fut]
+            try:
+                results[ticker] = fut.result()
+            except Exception:
+                results[ticker] = {}
+    return results
 
 
 def get_fx_rates() -> dict[str, float]:
@@ -53,7 +129,7 @@ def get_fx_rates() -> dict[str, float]:
         return dict(_fx_cache)
 
     for pair, key, invert in [("EURUSD=X", "USD", True), ("GBPEUR=X", "GBP", False)]:
-        q = _fetch_ticker(pair)
+        q = _yahoo_quote(pair)
         price = q.get("price")
         if price:
             _fx_cache[key] = (1 / price) if invert else price
@@ -72,22 +148,19 @@ def to_eur(amount: float, currency: str) -> float:
 
 
 def fetch_quotes(tickers: list[str]) -> dict[str, dict]:
-    from concurrent.futures import ThreadPoolExecutor, as_completed
     now = time.time()
     stale = [t for t in tickers if now - _cache_time.get(t, 0) > CACHE_TTL]
 
     if stale:
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            futures = {ex.submit(_fetch_ticker, t): t for t in stale}
-            for fut in as_completed(futures):
-                ticker = futures[fut]
-                result = fut.result()
-                _cache[ticker] = result if result else {
-                    "price": None, "prev_close": None,
-                    "day_high": None, "day_low": None,
-                    "currency": "?", "market_cap": None,
-                }
-                _cache_time[ticker] = now
+        fetched = _fetch_batch(stale)
+        for ticker in stale:
+            result = fetched.get(ticker) or {}
+            _cache[ticker] = result if result.get("price") else {
+                "price": None, "prev_close": None,
+                "day_high": None, "day_low": None,
+                "currency": "?", "market_cap": None,
+            }
+            _cache_time[ticker] = now
 
     return {t: _cache.get(t, {}) for t in tickers}
 
