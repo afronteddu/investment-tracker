@@ -1,5 +1,7 @@
 """
 Live quotes via yfinance. Cached per-process to avoid hammering Yahoo.
+Uses history() as primary source — more resilient to datacenter IP blocks
+than fast_info which frequently returns None in cloud environments.
 """
 from __future__ import annotations
 
@@ -16,32 +18,63 @@ CACHE_TTL = 60  # seconds
 FX_TTL = 300    # refresh FX rates every 5 min
 
 
+def _fetch_via_history(ticker: str) -> dict:
+    """Fetch latest price + prev_close using 5d history. Works in cloud environments."""
+    try:
+        t = yf.Ticker(ticker)
+        hist = t.history(period="5d", interval="1d", auto_adjust=True)
+        if hist.empty:
+            return {}
+        closes = hist["Close"].dropna()
+        if len(closes) < 1:
+            return {}
+        price = float(closes.iloc[-1])
+        prev_close = float(closes.iloc[-2]) if len(closes) >= 2 else price
+        # day high/low from most recent row
+        day_high = float(hist["High"].iloc[-1]) if "High" in hist.columns else None
+        day_low = float(hist["Low"].iloc[-1]) if "Low" in hist.columns else None
+        # currency from fast_info (lightweight, usually works)
+        try:
+            currency = t.fast_info.currency or "?"
+        except Exception:
+            currency = "?"
+        return {
+            "price": price,
+            "prev_close": prev_close,
+            "day_high": day_high,
+            "day_low": day_low,
+            "currency": currency,
+            "market_cap": None,
+        }
+    except Exception:
+        return {}
+
+
 def get_fx_rates() -> dict[str, float]:
     """Return {USD: rate_to_eur, GBP: rate_to_eur}."""
     global _fx_cache_time
     now = time.time()
     if now - _fx_cache_time < FX_TTL and _fx_cache:
-        return _fx_cache
+        return dict(_fx_cache)
 
-    try:
-        batch = yf.Tickers("EURUSD=X GBPEUR=X")
-        eurusd = batch.tickers["EURUSD=X"].fast_info.last_price  # 1 EUR = X USD
-        gbpeur = batch.tickers["GBPEUR=X"].fast_info.last_price  # 1 GBP = X EUR
-        _fx_cache["USD"] = 1 / eurusd   # 1 USD → EUR
-        _fx_cache["GBP"] = gbpeur        # 1 GBP → EUR
-        _fx_cache["EUR"] = 1.0
-        _fx_cache_time = now
-    except Exception:
-        # fallback: don't blow up, use last known or rough approximation
-        _fx_cache.setdefault("USD", 0.86)
-        _fx_cache.setdefault("GBP", 1.15)
-        _fx_cache.setdefault("EUR", 1.0)
+    for pair, key, invert in [("EURUSD=X", "USD", True), ("GBPEUR=X", "GBP", False)]:
+        try:
+            t = yf.Ticker(pair)
+            hist = t.history(period="2d", interval="1d", auto_adjust=True)
+            if not hist.empty:
+                val = float(hist["Close"].dropna().iloc[-1])
+                _fx_cache[key] = (1 / val) if invert else val
+        except Exception:
+            pass
 
-    return _fx_cache
+    _fx_cache.setdefault("USD", 0.86)
+    _fx_cache.setdefault("GBP", 1.15)
+    _fx_cache["EUR"] = 1.0
+    _fx_cache_time = now
+    return dict(_fx_cache)
 
 
 def to_eur(amount: float, currency: str) -> float:
-    """Convert an amount in given currency to EUR."""
     if currency == "EUR" or not currency:
         return amount
     rates = get_fx_rates()
@@ -52,27 +85,17 @@ def fetch_quotes(tickers: list[str]) -> dict[str, dict]:
     now = time.time()
     stale = [t for t in tickers if now - _cache_time.get(t, 0) > CACHE_TTL]
 
-    if stale:
-        batch = yf.Tickers(" ".join(stale))
-        for ticker in stale:
-            try:
-                info = batch.tickers[ticker].fast_info
-                _cache[ticker] = {
-                    "price": getattr(info, "last_price", None),
-                    "prev_close": getattr(info, "previous_close", None),
-                    "day_high": getattr(info, "day_high", None),
-                    "day_low": getattr(info, "day_low", None),
-                    "currency": getattr(info, "currency", "?"),
-                    "market_cap": getattr(info, "market_cap", None),
-                }
-                _cache_time[ticker] = now
-            except Exception:
-                _cache[ticker] = {
-                    "price": None, "prev_close": None,
-                    "day_high": None, "day_low": None,
-                    "currency": "?", "market_cap": None,
-                }
-                _cache_time[ticker] = now
+    for ticker in stale:
+        result = _fetch_via_history(ticker)
+        if result:
+            _cache[ticker] = result
+        else:
+            _cache[ticker] = {
+                "price": None, "prev_close": None,
+                "day_high": None, "day_low": None,
+                "currency": "?", "market_cap": None,
+            }
+        _cache_time[ticker] = now
 
     return {t: _cache.get(t, {}) for t in tickers}
 
@@ -85,7 +108,6 @@ def day_change_pct(q: dict) -> Optional[float]:
 
 
 def is_market_open_us() -> bool:
-    """Rough check — US market hours in UTC (14:30–21:00)."""
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
@@ -94,7 +116,6 @@ def is_market_open_us() -> bool:
 
 
 def is_market_open_eu() -> bool:
-    """EU market hours in UTC (07:00–15:30)."""
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
