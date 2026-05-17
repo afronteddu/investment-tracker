@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 
-_GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]
+_GEMINI_MODELS = ["gemini-2.0-flash-exp", "gemini-2.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash"]
 
 
 def _ask(prompt: str, max_tokens: int = 900) -> str:
@@ -24,7 +24,7 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
                 return response.text.strip()
             except Exception as e:
                 err = str(e).lower()
-                if "quota" in err or "429" in err or "resource_exhausted" in err:
+                if any(x in err for x in ("quota", "429", "resource_exhausted", "not_found", "404", "not found", "not supported")):
                     continue  # try next model
                 return f"Gemini error ({model}): {str(e)[:200]}"
         # all Gemini models exhausted, fall through to OpenAI
