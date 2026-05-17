@@ -119,6 +119,7 @@ class Scheduler:
         import json as _json
         import logging
         _log = logging.getLogger(__name__)
+        _log.info("_refresh_quotes_sync starting")
         from src.quotes import fetch_quotes, day_change_pct, get_fx_rates, is_market_open_us, is_market_open_eu
         from src.positions import TICKER_NAMES, compute_lifetime_stats  # noqa: F401 (used below)
 
@@ -138,8 +139,10 @@ class Scheduler:
         signals = self.state.get("signals_cache", {})
 
         all_tickers = list(set(list(positions.keys()) + watchlist))
+        _log.info("fetching quotes for %d tickers: %s", len(all_tickers), all_tickers[:5])
         quotes = fetch_quotes(all_tickers)
         fx = get_fx_rates()
+        _log.info("quotes done: %d results, fx=%s", len(quotes), fx)
 
         self.state["quotes_cache"] = quotes
         self.state["fx_cache"] = fx

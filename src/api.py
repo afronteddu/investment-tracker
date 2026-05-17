@@ -352,6 +352,22 @@ async def ws_token(request: Request):
     return {"token": _make_ws_token()}
 
 
+@app.get("/api/debug")
+async def debug(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    quotes = state.get("quotes_cache", {})
+    sample = {k: v for k, v in list(quotes.items())[:3]}
+    return {
+        "positions_count": len(state.get("positions", {})),
+        "quotes_count": len(quotes),
+        "quotes_sample": sample,
+        "fx_cache": state.get("fx_cache"),
+        "lifetime_cache": state.get("lifetime_cache"),
+        "ws_payload_ready": state.get("ws_payload_cache") is not None,
+    }
+
+
 @app.post("/api/briefing/generate")
 async def generate_briefing_now(request: Request):
     if (r := _auth_required(request)):
