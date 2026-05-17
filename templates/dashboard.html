@@ -1219,37 +1219,41 @@ const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25 };
 const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6' };
 const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction' };
 
+// In Ireland: ETFs/ETCs taxed at 41% + deemed disposal every 8 years.
+// Individual stocks/shares: 33% CGT. No new ETF/ETC purchases recommended.
+const IE_TAX_41 = new Set(['IGLN.L','ISLN.L','IWDA.AS','VUSA.AS','IMAE.AS','AEME.PA','IEAG.AS']);
+
 // Sector/geography metadata for held tickers
 const TICKER_META = {
   // Retirement
-  'BRK-B':   { sector:'Financials',   geo:'US',     type:'stock',  desc:'Berkshire Hathaway B' },
-  'IGLN.L':  { sector:'Commodities',  geo:'Global', type:'etc',    desc:'Physical Gold ETC' },
-  'ISLN.L':  { sector:'Commodities',  geo:'Global', type:'etc',    desc:'Physical Silver ETC' },
-  'IWDA.AS': { sector:'Diversified',  geo:'Global', type:'etf',    desc:'MSCI World ETF' },
-  'VUSA.AS': { sector:'Diversified',  geo:'US',     type:'etf',    desc:'S&P 500 ETF' },
-  'IMAE.AS': { sector:'Diversified',  geo:'Europe', type:'etf',    desc:'MSCI Europe ETF' },
-  'AEME.PA': { sector:'Diversified',  geo:'EM',     type:'etf',    desc:'MSCI EM ex-China ETF' },
-  'IEAG.AS': { sector:'Fixed Income', geo:'Europe', type:'bond',   desc:'EUR Govt Bond ETF' },
+  'BRK-B':   { sector:'Financials',   geo:'US',     type:'stock (33% CGT)', desc:'Berkshire Hathaway B' },
+  'IGLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (41% IE tax)', desc:'Physical Gold ETC' },
+  'ISLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (41% IE tax)', desc:'Physical Silver ETC' },
+  'IWDA.AS': { sector:'Diversified',  geo:'Global', type:'ETF (41% IE tax)', desc:'MSCI World ETF' },
+  'VUSA.AS': { sector:'Diversified',  geo:'US',     type:'ETF (41% IE tax)', desc:'S&P 500 ETF' },
+  'IMAE.AS': { sector:'Diversified',  geo:'Europe', type:'ETF (41% IE tax)', desc:'MSCI Europe ETF' },
+  'AEME.PA': { sector:'Diversified',  geo:'EM',     type:'ETF (41% IE tax)', desc:'MSCI EM ex-China ETF' },
+  'IEAG.AS': { sector:'Fixed Income', geo:'Europe', type:'ETF (41% IE tax)', desc:'EUR Govt Bond ETF' },
   // Growth
-  'NVDA':    { sector:'Semiconductors', geo:'US', type:'stock', desc:'Nvidia — AI GPUs' },
-  'ASML.AS': { sector:'Semiconductors', geo:'Europe', type:'stock', desc:'ASML — EUV lithography' },
+  'NVDA':    { sector:'Semiconductors', geo:'US',     type:'stock (33% CGT)', desc:'Nvidia — AI GPUs' },
+  'ASML.AS': { sector:'Semiconductors', geo:'Europe', type:'stock (33% CGT)', desc:'ASML — EUV lithography' },
   // High conviction
-  'NBIS':    { sector:'AI Infra',     geo:'Global', type:'stock', desc:'Nebius — AI cloud (ex-Yandex)' },
-  'VRT':     { sector:'Data Centres', geo:'US',     type:'stock', desc:'Vertiv — power/cooling infra' },
-  'APLD':    { sector:'AI Infra',     geo:'US',     type:'stock', desc:'Applied Digital — HPC hosting' },
-  'SNDK':    { sector:'Storage',      geo:'US',     type:'stock', desc:'SanDisk — flash storage' },
+  'NBIS':    { sector:'AI Infra',     geo:'Global', type:'stock (33% CGT)', desc:'Nebius — AI cloud (ex-Yandex)' },
+  'VRT':     { sector:'Data Centres', geo:'US',     type:'stock (33% CGT)', desc:'Vertiv — power/cooling infra' },
+  'APLD':    { sector:'AI Infra',     geo:'US',     type:'stock (33% CGT)', desc:'Applied Digital — HPC hosting' },
+  'SNDK':    { sector:'Storage',      geo:'US',     type:'stock (33% CGT)', desc:'SanDisk — flash storage' },
 };
 
-// Suggested additions to improve diversification
+// Suggested additions — stocks only (33% CGT). No ETFs/ETCs (41% IE tax).
 const SUGGESTIONS = [
-  { ticker:'MSFT',    sector:'AI Software',  geo:'US',     why:'Anchor cloud+AI position. Azure + Copilot revenue diversifies away from pure-hardware bets.' },
-  { ticker:'VWRL.AS', sector:'Diversified',  geo:'Global', why:'Broadens retirement layer to all-world. Reduces US concentration in the defensive bucket.' },
-  { ticker:'TSM',     sector:'Semiconductors',geo:'Asia',  why:'TSMC — sole manufacturer of NVDA/AMD chips. Exposure to Asian semi with different risk profile.' },
-  { ticker:'XOM',     sector:'Energy',       geo:'US',     why:'Oil major adds true defensive cash-flow and inflation hedge. Uncorrelated to AI cycle.' },
-  { ticker:'NOVO-B.CO',sector:'Healthcare',  geo:'Europe', why:'Novo Nordisk — healthcare/GLP-1 leader. Adds defensive EU growth uncorrelated to tech.' },
-  { ticker:'BTC-USD', sector:'Crypto',       geo:'Global', why:'Small Bitcoin allocation (3–5%) as asymmetric bet. Uncorrelated to equity drawdowns on a 3y horizon.' },
-  { ticker:'PLTR',    sector:'AI Software',  geo:'US',     why:'Palantir — AI/data platform with government and enterprise moats. Software layer on top of your infra bets.' },
-  { ticker:'VGOV.L',  sector:'Fixed Income', geo:'UK/EU',  why:'UK Gilt ETF — increases bond allocation for rate-sensitive hedging, broadens IEAG coverage.' },
+  { ticker:'MSFT',     sector:'AI Software',    geo:'US',     why:'Azure + Copilot revenue. Diversifies away from pure-hardware bets. Stock — 33% CGT.' },
+  { ticker:'TSM',      sector:'Semiconductors', geo:'Asia',   why:'TSMC makes every NVDA chip. Asian semi exposure with different geopolitical risk profile. Stock — 33% CGT.' },
+  { ticker:'XOM',      sector:'Energy',         geo:'US',     why:'Defensive cash-flow + inflation hedge. Truly uncorrelated to AI cycle. Stock — 33% CGT.' },
+  { ticker:'NVO',      sector:'Healthcare',     geo:'Europe', why:'Novo Nordisk ADR — GLP-1 leader. Defensive EU healthcare growth, uncorrelated to tech. Stock — 33% CGT.' },
+  { ticker:'PLTR',     sector:'AI Software',    geo:'US',     why:'AI/data platform with government moat. Software layer on top of your infra bets. Stock — 33% CGT.' },
+  { ticker:'BRK-B',    sector:'Financials',     geo:'US',     why:'More Berkshire adds broad defensive exposure — 60+ companies, no ETF tax treatment. Stock — 33% CGT.' },
+  { ticker:'GOOGL',    sector:'AI Software',    geo:'US',     why:'DeepMind + search + cloud. Cheapest Mag-7 on earnings. Diversifies AI software exposure. Stock — 33% CGT.' },
+  { ticker:'CEG',      sector:'Energy/Nuclear', geo:'US',     why:'Constellation Energy — nuclear power for AI data centres. Uncorrelated, high-conviction infrastructure. Stock — 33% CGT.' },
 ];
 
 function renderStrategy(positions, lifetime) {
@@ -1303,11 +1307,17 @@ function renderStrategy(positions, lifetime) {
 
   const retTargetPct = BUCKET_TARGETS.retirement;
   const retDiff = retPct - retTargetPct;
+  // Count existing 41% tax positions — legacy, don't add more
+  const taxHeavyVal = retPos.filter(p => IE_TAX_41.has(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const taxHeavyPct = retVal > 0 ? taxHeavyVal/retVal*100 : 0;
+  const taxWarning = taxHeavyVal > 0
+    ? `<br><span style="color:#fbbf24;font-size:12px">⚠️ ${taxHeavyPct.toFixed(0)}% of this bucket (€${Math.round(taxHeavyVal).toLocaleString()}) is in ETFs/ETCs taxed at 41% in Ireland with 8-year deemed disposal. Hold existing positions but add new retirement exposure via stocks only (BRK-B, XOM, MSFT).</span>`
+    : '';
   const retAction = retDiff < -10
-    ? `<strong style="color:#fbbf24">Underweight by ${Math.abs(retDiff).toFixed(0)}%.</strong> Suggested DCA: <strong>€${Math.round((totalValue * retTargetPct/100 - retVal)/12)}/mo</strong> into VWRL.AS or IWDA.AS to close gap in 12 months.`
+    ? `<strong style="color:#fbbf24">Underweight by ${Math.abs(retDiff).toFixed(0)}%.</strong> Suggested DCA: <strong>€${Math.round((totalValue * retTargetPct/100 - retVal)/12)}/mo</strong> into individual stocks — BRK-B, XOM, or MSFT. <strong>Do not buy more ETFs</strong> (41% IE tax).${taxWarning}`
     : retDiff > 10
-    ? `<strong style="color:var(--red)">Overweight by ${retDiff.toFixed(0)}%.</strong> Pause DCA into defensive ETFs until growth/conviction buckets catch up.`
-    : `<strong style="color:var(--green)">On target.</strong> Maintain current DCA cadence. Consider adding VGOV.L for bond diversification.`;
+    ? `<strong style="color:var(--red)">Overweight by ${retDiff.toFixed(0)}%.</strong> Pause new retirement purchases until growth/conviction buckets catch up.${taxWarning}`
+    : `<strong style="color:var(--green)">On target.</strong> Maintain cadence. New defensive buys: BRK-B or XOM — not ETFs (41% IE tax).${taxWarning}`;
 
   const growNvdaPe = '~35x fwd P/E'; // static until drilldown data flows here
   const growAction = growPnl > 30
@@ -1384,13 +1394,13 @@ function renderStrategy(positions, lifetime) {
       icon: '🇺🇸', label: `US concentration: ${usConc.toFixed(0)}% of portfolio in US assets`,
       level: usConc > 75 ? 'danger' : usConc > 60 ? 'warn' : 'ok',
       badge: usConc > 75 ? 'HIGH' : usConc > 60 ? 'MODERATE' : 'OK',
-      note: usConc > 60 ? 'Add VWRL.AS, IMAE.AS or NOVO-B.CO to reduce.' : 'Well diversified geographically.',
+      note: usConc > 60 ? 'Add individual stocks with non-US exposure: NVO (Denmark), ASML (NL), TSM (Taiwan). No ETFs — 41% IE tax.' : 'Well diversified geographically.',
     },
     {
       icon: '🤖', label: `AI/tech theme: ${aiConc.toFixed(0)}% in AI-linked positions`,
       level: aiConc > 50 ? 'danger' : aiConc > 35 ? 'warn' : 'ok',
       badge: aiConc > 50 ? 'HIGH' : aiConc > 35 ? 'MODERATE' : 'OK',
-      note: aiConc > 35 ? 'Cyclical risk — AI capex cycle could reverse. Energy (XOM) or healthcare (NOVO) reduce this.' : 'Balanced.',
+      note: aiConc > 35 ? 'Cyclical risk — AI capex cycle could reverse. Diversify with XOM (energy), NVO (healthcare), GOOGL (software). All stocks, 33% CGT.' : 'Balanced.',
     },
     {
       icon: '🎯', label: `Largest single position: ${singleName} at ${singleMax.toFixed(1)}%`,
@@ -1402,13 +1412,21 @@ function renderStrategy(positions, lifetime) {
       icon: '🏦', label: `Bond/fixed income: ${bondPct.toFixed(1)}% of portfolio`,
       level: bondPct < 5 ? 'warn' : 'ok',
       badge: bondPct < 5 ? 'LOW' : 'OK',
-      note: bondPct < 5 ? 'Consider increasing IEAG.AS or adding VGOV.L as rate hedge.' : 'Adequate fixed income buffer.',
+      note: bondPct < 5 ? 'Low bond exposure — but ETFs/bond ETFs are 41% tax in Ireland. Consider BRK-B or XOM as defensive substitutes instead.' : 'Adequate defensive buffer.',
     },
     {
       icon: '🚀', label: `Speculative bucket: ${hcPctRisk.toFixed(1)}% in high-conviction bets`,
       level: hcPctRisk > 35 ? 'danger' : hcPctRisk > 25 ? 'warn' : 'ok',
       badge: hcPctRisk > 35 ? 'OVERSIZED' : hcPctRisk > 25 ? 'WATCH' : 'OK',
       note: hcPctRisk > 25 ? 'Moonshot positions are appropriately sized but monitor. Set exit levels before deploying next tranche.' : 'Speculative exposure within risk budget.',
+    },
+    {
+      icon: '🇮🇪', label: `Irish tax: ${taxHeavyPct.toFixed(0)}% of retirement bucket (€${Math.round(taxHeavyVal).toLocaleString()}) in 41% ETF/ETC positions`,
+      level: taxHeavyVal > 0 ? 'warn' : 'ok',
+      badge: taxHeavyVal > 0 ? 'LEGACY' : 'OK',
+      note: taxHeavyVal > 0
+        ? 'Hold existing ETFs/ETCs (selling triggers 41% tax now). All new retirement purchases must be individual stocks — 33% CGT only.'
+        : 'No ETF/ETC tax exposure. All positions at 33% CGT.',
     },
   ];
 
