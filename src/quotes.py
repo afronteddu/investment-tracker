@@ -1,7 +1,6 @@
 """
-Live quotes via yfinance. Cached per-process to avoid hammering Yahoo.
-Uses history() as primary source — more resilient to datacenter IP blocks
-than fast_info which frequently returns None in cloud environments.
+Live quotes via yfinance + curl_cffi (Chrome impersonation bypasses Yahoo bot detection).
+curl_cffi must be installed — yfinance uses it automatically when available.
 """
 from __future__ import annotations
 
@@ -14,12 +13,11 @@ _cache: dict[str, dict] = {}
 _cache_time: dict[str, float] = {}
 _fx_cache: dict[str, float] = {}
 _fx_cache_time: float = 0
-CACHE_TTL = 60  # seconds
-FX_TTL = 300    # refresh FX rates every 5 min
+CACHE_TTL = 60
+FX_TTL = 300
 
 
-def _fetch_via_history(ticker: str) -> dict:
-    """Fetch latest price + prev_close using 5d history. Works in cloud environments."""
+def _fetch_ticker(ticker: str) -> dict:
     try:
         t = yf.Ticker(ticker)
         hist = t.history(period="5d", interval="1d", auto_adjust=True)
@@ -30,10 +28,8 @@ def _fetch_via_history(ticker: str) -> dict:
             return {}
         price = float(closes.iloc[-1])
         prev_close = float(closes.iloc[-2]) if len(closes) >= 2 else price
-        # day high/low from most recent row
         day_high = float(hist["High"].iloc[-1]) if "High" in hist.columns else None
         day_low = float(hist["Low"].iloc[-1]) if "Low" in hist.columns else None
-        # currency from fast_info (lightweight, usually works)
         try:
             currency = t.fast_info.currency or "?"
         except Exception:
@@ -51,21 +47,16 @@ def _fetch_via_history(ticker: str) -> dict:
 
 
 def get_fx_rates() -> dict[str, float]:
-    """Return {USD: rate_to_eur, GBP: rate_to_eur}."""
     global _fx_cache_time
     now = time.time()
     if now - _fx_cache_time < FX_TTL and _fx_cache:
         return dict(_fx_cache)
 
     for pair, key, invert in [("EURUSD=X", "USD", True), ("GBPEUR=X", "GBP", False)]:
-        try:
-            t = yf.Ticker(pair)
-            hist = t.history(period="2d", interval="1d", auto_adjust=True)
-            if not hist.empty:
-                val = float(hist["Close"].dropna().iloc[-1])
-                _fx_cache[key] = (1 / val) if invert else val
-        except Exception:
-            pass
+        q = _fetch_ticker(pair)
+        price = q.get("price")
+        if price:
+            _fx_cache[key] = (1 / price) if invert else price
 
     _fx_cache.setdefault("USD", 0.86)
     _fx_cache.setdefault("GBP", 1.15)
@@ -77,25 +68,26 @@ def get_fx_rates() -> dict[str, float]:
 def to_eur(amount: float, currency: str) -> float:
     if currency == "EUR" or not currency:
         return amount
-    rates = get_fx_rates()
-    return amount * rates.get(currency, 1.0)
+    return amount * get_fx_rates().get(currency, 1.0)
 
 
 def fetch_quotes(tickers: list[str]) -> dict[str, dict]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     now = time.time()
     stale = [t for t in tickers if now - _cache_time.get(t, 0) > CACHE_TTL]
 
-    for ticker in stale:
-        result = _fetch_via_history(ticker)
-        if result:
-            _cache[ticker] = result
-        else:
-            _cache[ticker] = {
-                "price": None, "prev_close": None,
-                "day_high": None, "day_low": None,
-                "currency": "?", "market_cap": None,
-            }
-        _cache_time[ticker] = now
+    if stale:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            futures = {ex.submit(_fetch_ticker, t): t for t in stale}
+            for fut in as_completed(futures):
+                ticker = futures[fut]
+                result = fut.result()
+                _cache[ticker] = result if result else {
+                    "price": None, "prev_close": None,
+                    "day_high": None, "day_low": None,
+                    "currency": "?", "market_cap": None,
+                }
+                _cache_time[ticker] = now
 
     return {t: _cache.get(t, {}) for t in tickers}
 
