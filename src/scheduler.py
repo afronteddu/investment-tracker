@@ -270,8 +270,59 @@ class Scheduler:
         except Exception:
             pass
 
+    def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
+        """Fetch weekly+daily history via Yahoo cookie session. Returns list of {date, close, currency}."""
+        import requests as _req
+        from src.quotes import _session, _crumb, _ensure_session, _HEADERS
+        _ensure_session()
+
+        points_raw = []
+        for interval, range_start, range_end in [
+            ("1wk", start, end_daily),
+            ("1d",  end_daily, None),
+        ]:
+            params = {"interval": interval, "period1": self._to_ts(range_start)}
+            if range_end:
+                params["period2"] = self._to_ts(range_end)
+            else:
+                params["range"] = "3mo"
+            if _crumb:
+                params["crumb"] = _crumb
+            try:
+                url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+                r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+                if r.status_code == 401:
+                    _ensure_session()
+                    params["crumb"] = _crumb
+                    r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+                if r.status_code != 200:
+                    continue
+                data = r.json()
+                result = data["chart"]["result"][0]
+                meta = result["meta"]
+                currency = meta.get("currency", "?")
+                timestamps = result.get("timestamp", [])
+                closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+                for ts, c in zip(timestamps, closes):
+                    if c is None:
+                        continue
+                    import datetime as _dt
+                    date_str = _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
+                    points_raw.append({"date": date_str, "close": c, "currency": currency})
+            except Exception:
+                continue
+        # Deduplicate by date, keep last
+        seen = {}
+        for p in points_raw:
+            seen[p["date"]] = p
+        return sorted(seen.values(), key=lambda x: x["date"])
+
+    @staticmethod
+    def _to_ts(date_str: str) -> int:
+        from datetime import datetime
+        return int(datetime.strptime(date_str, "%Y-%m-%d").timestamp())
+
     def _refresh_history_sync(self):
-        import yfinance as yf
         from datetime import date, datetime, timedelta
         from src.quotes import get_fx_rates
         from src.positions import TICKER_NAMES
@@ -293,48 +344,29 @@ class Scheduler:
             earliest = date.today() - timedelta(days=365)
         earliest = max(earliest, date.today() - timedelta(days=365 * 3))
 
+        daily_start = (date.today() - timedelta(days=90)).isoformat()
         result = []
         portfolio_by_date: dict = {}
-
-        try:
-            batch = yf.Tickers(" ".join(tickers))
-        except Exception:
-            return
-
-        # Daily for last 3 months, weekly for older — gives 1W/1M/3M resolution
-        daily_start = (date.today() - timedelta(days=90)).isoformat()
 
         for ticker in tickers:
             pos = positions[ticker]
             try:
-                t_obj = batch.tickers[ticker]
-                # Fetch weekly history from earliest buy date
-                hist_wk = t_obj.history(start=earliest.isoformat(), end=daily_start, interval="1wk")
-                # Fetch daily for last 90 days
-                hist_d = t_obj.history(start=daily_start, interval="1d")
-                # Merge: weekly first, then daily (daily takes precedence for overlap)
-                import pandas as pd
-                hist = pd.concat([hist_wk, hist_d])
-                hist = hist[~hist.index.duplicated(keep="last")].sort_index()
-                if hist.empty:
+                raw = self._fetch_history_series(ticker, earliest.isoformat(), daily_start)
+                if not raw:
                     continue
-                try:
-                    currency = t_obj.fast_info.currency or "EUR"
-                except Exception:
-                    currency = "EUR"
+                currency = raw[0]["currency"]
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
-                for dt, row in hist.iterrows():
-                    row_date = dt.date() if hasattr(dt, "date") else dt
+                for p in raw:
+                    row_date = datetime.strptime(p["date"], "%Y-%m-%d").date()
                     if row_date < buy_date:
                         continue
-                    close = float(row["Close"])
+                    close = p["close"]
                     close_eur = close * fx.get(currency, 1.0)
                     pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
-                    date_str = dt.strftime("%Y-%m-%d")
                     val = pos.shares * close_eur
-                    points.append({"date": date_str, "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
-                    portfolio_by_date[date_str] = portfolio_by_date.get(date_str, 0) + val
+                    points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
+                    portfolio_by_date[p["date"]] = portfolio_by_date.get(p["date"], 0) + val
                 if points:
                     result.append({
                         "ticker": ticker,
