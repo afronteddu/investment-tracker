@@ -247,6 +247,7 @@ class Scheduler:
             "PLTR", "SOUN", "BBAI",
             "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL",
             "SPY", "QQQ", "VWRL.AS", "ASML.AS",
+            "NVO", "SAP", "SHEL", "RIO", "XOM", "JNJ", "CEG",
         ]
         try:
             quotes = fetch_quotes(HOT_PICKS_UNIVERSE)

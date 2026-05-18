@@ -1247,23 +1247,70 @@ const TICKER_META = {
 };
 
 // Suggested additions — computed dynamically in renderStrategy() based on current gaps.
-// Defined as a pool; the function picks the most relevant ones based on live portfolio composition.
 const SUGGESTION_POOL = [
   // ── Geographic diversification (non-US) ──
-  { ticker:'TSM',       sector:'Semiconductors', geo:'Asia',          priority:'geo', why:'Taiwan Semi — makes every NVDA/AMD chip. Your only Asian exposure. Reduces US single-country risk. Stock — 33% CGT.' },
-  { ticker:'NVO',       sector:'Healthcare',     geo:'Europe (DK)',   priority:'geo', why:'Novo Nordisk — GLP-1 monopoly. European healthcare, zero correlation to AI or US politics. Stock — 33% CGT.' },
-  { ticker:'SAP',       sector:'Enterprise SW',  geo:'Europe (DE)',   priority:'geo', why:'SAP — European cloud ERP leader. Stable recurring revenue, trades at discount to US peers. Stock — 33% CGT.' },
-  { ticker:'SHEL',      sector:'Energy',         geo:'Europe (UK)',   priority:'geo', why:'Shell — European oil major. Defensive dividend, hedges against energy shocks. Different risk profile from US energy. Stock — 33% CGT.' },
-  { ticker:'RIO',       sector:'Materials',      geo:'Europe/Global', priority:'geo', why:'Rio Tinto — global mining (copper, lithium, iron). Inflation hedge, China demand play, zero AI correlation. Stock — 33% CGT.' },
+  {
+    ticker:'TSM', sector:'Semiconductors', geo:'Asia', priority:'geo', bucket:'retirement',
+    buyGuide:'1–2 shares (~€160–320)',
+    diversifies:'Only Asian exposure in portfolio. Cuts US single-country risk from 70%+ → ~60%. Semiconductor supply chain hedge.',
+    why:'Makes every NVDA/AMD chip. Profits regardless of AI software winner. Uncorrelated to US politics & AI narrative. Stock — 33% CGT.',
+  },
+  {
+    ticker:'NVO', sector:'Healthcare', geo:'Europe (DK)', priority:'geo', bucket:'retirement',
+    buyGuide:'2–4 shares (~€150–300)',
+    diversifies:'Zero AI/tech correlation. First healthcare exposure in portfolio. European domicile reduces USD FX drag.',
+    why:'GLP-1 monopoly with 10yr runway. Defensive cash flow, not correlated to your AI cluster. Balances retirement bucket. Stock — 33% CGT.',
+  },
+  {
+    ticker:'SAP', sector:'Enterprise SW', geo:'Europe (DE)', priority:'geo', bucket:'retirement',
+    buyGuide:'1–2 shares (~€270–540)',
+    diversifies:'European enterprise software — different cycle from US growth tech. EUR-denominated, reduces USD FX exposure.',
+    why:'Cloud ERP leader with sticky recurring revenue. Trades at a discount to Salesforce/ServiceNow. Stable compounder for retirement bucket. Stock — 33% CGT.',
+  },
+  {
+    ticker:'SHEL', sector:'Energy', geo:'Europe (UK)', priority:'geo', bucket:'retirement',
+    buyGuide:'5–10 shares (~€150–300)',
+    diversifies:'Energy sector completely absent from portfolio. GBP/EUR-denominated reduces USD drag. Negative correlation to tech downturns.',
+    why:'Defensive dividend yield ~4%. Hedges against energy shocks that hurt AI data centre costs. Lower volatility than US energy. Stock — 33% CGT.',
+  },
+  {
+    ticker:'RIO', sector:'Materials', geo:'Europe/Global', priority:'geo', bucket:'retirement',
+    buyGuide:'2–3 shares (~€120–180)',
+    diversifies:'Materials sector not represented. Copper & lithium exposure for energy transition. Inflation hedge independent of AI cycle.',
+    why:'Global mining (copper, lithium, iron ore). Uncorrelated to AI narrative. China demand play. Diversifies retirement bucket away from financials/tech. Stock — 33% CGT.',
+  },
   // ── Sector diversification ──
-  { ticker:'XOM',       sector:'Energy',         geo:'US',            priority:'sector', why:'Exxon — defensive cash-flow, inflation hedge. Uncorrelated to AI cycle. But adds to US concentration — prefer SHEL if already US-heavy. Stock — 33% CGT.' },
-  { ticker:'JNJ',       sector:'Healthcare',     geo:'US',            priority:'sector', why:'Johnson & Johnson — pharma + medtech. Defensive, pays dividend, low beta. Only add if non-US healthcare already covered. Stock — 33% CGT.' },
-  { ticker:'GOOGL',     sector:'AI Software',    geo:'US',            priority:'sector', why:'Alphabet — cheapest Mag-7 on earnings. Adds AI software layer but increases US/AI concentration. Only if geographic risk is managed. Stock — 33% CGT.' },
-  { ticker:'MSFT',      sector:'AI Software',    geo:'US',            priority:'sector', why:'Microsoft — Azure + Copilot. Defensive tech with recurring revenue. Increases US concentration — pair with a non-US pick. Stock — 33% CGT.' },
+  {
+    ticker:'XOM', sector:'Energy', geo:'US', priority:'sector', bucket:'retirement',
+    buyGuide:'3–5 shares (~€300–500)',
+    diversifies:'Energy sector absent. US-domiciled but uncorrelated to AI cycle. Adds inflation hedge to retirement bucket.',
+    why:'Defensive cash flow, strong dividend. Uncorrelated to AI capex cycle. Useful substitute for bond ETFs (which are 41% IE tax). Stock — 33% CGT.',
+  },
+  {
+    ticker:'JNJ', sector:'Healthcare', geo:'US', priority:'sector', bucket:'retirement',
+    buyGuide:'1–2 shares (~€165–330)',
+    diversifies:'Healthcare absent from portfolio. Low beta, dividend payer. Further reduces tech concentration in retirement bucket.',
+    why:'Pharma + medtech. Defensive, pays ~3% dividend, low correlation to growth tech. Only add if NVO or another non-US healthcare already held. Stock — 33% CGT.',
+  },
+  {
+    ticker:'GOOGL', sector:'AI Software', geo:'US', priority:'sector', bucket:'growth',
+    buyGuide:'2–4 shares (~€340–680)',
+    diversifies:'Adds AI software layer vs your current AI hardware/infra concentration. Same AI tailwind, different risk profile.',
+    why:'Cheapest Mag-7 on P/E. Cloud + Search + YouTube. Increases US/AI concentration so only if geographic risk already managed. Stock — 33% CGT.',
+  },
+  {
+    ticker:'MSFT', sector:'AI Software', geo:'US', priority:'sector', bucket:'growth',
+    buyGuide:'1–2 shares (~€430–860)',
+    diversifies:'AI software exposure to complement AI hardware (NVDA). More defensive than pure-play AI infra — has earnings, cashflow.',
+    why:'Azure + Copilot + OpenAI wrapper. Recurring revenue model lowers volatility vs your HC names. Pair with a non-US pick to offset concentration. Stock — 33% CGT.',
+  },
   // ── Uncorrelated / alternative ──
-  { ticker:'CEG',       sector:'Nuclear Energy', geo:'US',            priority:'theme', why:'Constellation Energy — nuclear baseload for AI data centres. High-conviction infrastructure bet with different risk to your AI stack. Stock — 33% CGT.' },
-  { ticker:'NOVO-B.CO', sector:'Healthcare',     geo:'Europe (DK)',   priority:'theme', why:'Novo Nordisk on Copenhagen exchange (avoid ADR premium). GLP-1 dominance, 10yr growth runway. Stock — 33% CGT.' },
-  { ticker:'2330.TW',   sector:'Semiconductors', geo:'Asia (TW)',     priority:'theme', why:'TSMC on Taiwan exchange — direct listing, no ADR premium. If you can access via DeGiro. Stock — 33% CGT.' },
+  {
+    ticker:'CEG', sector:'Nuclear Energy', geo:'US', priority:'theme', bucket:'high_conviction',
+    buyGuide:'2–3 shares (~€360–540)',
+    diversifies:'Nuclear is the only energy source with guaranteed AI datacenter demand. Different risk factor from your software/semi AI cluster.',
+    why:'Constellation Energy provides baseload nuclear power to AI data centres. AI capex tailwind but through a completely different mechanism to NVDA/NBIS. Stock — 33% CGT.',
+  },
 ];
 
 function renderStrategy(positions, lifetime) {
@@ -1488,14 +1535,69 @@ function renderStrategy(positions, lifetime) {
     ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is AI/tech-concentrated — diversifying sectors ranked first.</div>'
     : '<div style="font-size:12px;color:var(--green);margin-bottom:10px">✓ Geographic and sector balance is reasonable.</div>';
 
-  E('strat-suggestions').innerHTML = `<div class="strat-card">${gapNote}${pickedSuggestions.map(s => `
-    <div class="suggest-row">
-      <div>
-        <div class="suggest-ticker">${s.ticker}</div>
-        <div style="font-size:10px;color:var(--muted)">${s.sector} · ${s.geo}</div>
-      </div>
-      <div class="suggest-why">${s.why}</div>
-    </div>`).join('')}</div>`;
+  // Fetch live prices for suggestions then render
+  const suggTickers = pickedSuggestions.map(s => s.ticker);
+  fetch('/api/scan').then(r => r.json()).then(scanData => {
+    const priceMap = {};
+    (scanData.scanner || []).forEach(row => { priceMap[row.ticker] = row; });
+
+    E('strat-suggestions').innerHTML = `<div class="strat-card">${gapNote}${pickedSuggestions.map(s => {
+      const q = priceMap[s.ticker];
+      const priceStr = q && q.price != null
+        ? `<span style="font-size:13px;font-weight:700;color:var(--text)">${q.price.toFixed(2)}</span> <span style="font-size:10px;color:var(--muted)">${q.currency||''}</span>`
+        : '<span style="font-size:11px;color:var(--muted)">price loading…</span>';
+      const dayStr = q && q.day_pct != null
+        ? `<span style="font-size:11px;font-weight:600;color:${q.day_pct>=0?'var(--green)':'var(--red)'}">${q.day_pct>=0?'+':''}${q.day_pct.toFixed(1)}% today</span>`
+        : '';
+      const bucketColor = s.bucket === 'high_conviction' ? 'var(--purple)' : s.bucket === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
+      const bucketLabel = s.bucket === 'high_conviction' ? 'High Conv.' : s.bucket === 'growth' ? 'Growth' : 'Retirement';
+      return `
+      <div class="suggest-row" style="flex-direction:column;gap:6px;padding:12px 0">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="min-width:80px">
+            <div class="suggest-ticker">${s.ticker}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.sector} · ${s.geo}</div>
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
+              ${priceStr} ${dayStr}
+              <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${bucketColor}22;color:${bucketColor}">${bucketLabel}</span>
+              <span style="font-size:10px;color:#fbbf24;font-weight:600">Buy: ${s.buyGuide}</span>
+            </div>
+            <div style="font-size:12px;color:#94a3b8;line-height:1.5">${s.why}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);padding:6px 10px;background:var(--surface2);border-radius:6px;border-left:2px solid ${bucketColor}">
+          <span style="color:${bucketColor};font-weight:700">Diversifies: </span>${s.diversifies}
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  }).catch(() => {
+    // fallback: render without live prices
+    E('strat-suggestions').innerHTML = `<div class="strat-card">${gapNote}${pickedSuggestions.map(s => {
+      const bucketColor = s.bucket === 'high_conviction' ? 'var(--purple)' : s.bucket === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
+      const bucketLabel = s.bucket === 'high_conviction' ? 'High Conv.' : s.bucket === 'growth' ? 'Growth' : 'Retirement';
+      return `
+      <div class="suggest-row" style="flex-direction:column;gap:6px;padding:12px 0">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="min-width:80px">
+            <div class="suggest-ticker">${s.ticker}</div>
+            <div style="font-size:10px;color:var(--muted)">${s.sector} · ${s.geo}</div>
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
+              <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${bucketColor}22;color:${bucketColor}">${bucketLabel}</span>
+              <span style="font-size:10px;color:#fbbf24;font-weight:600">Buy: ${s.buyGuide}</span>
+            </div>
+            <div style="font-size:12px;color:#94a3b8;line-height:1.5">${s.why}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);padding:6px 10px;background:var(--surface2);border-radius:6px;border-left:2px solid ${bucketColor}">
+          <span style="color:${bucketColor};font-weight:700">Diversifies: </span>${s.diversifies}
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  });
 }
 
 init();
