@@ -280,6 +280,10 @@
     }
     .tab.active { background: var(--blue); color: #000; border-color: var(--blue); }
 
+    /* ── Panel show/hide (applies at all breakpoints) ── */
+    .section-panel { display: none; }
+    .section-panel.active { display: block; }
+
     /* ── Responsive ── */
     @media (max-width: 900px) {
       .summary-grid { grid-template-columns: repeat(2, 1fr); }
@@ -288,8 +292,6 @@
       .page { padding: 12px; }
       .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .card-value { font-size: 20px; }
-      .section-panel { display: none; }
-      .section-panel.active { display: block; }
       header { padding: 0 12px; }
       .logo-text { display: none; }
       .modal { padding: 18px; }
