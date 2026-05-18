@@ -274,19 +274,21 @@ class Scheduler:
     def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
         """Fetch weekly+daily history via Yahoo cookie session. Returns list of {date, close, currency}."""
         import requests as _req
+        from datetime import date, timedelta
         from src.quotes import _session, _crumb, _ensure_session, _HEADERS
         _ensure_session()
 
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
         points_raw = []
         for interval, range_start, range_end in [
             ("1wk", start, end_daily),
-            ("1d",  end_daily, None),
+            ("1d",  end_daily, tomorrow),
         ]:
-            params = {"interval": interval, "period1": self._to_ts(range_start)}
-            if range_end:
-                params["period2"] = self._to_ts(range_end)
-            else:
-                params["range"] = "3mo"
+            params = {
+                "interval": interval,
+                "period1": self._to_ts(range_start),
+                "period2": self._to_ts(range_end),
+            }
             if _crumb:
                 params["crumb"] = _crumb
             try:
@@ -304,10 +306,10 @@ class Scheduler:
                 currency = meta.get("currency", "?")
                 timestamps = result.get("timestamp", [])
                 closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+                import datetime as _dt
                 for ts, c in zip(timestamps, closes):
                     if c is None:
                         continue
-                    import datetime as _dt
                     date_str = _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
                     points_raw.append({"date": date_str, "close": c, "currency": currency})
             except Exception:
