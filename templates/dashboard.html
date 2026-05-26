@@ -1371,26 +1371,96 @@ function renderStrategy(positions, lifetime) {
   const taxWarning = taxHeavyVal > 0
     ? `<br><span style="color:#fbbf24;font-size:12px">⚠️ ${taxHeavyPct.toFixed(0)}% of this bucket (€${Math.round(taxHeavyVal).toLocaleString()}) is in ETFs/ETCs taxed at 41% in Ireland with 8-year deemed disposal. Hold existing positions but add new retirement exposure via stocks only (BRK-B, XOM, MSFT).</span>`
     : '';
-  const retAction = retDiff < -10
-    ? `<strong style="color:#fbbf24">Underweight by ${Math.abs(retDiff).toFixed(0)}%.</strong> Suggested DCA: <strong>€${Math.round((totalValue * retTargetPct/100 - retVal)/12)}/mo</strong> into individual stocks — BRK-B, XOM, or MSFT. <strong>Do not buy more ETFs</strong> (41% IE tax).${taxWarning}`
+  // ── Retirement action ──────────────────────────────────────────
+  const retGap = Math.max(0, totalValue * retTargetPct / 100 - retVal);
+  const retMonthlySuggested = retGap > 0 ? Math.round(retGap / 12) : 0;
+  const retProgressPct = Math.min(100, retVal / (totalValue * retTargetPct / 100) * 100);
+  const retBarColor = retProgressPct >= 90 ? 'var(--green)' : retProgressPct >= 70 ? '#fbbf24' : '#f87171';
+  const retProgressBar = `<div style="margin:8px 0 4px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
+      <span>€${Math.round(retVal).toLocaleString()} now</span><span>Target ${retTargetPct}% · €${Math.round(totalValue*retTargetPct/100).toLocaleString()}</span>
+    </div>
+    <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+      <div style="height:100%;width:${retProgressPct.toFixed(1)}%;background:${retBarColor};border-radius:4px;transition:width 0.6s"></div>
+    </div>
+    <div style="font-size:11px;color:${retBarColor};margin-top:3px">${retProgressPct.toFixed(1)}% of target</div>
+  </div>`;
+  const retAction = retProgressBar + (retDiff < -10
+    ? `<strong style="color:#fbbf24">Underweight by ${Math.abs(retDiff).toFixed(0)}%.</strong> Close gap in ~12 months: <strong>€${retMonthlySuggested}/mo</strong> into stocks only — BRK-B, XOM, or MSFT. <strong>No new ETFs</strong> (41% IE tax + 8yr deemed disposal).${taxWarning}`
     : retDiff > 10
-    ? `<strong style="color:var(--red)">Overweight by ${retDiff.toFixed(0)}%.</strong> Pause new retirement purchases until growth/conviction buckets catch up.${taxWarning}`
-    : `<strong style="color:var(--green)">On target.</strong> Maintain cadence. New defensive buys: BRK-B or XOM — not ETFs (41% IE tax).${taxWarning}`;
+    ? `<strong style="color:var(--red)">Overweight by ${retDiff.toFixed(0)}%.</strong> Pause retirement DCA — let growth and HC catch up.${taxWarning}`
+    : `<strong style="color:var(--green)">On target.</strong> Maintain DCA cadence. Next buy: BRK-B or XOM — stocks only, no ETFs.${taxWarning}`);
 
-  const growNvdaPe = '~35x fwd P/E'; // static until drilldown data flows here
-  const growAction = growPnl > 30
-    ? `Up <strong>${growPnl.toFixed(1)}%</strong> blended. Buffett rule: let winners run but set a mental stop at 2× fair value. NVDA ${growNvdaPe} — watch for multiple compression. <span class="hint">Consider MSFT or TSM to diversify semi-concentration.</span>`
-    : `Up <strong>${growPnl.toFixed(1)}%</strong> blended. Still reasonable multiples — hold and add on dips. <span class="hint">ASML pullbacks near €1,200 are historically good entries.</span>`;
+  // ── Growth action — per-position breakdown ──────────────────────
+  const growRows = growPos.map(p => {
+    const pnl = p.pnl_pct || 0;
+    const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
+    let signal, note;
+    if (p.ticker === 'SNDK') {
+      signal = pnl > 40 ? 'TRIM ▲' : pnl < -20 ? 'REVIEW ▼' : 'HOLD';
+      note = 'Separate spin-off bet — independent thesis from AI cluster. Exit if thesis breaks.';
+    } else if (p.ticker === 'NVDA') {
+      signal = pnl > 80 ? 'LET RUN' : pnl > 50 ? 'HOLD' : 'ADD DIP';
+      note = pnl > 50 ? 'Multiple expansion already priced — let winners run, mental stop at 2× fair value.' : 'Core AI infrastructure hold. Add on pullbacks below €140.';
+    } else if (p.ticker === 'ASML.AS') {
+      signal = pnl > 40 ? 'HOLD' : pnl < 0 ? 'ADD DIP' : 'HOLD';
+      note = 'European semi monopoly. Pullbacks near €1,200 are historically good entries. Long hold.';
+    } else {
+      signal = pnl > 30 ? 'TRIM ▲' : 'HOLD';
+      note = 'Monitor multiples — hold unless valuation stretches beyond 2× fair value.';
+    }
+    const sigColor = signal.startsWith('TRIM') ? '#fbbf24' : signal === 'ADD DIP' ? 'var(--green)' : 'var(--muted)';
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="width:52px;font-weight:700;font-size:13px;color:var(--fg)">${p.ticker}</div>
+      <div style="width:54px;font-weight:700;font-size:13px;color:${pnlColor}">${pnlStr}</div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:${sigColor}">${signal}</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.4">${note}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const growAction = growRows || `<span style="color:var(--muted)">No growth positions yet.</span>`;
 
-  // High conviction: fully deployed (3 tranches), track toward exit target
+  // ── HC: visual goal tracker ─────────────────────────────────────
   const EXIT_LOW = 15000, EXIT_HIGH = 20000;
-  const neededLow  = EXIT_LOW  - hcVal;
-  const neededHigh = EXIT_HIGH - hcVal;
-  const progressPct = Math.min(100, hcVal / EXIT_LOW * 100);
-  const progressColor = progressPct >= 100 ? 'var(--green)' : progressPct >= 60 ? '#fbbf24' : 'var(--red)';
-  const hcAction = `<strong>€${Math.round(hcCost).toLocaleString()}</strong> fully deployed (3 tranches) · current value <strong>€${Math.round(hcVal).toLocaleString()}</strong> · return <strong style="color:${hcPnlPct>=0?'var(--green)':'var(--red)'}">${hcPnlPct>=0?'+':''}${hcPnlPct.toFixed(1)}%</strong>.
-    <br>Exit target €${EXIT_LOW.toLocaleString()}–€${EXIT_HIGH.toLocaleString()} · progress <strong style="color:${progressColor}">${progressPct.toFixed(1)}%</strong> to lower bound · ${neededLow <= 0 ? '<strong style="color:var(--green)">✓ Lower target reached — consider trimming</strong>' : `need <strong style="color:#fbbf24">€${Math.round(neededLow).toLocaleString()}</strong> more gain to reach €${EXIT_LOW.toLocaleString()}`}.
-    <br><strong style="color:var(--muted)">Position locked — no further additions. Hold to 6–12 month exit window.</strong>`;
+  const hcMultiplier = hcCost > 0 ? hcVal / hcCost : 1;
+  const multNeededLow  = hcCost > 0 ? EXIT_LOW  / hcCost : 0;
+  const multNeededHigh = hcCost > 0 ? EXIT_HIGH / hcCost : 0;
+  // Progress bar: scale 0 → EXIT_HIGH
+  const costBarPct    = Math.min(100, hcCost / EXIT_HIGH * 100);
+  const currentBarPct = Math.min(100, hcVal  / EXIT_HIGH * 100);
+  const lowMarkerPct  = EXIT_LOW / EXIT_HIGH * 100; // = 75%
+  const barColor = hcVal >= EXIT_LOW ? 'var(--green)' : hcVal >= hcCost * 1.5 ? '#fbbf24' : '#f472b6';
+  // Exit window: 6-12mo from first buy 2026-05-11
+  const firstBuy = new Date('2026-05-11');
+  const exitStart = new Date(firstBuy); exitStart.setMonth(exitStart.getMonth() + 6);
+  const exitEnd   = new Date(firstBuy); exitEnd.setMonth(exitEnd.getMonth() + 12);
+  const today = new Date();
+  const daysToWindow = Math.max(0, Math.round((exitStart - today) / 86400000));
+  const windowOpen = today >= exitStart;
+  const windowLabel = windowOpen
+    ? `<strong style="color:var(--green)">Exit window open</strong> (closes ${exitEnd.toLocaleDateString('en-IE',{month:'short',year:'numeric'})})`
+    : `Exit window opens in <strong>${daysToWindow}d</strong> (${exitStart.toLocaleDateString('en-IE',{month:'short',year:'numeric'})} – ${exitEnd.toLocaleDateString('en-IE',{month:'short',year:'numeric'})})`;
+  const neededLow = Math.max(0, EXIT_LOW - hcVal);
+  const hcAction = `
+  <div style="margin:8px 0 6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>Cost €${Math.round(hcCost).toLocaleString()}</span>
+      <span style="color:#f472b6">€15k</span>
+      <span style="color:var(--muted)">€20k</span>
+    </div>
+    <div style="position:relative;height:12px;background:var(--border);border-radius:6px;overflow:visible">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${currentBarPct.toFixed(1)}%;background:${barColor};border-radius:6px;transition:width 0.6s"></div>
+      <div style="position:absolute;left:${lowMarkerPct}%;top:-3px;width:2px;height:18px;background:#f472b6;border-radius:1px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
+      <span style="color:${barColor};font-weight:700">€${Math.round(hcVal).toLocaleString()} · ${(hcPnlPct>=0?'+':'')+hcPnlPct.toFixed(1)}% · ${hcMultiplier.toFixed(2)}×</span>
+      <span style="color:var(--muted)">${neededLow > 0 ? `need +€${Math.round(neededLow).toLocaleString()} (${multNeededLow.toFixed(1)}× cost)` : '✓ Lower target reached'}</span>
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-top:6px">${windowLabel}</div>
+  <div style="font-size:11px;color:var(--muted);margin-top:4px">Position locked — no further additions. Need ${multNeededLow.toFixed(1)}× to hit €15k · ${multNeededHigh.toFixed(1)}× for €20k.</div>`;
 
   E('strat-buckets').innerHTML = [
     { title:'🛡️ Retirement / Defensive', color:'#60a5fa', pct:retPct, tickers:retPos.map(p=>p.ticker).join(' · '), body:retAction },
