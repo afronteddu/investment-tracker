@@ -676,7 +676,9 @@ const _chartOpts = (yFmt, tooltipFmt) => ({
   responsive: true, maintainAspectRatio: false,
   interaction: { mode: 'index', intersect: false },
   plugins: {
-    legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } } },
+    legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 },
+      filter: (item, chart) => !chart.datasets[item.datasetIndex]?.legendHide
+    }},
     tooltip: {
       backgroundColor: '#1a1f2b', borderColor: '#222736', borderWidth: 1,
       titleColor: '#e2e8f0', bodyColor: '#94a3b8',
@@ -710,6 +712,7 @@ async function loadCharts() {
 function _renderCharts(d) {
   const series = d.series || [];
   const portfolio = d.portfolio || [];
+  const portfolioHistoric = d.portfolio_historic || [];
   const cutoff = _cutoffDate(_currentPeriod);
 
   const openSeries   = series.filter(s => !s.closed);
@@ -719,27 +722,34 @@ function _renderCharts(d) {
     const el = E(id); if (el) el.parentElement.style.opacity = '1';
   });
 
-  // ── Chart 1: Portfolio total value (open) + closed series as grey ghost lines ──
+  // ── Chart 1: Portfolio total value — grey historic line + blue current ──
   const portFiltered = _filterPoints(portfolio, cutoff);
-  if (portFiltered.length) {
+  const histFiltered = _filterPoints(portfolioHistoric, cutoff);
+  if (portFiltered.length || histFiltered.length) {
     if (_portfolioChart) _portfolioChart.destroy();
-    const port1datasets = [{
-      label: 'Portfolio EUR',
-      data: portFiltered.map(p => p.value_eur),
+    // Merge all dates for shared x-axis
+    const allPortDates = [...new Set([...histFiltered.map(p => p.date), ...portFiltered.map(p => p.date)])].sort();
+    const histByDate = Object.fromEntries(histFiltered.map(p => [p.date, p.value_eur]));
+    const portByDate = Object.fromEntries(portFiltered.map(p => [p.date, p.value_eur]));
+    const port1datasets = [];
+    if (histFiltered.length) {
+      port1datasets.push({
+        label: 'All-time (incl. exited)',
+        data: allPortDates.map(d => histByDate[d] ?? null),
+        borderColor: 'rgba(148,163,184,0.45)', backgroundColor: 'transparent',
+        borderWidth: 1.5, borderDash: [5,4],
+        pointRadius: 0, pointHoverRadius: 3, tension: 0.3, fill: false, spanGaps: true,
+      });
+    }
+    port1datasets.push({
+      label: 'Current portfolio',
+      data: allPortDates.map(d => portByDate[d] ?? null),
       borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)',
       borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: true, spanGaps: true,
-    }];
-    // Add each closed ticker as a faint grey dashed line
-    const allDatesPort = [...new Set([...portFiltered.map(p => p.date), ...closedSeries.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date))])].sort();
-    closedSeries.forEach(s => {
-      const pts = _filterPoints(s.points, cutoff);
-      if (!pts.length) return;
-      const byDate = Object.fromEntries(pts.map(p => [p.date, p.value_eur]));
-      // Closed series have no value_eur — skip from portfolio chart (we have no share count)
     });
     _portfolioChart = new Chart(E('chart-portfolio'), {
       type: 'line',
-      data: { labels: portFiltered.map(p => p.date), datasets: port1datasets },
+      data: { labels: allPortDates, datasets: port1datasets },
       options: _chartOpts(
         v => '€' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0)),
         ctx => ' €' + ctx.parsed.y.toLocaleString('en-IE', {maximumFractionDigits: 0})
@@ -778,8 +788,8 @@ function _renderCharts(d) {
       pointRadius: 0, pointHoverRadius: 3, tension: 0.3, fill: false, spanGaps: true,
     });
   });
-  // Zero baseline
-  pctDatasets.unshift({ label: '0%', data: allDates2.map(() => 0), borderColor: 'rgba(100,116,139,0.3)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
+  // Zero baseline — hidden from legend
+  pctDatasets.unshift({ label: '0%', data: allDates2.map(() => 0), borderColor: 'rgba(100,116,139,0.3)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, hidden: false, legendHide: true });
 
   if (_combinedChart) _combinedChart.destroy();
   _combinedChart = new Chart(E('chart-combined'), {
@@ -956,21 +966,27 @@ function renderLifetime(lt) {
     <span>${hasMixed ? fmtAxis(-Math.round(maxAbs)) : '0'}</span>
   </div>`;
 
+  const fmtBar = v => Math.abs(v) >= 1000 ? `€${(v/1000).toFixed(1)}k` : `€${Math.abs(v)}`;
   const bars = flows.map(f => {
     const posH = f.net > 0 ? Math.max(2, Math.round(f.net / maxAbs * chartH)) : 0;
     const negH = f.net < 0 ? Math.max(2, Math.round(Math.abs(f.net) / maxAbs * chartH)) : 0;
     const col = f.net >= 0 ? 'rgba(74,222,128,0.75)' : 'rgba(248,113,113,0.75)';
+    const labelCol = f.net >= 0 ? '#4ade80' : '#f87171';
+    const valLabel = `<div style="font-size:8px;color:${labelCol};text-align:center;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;line-height:1;padding:1px 0">${fmtBar(f.net)}</div>`;
     if (hasMixed) {
-      return `<div title="${f.month}: €${f.net.toLocaleString()}" style="flex:1;min-width:8px;display:flex;flex-direction:column;justify-content:center;gap:0;cursor:default">
-        <div style="height:${chartH - posH}px"></div>
+      return `<div title="${f.month}: ${fmtBar(f.net)}" style="flex:1;min-width:14px;display:flex;flex-direction:column;justify-content:center;gap:0;cursor:default">
+        <div style="height:${chartH - posH}px;display:flex;align-items:flex-end;justify-content:center">${f.net > 0 ? valLabel : ''}</div>
         <div style="height:${posH}px;background:${f.net>=0?col:'transparent'};border-radius:2px 2px 0 0"></div>
         <div style="height:1px;background:var(--border)"></div>
         <div style="height:${negH}px;background:${f.net<0?col:'transparent'};border-radius:0 0 2px 2px"></div>
-        <div style="height:${chartH - negH}px"></div>
+        <div style="height:${chartH - negH}px;display:flex;align-items:flex-start;justify-content:center">${f.net < 0 ? valLabel : ''}</div>
       </div>`;
     }
-    return `<div title="${f.month}: €${f.net.toLocaleString()}" style="flex:1;min-width:8px;display:flex;flex-direction:column;justify-content:flex-end;cursor:default">
-      <div style="height:${posH}px;background:${col};border-radius:2px 2px 0 0"></div>
+    return `<div title="${f.month}: ${fmtBar(f.net)}" style="flex:1;min-width:14px;display:flex;flex-direction:column;justify-content:flex-end;cursor:default">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        ${valLabel}
+        <div style="width:100%;height:${posH}px;background:${col};border-radius:2px 2px 0 0"></div>
+      </div>
     </div>`;
   }).join('');
 

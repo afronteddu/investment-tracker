@@ -277,6 +277,9 @@ def compute_closed_positions(data_dir: str = "data/transactions") -> list[dict]:
             info["total_cost_eur"] += abs(total_eur)
             if info["first_buy_date"] is None:
                 info["first_buy_date"] = d
+            # Track peak shares (max ever held)
+            if info["shares"] > info.get("peak_shares", 0):
+                info["peak_shares"] = info["shares"]
         else:
             # Sell
             info["shares"] -= abs(qty)

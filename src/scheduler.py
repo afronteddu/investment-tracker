@@ -394,29 +394,25 @@ class Scheduler:
             except Exception:
                 continue
 
-        # ── Closed positions — history only up to last sell date ──────
+        # ── Closed positions — history only between first buy and last sell ──
+        closed_value_series: dict[str, dict[str, float]] = {}
         for cp in closed:
             ticker = cp["ticker"]
             if not cp["first_buy_date"] or not cp["last_sell_date"]:
                 continue
             try:
-                # Fetch from first buy to last sell only
                 raw = self._fetch_history_series(ticker, cp["first_buy_date"], cp["last_sell_date"])
                 if not raw:
                     continue
                 currency = raw[0]["currency"]
-                avg_cost = cp["total_cost_eur"] / max(1, sum(
-                    t["quantity"] for t in [] # we don't have shares here, use total_cost as proxy
-                )) if False else None
-                # Recompute avg_cost from transactions directly
+                peak_shares = cp.get("peak_shares", 0)
                 buy_date = datetime.strptime(cp["first_buy_date"], "%Y-%m-%d").date()
                 sell_date = datetime.strptime(cp["last_sell_date"], "%Y-%m-%d").date()
+                # avg_cost_eur per share = total_cost / peak_shares
+                avg_cost_per_share = cp["total_cost_eur"] / peak_shares if peak_shares else 0
+                first_close_eur = None
                 points = []
                 val_by_date: dict[str, float] = {}
-                # We need shares held at time to compute value — approximate with final total shares=0
-                # Instead track pct using avg_cost_eur proxy from total_cost_eur / approx shares
-                # We'll use the first close as the cost basis for % calculation (anchored to buy price)
-                first_close_eur = None
                 for p in raw:
                     row_date = datetime.strptime(p["date"], "%Y-%m-%d").date()
                     if row_date < buy_date or row_date > sell_date:
@@ -425,21 +421,23 @@ class Scheduler:
                     close_eur = close * fx.get(currency, 1.0)
                     if first_close_eur is None:
                         first_close_eur = close_eur
-                    pct = (close_eur - first_close_eur) / first_close_eur * 100 if first_close_eur else 0
-                    # For portfolio total: use total_cost_eur as a proxy for position size (no share count)
-                    # We can't know shares at each point for closed positions, so omit from portfolio total
-                    points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": None})
+                    # % anchored to avg cost per share (same logic as open positions)
+                    pct = (close_eur - avg_cost_per_share) / avg_cost_per_share * 100 if avg_cost_per_share else 0
+                    val = peak_shares * close_eur
+                    points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
+                    val_by_date[p["date"]] = val
                 if points:
                     result.append({
                         "ticker": ticker,
                         "name": TICKER_NAMES.get(ticker, ticker),
                         "bucket": cp["bucket"],
-                        "avg_cost_eur": round(cp["total_cost_eur"], 2),
+                        "avg_cost_eur": round(avg_cost_per_share, 2),
                         "first_buy_date": cp["first_buy_date"],
                         "last_sell_date": cp["last_sell_date"],
                         "closed": True,
                         "points": points,
                     })
+                    closed_value_series[ticker] = val_by_date
             except Exception:
                 continue
 
@@ -455,9 +453,24 @@ class Scheduler:
                     last_val = vs[d]
                 portfolio_by_date[d] += last_val
 
+        # Build historic portfolio total (open + closed) for the pre-exit grey line
+        all_dates_hist = sorted({d for vs in {**ticker_value_series, **closed_value_series}.values() for d in vs})
+        portfolio_historic: dict[str, float] = {d: 0.0 for d in all_dates_hist}
+        for vs in {**ticker_value_series, **closed_value_series}.values():
+            last_val = 0.0
+            for d in all_dates_hist:
+                if d in vs:
+                    last_val = vs[d]
+                portfolio_historic[d] += last_val
+
         result.sort(key=lambda x: x["first_buy_date"] or "")
         portfolio_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_by_date.items())]
-        self.state["history_cache"] = {"series": result, "portfolio": portfolio_points}
+        portfolio_historic_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_historic.items())]
+        self.state["history_cache"] = {
+            "series": result,
+            "portfolio": portfolio_points,
+            "portfolio_historic": portfolio_historic_points,
+        }
 
     async def _refresh_signals(self):
         """Fetch RSI/earnings/news per ticker, one at a time in a thread, yielding between each."""
