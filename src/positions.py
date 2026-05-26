@@ -87,7 +87,7 @@ BUCKET_MAP = {
     "APLD": "high_conviction",
     "VRT": "high_conviction",
     "NBIS": "high_conviction",
-    "SNDK": "high_conviction",
+    "SNDK": "growth",
     "NVDA": "growth",
     "ASML.AS": "growth",
     "BRK-B": "retirement",
