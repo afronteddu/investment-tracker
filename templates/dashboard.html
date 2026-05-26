@@ -1381,15 +1381,15 @@ function renderStrategy(positions, lifetime) {
     ? `Up <strong>${growPnl.toFixed(1)}%</strong> blended. Buffett rule: let winners run but set a mental stop at 2× fair value. NVDA ${growNvdaPe} — watch for multiple compression. <span class="hint">Consider MSFT or TSM to diversify semi-concentration.</span>`
     : `Up <strong>${growPnl.toFixed(1)}%</strong> blended. Still reasonable multiples — hold and add on dips. <span class="hint">ASML pullbacks near €1,200 are historically good entries.</span>`;
 
-  // High conviction: deployed, remaining, exit target
-  const TOTAL_HC_BUDGET = 7500; // approximate from context
-  const remaining = Math.max(0, TOTAL_HC_BUDGET - hcCost);
-  const exitTarget = 17500;
-  const needed = exitTarget - hcVal;
-  const hcAction = `<strong>€${Math.round(hcCost).toLocaleString()}</strong> deployed at cost · current value <strong>€${Math.round(hcVal).toLocaleString()}</strong> · return <strong style="color:${hcPnlPct>=0?'var(--green)':'var(--red)'}">${hcPnlPct>=0?'+':''}${hcPnlPct.toFixed(1)}%</strong>.
-    <br>Remaining tranches: <strong>~€${Math.round(remaining).toLocaleString()}</strong> (May 19 + May 26).
-    <br>Exit target €${exitTarget.toLocaleString()} — need <strong style="color:${needed<=0?'var(--green)':'#fbbf24'}">€${Math.max(0,Math.round(needed)).toLocaleString()} more</strong> gain. At ${hcPct.toFixed(1)}% of portfolio — <strong>${hcPct < 15 ? 'add room available' : hcPct > 30 ? 'size is large — manage risk' : 'appropriate sizing'}</strong>.
-    <br><span class="hint">For next moonshot outside AI: consider NOVO-B.CO (healthcare), XOM (energy), or BTC-USD (asymmetric).</span>`;
+  // High conviction: fully deployed (3 tranches), track toward exit target
+  const EXIT_LOW = 15000, EXIT_HIGH = 20000;
+  const neededLow  = EXIT_LOW  - hcVal;
+  const neededHigh = EXIT_HIGH - hcVal;
+  const progressPct = Math.min(100, hcVal / EXIT_LOW * 100);
+  const progressColor = progressPct >= 100 ? 'var(--green)' : progressPct >= 60 ? '#fbbf24' : 'var(--red)';
+  const hcAction = `<strong>€${Math.round(hcCost).toLocaleString()}</strong> fully deployed (3 tranches) · current value <strong>€${Math.round(hcVal).toLocaleString()}</strong> · return <strong style="color:${hcPnlPct>=0?'var(--green)':'var(--red)'}">${hcPnlPct>=0?'+':''}${hcPnlPct.toFixed(1)}%</strong>.
+    <br>Exit target €${EXIT_LOW.toLocaleString()}–€${EXIT_HIGH.toLocaleString()} · progress <strong style="color:${progressColor}">${progressPct.toFixed(1)}%</strong> to lower bound · ${neededLow <= 0 ? '<strong style="color:var(--green)">✓ Lower target reached — consider trimming</strong>' : `need <strong style="color:#fbbf24">€${Math.round(neededLow).toLocaleString()}</strong> more gain to reach €${EXIT_LOW.toLocaleString()}`}.
+    <br><strong style="color:var(--muted)">Position locked — no further additions. Hold to 6–12 month exit window.</strong>`;
 
   E('strat-buckets').innerHTML = [
     { title:'🛡️ Retirement / Defensive', color:'#60a5fa', pct:retPct, tickers:retPos.map(p=>p.ticker).join(' · '), body:retAction },
@@ -1475,7 +1475,7 @@ function renderStrategy(positions, lifetime) {
       icon: '🚀', label: `Speculative bucket: ${hcPctRisk.toFixed(1)}% in high-conviction bets`,
       level: hcPctRisk > 35 ? 'danger' : hcPctRisk > 25 ? 'warn' : 'ok',
       badge: hcPctRisk > 35 ? 'OVERSIZED' : hcPctRisk > 25 ? 'WATCH' : 'OK',
-      note: hcPctRisk > 25 ? 'Moonshot positions are appropriately sized but monitor. Set exit levels before deploying next tranche.' : 'Speculative exposure within risk budget.',
+      note: hcPctRisk > 25 ? 'Moonshot positions are appropriately sized but monitor. All tranches deployed — hold to exit window (6–12 months).' : 'Speculative exposure within risk budget.',
     },
     {
       icon: '🇮🇪', label: `Irish tax: ${taxHeavyPct.toFixed(0)}% of retirement bucket (€${Math.round(taxHeavyVal).toLocaleString()}) in 41% ETF/ETC positions`,
