@@ -1316,68 +1316,143 @@ const TICKER_META = {
 
 // Suggested additions — computed dynamically in renderStrategy() based on current gaps.
 const SUGGESTION_POOL = [
-  // ── Geographic diversification (non-US) ──
-  {
-    ticker:'TSM', sector:'Semiconductors', geo:'Asia', priority:'geo', bucket:'retirement',
-    buyGuide:'1–2 shares (~€160–320)',
-    diversifies:'Only Asian exposure in portfolio. Cuts US single-country risk from 70%+ → ~60%. Semiconductor supply chain hedge.',
-    why:'Makes every NVDA/AMD chip. Profits regardless of AI software winner. Uncorrelated to US politics & AI narrative. Stock — 33% CGT.',
-  },
-  {
-    ticker:'NVO', sector:'Healthcare', geo:'Europe (DK)', priority:'geo', bucket:'retirement',
-    buyGuide:'2–4 shares (~€150–300)',
-    diversifies:'Zero AI/tech correlation. First healthcare exposure in portfolio. European domicile reduces USD FX drag.',
-    why:'GLP-1 monopoly with 10yr runway. Defensive cash flow, not correlated to your AI cluster. Balances retirement bucket. Stock — 33% CGT.',
-  },
+  // ── Europe ──
   {
     ticker:'SAP', sector:'Enterprise SW', geo:'Europe (DE)', priority:'geo', bucket:'retirement',
-    buyGuide:'1–2 shares (~€270–540)',
-    diversifies:'European enterprise software — different cycle from US growth tech. EUR-denominated, reduces USD FX exposure.',
-    why:'Cloud ERP leader with sticky recurring revenue. Trades at a discount to Salesforce/ServiceNow. Stable compounder for retirement bucket. Stock — 33% CGT.',
+    exchange:'XETRA (SAP.DE)', degiro:'✓ Available',
+    buyGuide:'1 share (~€270–300)',
+    diversifies:'EUR-denominated, zero USD FX drag. European enterprise software — different cycle from US growth tech.',
+    why:'Cloud ERP monopoly, sticky recurring revenue. Trades at discount to Salesforce/ServiceNow. Stable compounder. Stock — 33% CGT.',
+  },
+  {
+    ticker:'NOVO-B.CO', sector:'Healthcare', geo:'Europe (DK)', priority:'geo', bucket:'retirement',
+    exchange:'Copenhagen (NOVO-B.CO)', degiro:'✓ Available',
+    buyGuide:'3–5 shares (~€150–250)',
+    diversifies:'First healthcare position. DKK-denominated, cuts USD concentration. Completely uncorrelated to AI cycle.',
+    why:'GLP-1 Ozempic monopoly with 10yr runway. Cash-generative, low beta. Best defensive compounder on any European exchange. Stock — 33% CGT.',
   },
   {
     ticker:'SHEL', sector:'Energy', geo:'Europe (UK)', priority:'geo', bucket:'retirement',
+    exchange:'LSE (SHEL)', degiro:'✓ Available',
     buyGuide:'5–10 shares (~€150–300)',
-    diversifies:'Energy sector completely absent from portfolio. GBP/EUR-denominated reduces USD drag. Negative correlation to tech downturns.',
-    why:'Defensive dividend yield ~4%. Hedges against energy shocks that hurt AI data centre costs. Lower volatility than US energy. Stock — 33% CGT.',
+    diversifies:'Energy sector absent. GBP-denominated reduces USD drag. Negative correlation to tech downturns.',
+    why:'~4% dividend yield. Hedges energy shocks that hurt AI data centre costs. Lower volatility than US energy peers. Stock — 33% CGT.',
   },
   {
     ticker:'RIO', sector:'Materials', geo:'Europe/Global', priority:'geo', bucket:'retirement',
+    exchange:'LSE (RIO)', degiro:'✓ Available',
     buyGuide:'2–3 shares (~€120–180)',
-    diversifies:'Materials sector not represented. Copper & lithium exposure for energy transition. Inflation hedge independent of AI cycle.',
-    why:'Global mining (copper, lithium, iron ore). Uncorrelated to AI narrative. China demand play. Diversifies retirement bucket away from financials/tech. Stock — 33% CGT.',
+    diversifies:'Materials/commodities completely absent. Copper & lithium for energy transition. China demand hedge.',
+    why:'Global mining (copper, iron ore, lithium). Inflation hedge independent of AI cycle. ~5% dividend. Stock — 33% CGT.',
   },
-  // ── Sector diversification ──
+  {
+    ticker:'OR', sector:'Consumer Staples', geo:'Europe (FR)', priority:'geo', bucket:'retirement',
+    exchange:'Euronext Paris (OR.PA)', degiro:'✓ Available',
+    buyGuide:'1 share (~€350–400)',
+    diversifies:'First consumer staples exposure. EUR-denominated, premium brand pricing power, recession-resilient.',
+    why:"L'Oréal — dominant luxury/beauty brand. Consistent 10-15% earnings growth. Pure Europe compounder with EM distribution upside. Stock — 33% CGT.",
+  },
+  {
+    ticker:'AIR', sector:'Aerospace', geo:'Europe (FR)', priority:'geo', bucket:'retirement',
+    exchange:'Euronext Paris (AIR.PA)', degiro:'✓ Available',
+    buyGuide:'1–2 shares (~€170–340)',
+    diversifies:'Aerospace/defence absent. EUR-denominated. 20yr order backlog means revenues are locked in regardless of short-term macro.',
+    why:'Airbus — Boeing alternative with clean growth story. €1 trillion backlog. Benefits from European defence ramp. Stock — 33% CGT.',
+  },
+  {
+    ticker:'SIE', sector:'Industrials', geo:'Europe (DE)', priority:'geo', bucket:'retirement',
+    exchange:'XETRA (SIE.DE)', degiro:'✓ Available',
+    buyGuide:'1 share (~€200–230)',
+    diversifies:'Industrial automation absent from portfolio. EUR-denominated, diversifies away from pure software/AI.',
+    why:'Siemens — industrial automation + digital factory software. AI hardware beneficiary via factory robots. European quality compounder. Stock — 33% CGT.',
+  },
+  // ── Asia / Pacific ──
+  {
+    ticker:'TSM', sector:'Semiconductors', geo:'Asia (TW)', priority:'geo', bucket:'retirement',
+    exchange:'NYSE ADR (TSM)', degiro:'✓ Available',
+    buyGuide:'1–2 shares (~€160–320)',
+    diversifies:'Only Asian exposure. Cuts US concentration. Semiconductor supply chain — makes every NVDA/AMD chip.',
+    why:'Profits regardless of AI software winner. Taiwan geopolitical risk is real but already priced. USD-denominated ADR. Stock — 33% CGT.',
+  },
+  {
+    ticker:'7203.T', sector:'Automotive', geo:'Asia (JP)', priority:'geo', bucket:'retirement',
+    exchange:'Tokyo (7203.T)', degiro:'✓ Available',
+    buyGuide:'10–20 shares (~€150–300)',
+    diversifies:'Japan exposure completely absent. Automotive sector adds non-tech, non-AI diversification. JPY hedge vs EUR/USD.',
+    why:'Toyota — hybrid/EV transition, world\'s largest automaker. Deep value vs Western peers, strong dividend. JPY-denominated natural currency hedge. Stock — 33% CGT.',
+  },
+  {
+    ticker:'6758.T', sector:'Consumer Electronics', geo:'Asia (JP)', priority:'geo', bucket:'growth',
+    exchange:'Tokyo (6758.T)', degiro:'✓ Available',
+    buyGuide:'3–5 shares (~€150–250)',
+    diversifies:'Japan/consumer electronics absent. PlayStation + semiconductors + sensors — different AI beneficiary from NVDA.',
+    why:'Sony — image sensors (in every smartphone/camera), PlayStation recurring revenue, entertainment IP. Defensive tech with Japan domicile. Stock — 33% CGT.',
+  },
+  {
+    ticker:'005930.KS', sector:'Semiconductors', geo:'Asia (KR)', priority:'geo', bucket:'retirement',
+    exchange:'Korea (005930.KS)', degiro:'✓ Available on some accounts',
+    buyGuide:'5–10 shares (~€250–500)',
+    diversifies:'Korean exposure, memory semiconductor diversification. HBM chips are critical for NVDA GPUs — direct AI supply chain.',
+    why:'Samsung Electronics — HBM3 memory for AI accelerators + consumer electronics + foundry. Deeply undervalued vs TSMC. Stock — 33% CGT.',
+  },
+  // ── Africa / EM ──
+  {
+    ticker:'AMS', sector:'Mining / Gold', geo:'Africa (ZA)', priority:'geo', bucket:'retirement',
+    exchange:'Johannesburg / LSE (AMS)', degiro:'✓ Available on LSE',
+    buyGuide:'10–20 shares (~€100–200)',
+    diversifies:'Africa exposure, gold mining hedge. Completely uncorrelated to AI/tech cycle. Inflation and USD weakness hedge.',
+    why:'Anglo American — diversified mining (copper, platinum, diamonds) with South Africa base. Copper demand driven by EV/AI data centre power. Stock — 33% CGT.',
+  },
+  // ── US — Sector diversification ──
   {
     ticker:'XOM', sector:'Energy', geo:'US', priority:'sector', bucket:'retirement',
+    exchange:'NYSE (XOM)', degiro:'✓ Available',
     buyGuide:'3–5 shares (~€300–500)',
-    diversifies:'Energy sector absent. US-domiciled but uncorrelated to AI cycle. Adds inflation hedge to retirement bucket.',
-    why:'Defensive cash flow, strong dividend. Uncorrelated to AI capex cycle. Useful substitute for bond ETFs (which are 41% IE tax). Stock — 33% CGT.',
+    diversifies:'Energy absent. Uncorrelated to AI cycle. Bond substitute without 41% IE ETF tax.',
+    why:'Defensive cash flow, ~3.5% dividend. Energy crisis hedge. Useful defensive substitute for bond ETFs. Stock — 33% CGT.',
   },
   {
     ticker:'JNJ', sector:'Healthcare', geo:'US', priority:'sector', bucket:'retirement',
+    exchange:'NYSE (JNJ)', degiro:'✓ Available',
     buyGuide:'1–2 shares (~€165–330)',
-    diversifies:'Healthcare absent from portfolio. Low beta, dividend payer. Further reduces tech concentration in retirement bucket.',
-    why:'Pharma + medtech. Defensive, pays ~3% dividend, low correlation to growth tech. Only add if NVO or another non-US healthcare already held. Stock — 33% CGT.',
+    diversifies:'Healthcare absent. Low beta, dividend payer. Reduces tech concentration in retirement bucket.',
+    why:'Pharma + medtech. ~3% dividend, low AI correlation. Only add if no European healthcare (NOVO-B) already held. Stock — 33% CGT.',
   },
   {
     ticker:'GOOGL', sector:'AI Software', geo:'US', priority:'sector', bucket:'growth',
+    exchange:'Nasdaq (GOOGL)', degiro:'✓ Available',
     buyGuide:'2–4 shares (~€340–680)',
-    diversifies:'Adds AI software layer vs your current AI hardware/infra concentration. Same AI tailwind, different risk profile.',
-    why:'Cheapest Mag-7 on P/E. Cloud + Search + YouTube. Increases US/AI concentration so only if geographic risk already managed. Stock — 33% CGT.',
+    diversifies:'AI software layer vs your AI hardware/infra concentration. Same tailwind, different risk profile.',
+    why:'Cheapest Mag-7 on P/E. Cloud + Search + YouTube. Only add once geographic balance is addressed. Stock — 33% CGT.',
   },
   {
     ticker:'MSFT', sector:'AI Software', geo:'US', priority:'sector', bucket:'growth',
+    exchange:'Nasdaq (MSFT)', degiro:'✓ Available',
     buyGuide:'1–2 shares (~€430–860)',
-    diversifies:'AI software exposure to complement AI hardware (NVDA). More defensive than pure-play AI infra — has earnings, cashflow.',
-    why:'Azure + Copilot + OpenAI wrapper. Recurring revenue model lowers volatility vs your HC names. Pair with a non-US pick to offset concentration. Stock — 33% CGT.',
+    diversifies:'AI software to complement AI hardware (NVDA). More defensive — has recurring revenue and cashflow.',
+    why:'Azure + Copilot + OpenAI. More defensive than HC names. Pair with a non-US pick to offset concentration. Stock — 33% CGT.',
   },
-  // ── Uncorrelated / alternative ──
+  // ── Uncorrelated / theme ──
   {
-    ticker:'CEG', sector:'Nuclear Energy', geo:'US', priority:'theme', bucket:'high_conviction',
+    ticker:'CEG', sector:'Nuclear Energy', geo:'US', priority:'theme', bucket:'growth',
+    exchange:'Nasdaq (CEG)', degiro:'✓ Available',
     buyGuide:'2–3 shares (~€360–540)',
-    diversifies:'Nuclear is the only energy source with guaranteed AI datacenter demand. Different risk factor from your software/semi AI cluster.',
-    why:'Constellation Energy provides baseload nuclear power to AI data centres. AI capex tailwind but through a completely different mechanism to NVDA/NBIS. Stock — 33% CGT.',
+    diversifies:'Nuclear power for AI data centres. Different mechanism from NVDA/NBIS — energy supply, not compute.',
+    why:'Constellation Energy — baseload nuclear power contracted to hyperscalers. AI capex tailwind via electricity demand. Stock — 33% CGT.',
+  },
+  {
+    ticker:'WM', sector:'Utilities', geo:'US', priority:'theme', bucket:'retirement',
+    exchange:'NYSE (WM)', degiro:'✓ Available',
+    buyGuide:'2–3 shares (~€220–330)',
+    diversifies:'Waste management — recession-proof, regulated monopoly. Zero AI/tech correlation. Reliable compounder.',
+    why:'Waste Management Inc — monopoly pricing power, consistent dividend grower. Boring but compounds at 12%/yr. Stock — 33% CGT.',
+  },
+  {
+    ticker:'HIMS', sector:'Digital Health', geo:'US', priority:'theme', bucket:'growth',
+    exchange:'NYSE (HIMS)', degiro:'✓ Available',
+    buyGuide:'20–30 shares (~€200–300)',
+    diversifies:'Digital health, telehealth growth story. Consumer subscription model vs pure AI infrastructure bets.',
+    why:'Hims & Hers — GLP-1 compounding + telehealth platform. High growth, different risk factor from your AI cluster. Stock — 33% CGT.',
   },
 ];
 
@@ -1705,10 +1780,10 @@ function renderStrategy(positions, lifetime) {
   }
   // Fill remaining slots with theme/uncorrelated picks
   available.filter(s => s.priority === 'theme' && !pickedSuggestions.find(p=>p.ticker===s.ticker))
-    .slice(0, Math.max(0, 5 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
+    .slice(0, Math.max(0, 8 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
   // If still short, fill with remaining regardless of priority
   available.filter(s => !pickedSuggestions.find(p=>p.ticker===s.ticker))
-    .slice(0, Math.max(0, 5 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
+    .slice(0, Math.max(0, 8 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
 
   const gapNote = needsGeo && needsSector
     ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is US-heavy and AI-concentrated — suggestions ranked to address both gaps first.</div>'
@@ -1718,69 +1793,50 @@ function renderStrategy(positions, lifetime) {
     ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is AI/tech-concentrated — diversifying sectors ranked first.</div>'
     : '<div style="font-size:12px;color:var(--green);margin-bottom:10px">✓ Geographic and sector balance is reasonable.</div>';
 
-  // Fetch live prices for suggestions then render
-  const suggTickers = pickedSuggestions.map(s => s.ticker);
-  fetch('/api/scan').then(r => r.json()).then(scanData => {
-    const priceMap = {};
-    (scanData.scanner || []).forEach(row => { priceMap[row.ticker] = row; });
-
+  const _renderSuggestions = (priceMap) => {
+    const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
+    const bucketLabel = b => b === 'high_conviction' ? 'High Conv.' : b === 'growth' ? 'Growth' : 'Retirement';
     E('strat-suggestions').innerHTML = `<div class="strat-card">${gapNote}${pickedSuggestions.map(s => {
       const q = priceMap[s.ticker];
       const priceStr = q && q.price != null
-        ? `<span style="font-size:13px;font-weight:700;color:var(--text)">${q.price.toFixed(2)}</span> <span style="font-size:10px;color:var(--muted)">${q.currency||''}</span>`
-        : '<span style="font-size:11px;color:var(--muted)">price loading…</span>';
+        ? `<span style="font-size:13px;font-weight:700;color:var(--fg)">${q.price.toFixed(2)}</span><span style="font-size:10px;color:var(--muted);margin-left:3px">${q.currency||''}</span>`
+        : '<span style="font-size:11px;color:var(--muted)">—</span>';
       const dayStr = q && q.day_pct != null
-        ? `<span style="font-size:11px;font-weight:600;color:${q.day_pct>=0?'var(--green)':'var(--red)'}">${q.day_pct>=0?'+':''}${q.day_pct.toFixed(1)}% today</span>`
+        ? `<span style="font-size:11px;font-weight:600;color:${q.day_pct>=0?'var(--green)':'var(--red)'}">${q.day_pct>=0?'+':''}${q.day_pct.toFixed(1)}%</span>`
         : '';
-      const bucketColor = s.bucket === 'high_conviction' ? 'var(--purple)' : s.bucket === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
-      const bucketLabel = s.bucket === 'high_conviction' ? 'High Conv.' : s.bucket === 'growth' ? 'Growth' : 'Retirement';
+      const bc = bucketColor(s.bucket);
+      const bl = bucketLabel(s.bucket);
       return `
       <div class="suggest-row" style="flex-direction:column;gap:6px;padding:12px 0">
         <div style="display:flex;align-items:flex-start;gap:10px">
-          <div style="min-width:80px">
-            <div class="suggest-ticker">${s.ticker}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.sector} · ${s.geo}</div>
+          <div style="min-width:90px">
+            <div class="suggest-ticker" style="color:var(--fg)">${s.ticker}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.geo}</div>
+            <div style="font-size:9px;color:#475569;margin-top:2px">${s.exchange||''}</div>
           </div>
           <div style="flex:1">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
-              ${priceStr} ${dayStr}
-              <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${bucketColor}22;color:${bucketColor}">${bucketLabel}</span>
-              <span style="font-size:10px;color:#fbbf24;font-weight:600">Buy: ${s.buyGuide}</span>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+              ${priceStr}${dayStr ? ' ' + dayStr : ''}
+              <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${bc}22;color:${bc}">${bl}</span>
+              <span style="font-size:10px;color:#fbbf24;font-weight:600">${s.buyGuide}</span>
             </div>
-            <div style="font-size:12px;color:#94a3b8;line-height:1.5">${s.why}</div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:3px">${s.why}</div>
+            <div style="font-size:11px;color:var(--muted);padding:5px 8px;background:var(--surface2);border-radius:5px;border-left:2px solid ${bc}">
+              <span style="color:${bc};font-weight:700">Adds: </span>${s.diversifies}
+            </div>
           </div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);padding:6px 10px;background:var(--surface2);border-radius:6px;border-left:2px solid ${bucketColor}">
-          <span style="color:${bucketColor};font-weight:700">Diversifies: </span>${s.diversifies}
         </div>
       </div>`;
     }).join('')}</div>`;
-  }).catch(() => {
-    // fallback: render without live prices
-    E('strat-suggestions').innerHTML = `<div class="strat-card">${gapNote}${pickedSuggestions.map(s => {
-      const bucketColor = s.bucket === 'high_conviction' ? 'var(--purple)' : s.bucket === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
-      const bucketLabel = s.bucket === 'high_conviction' ? 'High Conv.' : s.bucket === 'growth' ? 'Growth' : 'Retirement';
-      return `
-      <div class="suggest-row" style="flex-direction:column;gap:6px;padding:12px 0">
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <div style="min-width:80px">
-            <div class="suggest-ticker">${s.ticker}</div>
-            <div style="font-size:10px;color:var(--muted)">${s.sector} · ${s.geo}</div>
-          </div>
-          <div style="flex:1">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
-              <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${bucketColor}22;color:${bucketColor}">${bucketLabel}</span>
-              <span style="font-size:10px;color:#fbbf24;font-weight:600">Buy: ${s.buyGuide}</span>
-            </div>
-            <div style="font-size:12px;color:#94a3b8;line-height:1.5">${s.why}</div>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);padding:6px 10px;background:var(--surface2);border-radius:6px;border-left:2px solid ${bucketColor}">
-          <span style="color:${bucketColor};font-weight:700">Diversifies: </span>${s.diversifies}
-        </div>
-      </div>`;
-    }).join('')}</div>`;
-  });
+  };
+
+  // Render immediately without prices, then fetch and re-render
+  _renderSuggestions({});
+  const suggTickers = pickedSuggestions.map(s => s.ticker).join(',');
+  fetch(`/api/quotes?tickers=${encodeURIComponent(suggTickers)}`)
+    .then(r => r.json())
+    .then(priceMap => _renderSuggestions(priceMap))
+    .catch(() => { /* already rendered without prices */ });
 }
 
 init();

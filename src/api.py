@@ -377,6 +377,30 @@ async def generate_briefing_now(request: Request):
     return {"briefing": briefing_text}
 
 
+@app.get("/api/quotes")
+async def quotes_batch(tickers: str, request: Request):
+    """Return live prices for a comma-separated list of tickers. Used by suggestion panel."""
+    if (r := _auth_required(request)):
+        return r
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    # Check cache first; fetch any missing
+    cached = state.get("quotes_cache", {})
+    missing = [t for t in ticker_list if t not in cached]
+    fresh: dict = {}
+    if missing:
+        try:
+            loop = asyncio.get_event_loop()
+            fresh = await loop.run_in_executor(None, fetch_quotes, missing)
+        except Exception:
+            pass
+    result = {}
+    for t in ticker_list:
+        q = fresh.get(t) or cached.get(t) or {}
+        if q.get("price") is not None:
+            result[t] = {"price": q["price"], "currency": q.get("currency", ""), "day_pct": day_change_pct(q)}
+    return result
+
+
 @app.get("/api/drilldown/{ticker}")
 async def drilldown(ticker: str, request: Request):
     if (r := _auth_required(request)):
