@@ -712,25 +712,34 @@ function _renderCharts(d) {
   const portfolio = d.portfolio || [];
   const cutoff = _cutoffDate(_currentPeriod);
 
+  const openSeries   = series.filter(s => !s.closed);
+  const closedSeries = series.filter(s =>  s.closed);
+
   ['chart-portfolio','chart-combined','chart-values'].forEach(id => {
     const el = E(id); if (el) el.parentElement.style.opacity = '1';
   });
 
-  // ── Chart 1: Portfolio total value ──────────────────────────────
+  // ── Chart 1: Portfolio total value (open) + closed series as grey ghost lines ──
   const portFiltered = _filterPoints(portfolio, cutoff);
   if (portFiltered.length) {
     if (_portfolioChart) _portfolioChart.destroy();
+    const port1datasets = [{
+      label: 'Portfolio EUR',
+      data: portFiltered.map(p => p.value_eur),
+      borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: true, spanGaps: true,
+    }];
+    // Add each closed ticker as a faint grey dashed line
+    const allDatesPort = [...new Set([...portFiltered.map(p => p.date), ...closedSeries.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date))])].sort();
+    closedSeries.forEach(s => {
+      const pts = _filterPoints(s.points, cutoff);
+      if (!pts.length) return;
+      const byDate = Object.fromEntries(pts.map(p => [p.date, p.value_eur]));
+      // Closed series have no value_eur — skip from portfolio chart (we have no share count)
+    });
     _portfolioChart = new Chart(E('chart-portfolio'), {
       type: 'line',
-      data: {
-        labels: portFiltered.map(p => p.date),
-        datasets: [{
-          label: 'Portfolio EUR',
-          data: portFiltered.map(p => p.value_eur),
-          borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)',
-          borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: true,
-        }]
-      },
+      data: { labels: portFiltered.map(p => p.date), datasets: port1datasets },
       options: _chartOpts(
         v => '€' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0)),
         ctx => ' €' + ctx.parsed.y.toLocaleString('en-IE', {maximumFractionDigits: 0})
@@ -741,20 +750,35 @@ function _renderCharts(d) {
   if (!series.length) return;
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
 
-  // ── Chart 2: % return from purchase date ────────────────────────
+  // ── Chart 2: % return — open in colour, closed in grey dashed ───
+  // pct values are already anchored to avg cost (0% = buy price) — never rebase on period filter
   const allDates2 = [...new Set(series.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date)))].sort();
-  const pctDatasets = series.map(s => {
+
+  const pctDatasets = [];
+  // Open positions — coloured by bucket
+  openSeries.forEach(s => {
     const col = _tickerColor(s.ticker, s.bucket);
     const pts = _filterPoints(s.points, cutoff);
-    // Rebase to 0% at the first point in the filtered window
-    const base = pts.length ? pts[0].pct : 0;
-    const byDate = Object.fromEntries(pts.map(p => [p.date, p.pct - base]));
-    return {
+    const byDate = Object.fromEntries(pts.map(p => [p.date, p.pct]));
+    pctDatasets.push({
       label: s.ticker, data: allDates2.map(d => byDate[d] ?? null),
       borderColor: col, backgroundColor: col + '15',
       borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true,
-    };
+    });
   });
+  // Closed positions — grey dashed, labelled "(exited)"
+  closedSeries.forEach(s => {
+    const pts = _filterPoints(s.points, cutoff);
+    if (!pts.length) return;
+    const byDate = Object.fromEntries(pts.map(p => [p.date, p.pct]));
+    pctDatasets.push({
+      label: s.ticker + ' ✕', data: allDates2.map(d => byDate[d] ?? null),
+      borderColor: 'rgba(148,163,184,0.55)', backgroundColor: 'transparent',
+      borderWidth: 1.5, borderDash: [5, 4],
+      pointRadius: 0, pointHoverRadius: 3, tension: 0.3, fill: false, spanGaps: true,
+    });
+  });
+  // Zero baseline
   pctDatasets.unshift({ label: '0%', data: allDates2.map(() => 0), borderColor: 'rgba(100,116,139,0.3)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
 
   if (_combinedChart) _combinedChart.destroy();
@@ -766,10 +790,10 @@ function _renderCharts(d) {
     )
   });
 
-  // ── Chart 3: Absolute EUR value per holding ──────────────────────
+  // ── Chart 3: Absolute EUR value per holding (open only) ──────────
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
-  const allDates3 = [...new Set(series.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date)))].sort();
-  const valDatasets = series.map(s => {
+  const allDates3 = [...new Set(openSeries.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date)))].sort();
+  const valDatasets = openSeries.map(s => {
     const col = _tickerColor(s.ticker, s.bucket);
     const pts = _filterPoints(s.points, cutoff);
     const byDate = Object.fromEntries(pts.map(p => [p.date, p.value_eur]));
@@ -793,7 +817,7 @@ function _renderCharts(d) {
   Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
   const grid = E('sparkline-grid');
   grid.innerHTML = '';
-  series.forEach(s => {
+  openSeries.forEach(s => {
     const col = _tickerColor(s.ticker, s.bucket);
     const filtered = { ...s, points: _filterPoints(s.points, cutoff) };
     if (filtered.points.length) grid.appendChild(_buildSparkCard(filtered, col));

@@ -234,6 +234,61 @@ def compute_positions(data_dir: str = "data/transactions") -> dict[str, Position
     return {k: v for k, v in positions.items() if v.shares > 0.001}
 
 
+def compute_closed_positions(data_dir: str = "data/transactions") -> list[dict]:
+    """Return metadata for fully-exited positions: avg cost, first buy, last sell date."""
+    transactions = load_transactions(data_dir)
+
+    def parse_date(tx):
+        try:
+            return datetime.strptime(tx["date"], "%d-%m-%Y")
+        except Exception:
+            return datetime.min
+
+    transactions.sort(key=parse_date)
+
+    # Track buys and sells separately per ticker
+    ticker_info: dict[str, dict] = {}
+
+    for tx in transactions:
+        isin = tx.get("isin")
+        qty = tx.get("quantity")
+        total_eur = tx.get("total_eur")
+        if not isin or not qty or not total_eur:
+            continue
+
+        ticker = ISIN_TO_TICKER.get(isin, isin)
+        if ticker not in ticker_info:
+            ticker_info[ticker] = {
+                "ticker": ticker,
+                "name": TICKER_NAMES.get(ticker, ticker),
+                "isin": isin,
+                "shares": 0.0,
+                "total_cost_eur": 0.0,
+                "first_buy_date": None,
+                "last_sell_date": None,
+                "bucket": BUCKET_MAP.get(ticker, "retirement"),
+            }
+        info = ticker_info[ticker]
+
+        d = parse_date(tx).strftime("%Y-%m-%d")
+        if total_eur < 0:
+            # Buy
+            info["shares"] += qty
+            info["total_cost_eur"] += abs(total_eur)
+            if info["first_buy_date"] is None:
+                info["first_buy_date"] = d
+        else:
+            # Sell
+            info["shares"] -= abs(qty)
+            info["last_sell_date"] = d
+
+    # Only return positions that are fully exited
+    return [
+        v for v in ticker_info.values()
+        if abs(v["shares"]) < 0.01 and v["last_sell_date"] is not None
+    ]
+
+
 def compute_lifetime_stats(data_dir: str = "data/transactions") -> dict:
     """Compute all-time realized P&L, total deployed, and monthly flows from raw transactions."""
     import openpyxl

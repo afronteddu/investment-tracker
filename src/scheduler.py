@@ -328,19 +328,27 @@ class Scheduler:
     def _refresh_history_sync(self):
         from datetime import date, datetime, timedelta
         from src.quotes import get_fx_rates
-        from src.positions import TICKER_NAMES
+        from src.positions import TICKER_NAMES, compute_closed_positions
 
         positions = self.state.get("positions", {})
         if not positions:
             return
 
         fx = get_fx_rates()
-        tickers = list(positions.keys())
 
+        # Closed positions — for historical context only
+        closed = compute_closed_positions()
+
+        # Determine global earliest date across open + closed
         earliest = None
         for pos in positions.values():
             if pos.first_buy_date:
                 d = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date()
+                if earliest is None or d < earliest:
+                    earliest = d
+        for cp in closed:
+            if cp["first_buy_date"]:
+                d = datetime.strptime(cp["first_buy_date"], "%Y-%m-%d").date()
                 if earliest is None or d < earliest:
                     earliest = d
         if earliest is None:
@@ -349,11 +357,10 @@ class Scheduler:
 
         daily_start = (date.today() - timedelta(days=90)).isoformat()
         result = []
-        # per-ticker {date: value_eur} — sparse, only dates with actual closes
         ticker_value_series: dict[str, dict[str, float]] = {}
 
-        for ticker in tickers:
-            pos = positions[ticker]
+        # ── Open positions ────────────────────────────────────────────
+        for ticker, pos in positions.items():
             try:
                 raw = self._fetch_history_series(ticker, earliest.isoformat(), daily_start)
                 if not raw:
@@ -368,6 +375,7 @@ class Scheduler:
                         continue
                     close = p["close"]
                     close_eur = close * fx.get(currency, 1.0)
+                    # pct anchored to avg cost — never rebased on period filter
                     pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
                     val = pos.shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
@@ -379,15 +387,63 @@ class Scheduler:
                         "bucket": pos.bucket,
                         "avg_cost_eur": round(pos.avg_cost_eur, 2),
                         "first_buy_date": pos.first_buy_date,
+                        "closed": False,
                         "points": points,
                     })
                     ticker_value_series[ticker] = val_by_date
             except Exception:
                 continue
 
-        # Build portfolio total by forward-filling each ticker across the full date union.
-        # Without forward-fill, days where a ticker has no close (different exchange calendar)
-        # contribute 0 instead of its last known value, causing false dips in the total.
+        # ── Closed positions — history only up to last sell date ──────
+        for cp in closed:
+            ticker = cp["ticker"]
+            if not cp["first_buy_date"] or not cp["last_sell_date"]:
+                continue
+            try:
+                # Fetch from first buy to last sell only
+                raw = self._fetch_history_series(ticker, cp["first_buy_date"], cp["last_sell_date"])
+                if not raw:
+                    continue
+                currency = raw[0]["currency"]
+                avg_cost = cp["total_cost_eur"] / max(1, sum(
+                    t["quantity"] for t in [] # we don't have shares here, use total_cost as proxy
+                )) if False else None
+                # Recompute avg_cost from transactions directly
+                buy_date = datetime.strptime(cp["first_buy_date"], "%Y-%m-%d").date()
+                sell_date = datetime.strptime(cp["last_sell_date"], "%Y-%m-%d").date()
+                points = []
+                val_by_date: dict[str, float] = {}
+                # We need shares held at time to compute value — approximate with final total shares=0
+                # Instead track pct using avg_cost_eur proxy from total_cost_eur / approx shares
+                # We'll use the first close as the cost basis for % calculation (anchored to buy price)
+                first_close_eur = None
+                for p in raw:
+                    row_date = datetime.strptime(p["date"], "%Y-%m-%d").date()
+                    if row_date < buy_date or row_date > sell_date:
+                        continue
+                    close = p["close"]
+                    close_eur = close * fx.get(currency, 1.0)
+                    if first_close_eur is None:
+                        first_close_eur = close_eur
+                    pct = (close_eur - first_close_eur) / first_close_eur * 100 if first_close_eur else 0
+                    # For portfolio total: use total_cost_eur as a proxy for position size (no share count)
+                    # We can't know shares at each point for closed positions, so omit from portfolio total
+                    points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": None})
+                if points:
+                    result.append({
+                        "ticker": ticker,
+                        "name": TICKER_NAMES.get(ticker, ticker),
+                        "bucket": cp["bucket"],
+                        "avg_cost_eur": round(cp["total_cost_eur"], 2),
+                        "first_buy_date": cp["first_buy_date"],
+                        "last_sell_date": cp["last_sell_date"],
+                        "closed": True,
+                        "points": points,
+                    })
+            except Exception:
+                continue
+
+        # Build portfolio total (open positions only, forward-filled)
         all_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
         portfolio_by_date: dict[str, float] = {}
         for d in all_dates:
