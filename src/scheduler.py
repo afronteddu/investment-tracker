@@ -453,15 +453,26 @@ class Scheduler:
                     last_val = vs[d]
                 portfolio_by_date[d] += last_val
 
-        # Build historic portfolio total (open + closed) for the pre-exit grey line
+        # Build historic portfolio total (open + closed) for the pre-exit grey line.
+        # Closed tickers must NOT be forward-filled past their last_sell_date.
+        closed_sell_dates = {cp["ticker"]: cp["last_sell_date"] for cp in closed if cp.get("last_sell_date")}
         all_dates_hist = sorted({d for vs in {**ticker_value_series, **closed_value_series}.values() for d in vs})
         portfolio_historic: dict[str, float] = {d: 0.0 for d in all_dates_hist}
-        for vs in {**ticker_value_series, **closed_value_series}.values():
+        for ticker, vs in ticker_value_series.items():
             last_val = 0.0
             for d in all_dates_hist:
                 if d in vs:
                     last_val = vs[d]
                 portfolio_historic[d] += last_val
+        for ticker, vs in closed_value_series.items():
+            sell_date = closed_sell_dates.get(ticker)
+            last_val = 0.0
+            for d in all_dates_hist:
+                if d in vs:
+                    last_val = vs[d]
+                # Stop contributing after sell date — do not forward-fill past exit
+                if sell_date and d <= sell_date:
+                    portfolio_historic[d] += last_val
 
         result.sort(key=lambda x: x["first_buy_date"] or "")
         portfolio_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_by_date.items())]
