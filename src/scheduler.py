@@ -349,7 +349,8 @@ class Scheduler:
 
         daily_start = (date.today() - timedelta(days=90)).isoformat()
         result = []
-        portfolio_by_date: dict = {}
+        # per-ticker {date: value_eur} — sparse, only dates with actual closes
+        ticker_value_series: dict[str, dict[str, float]] = {}
 
         for ticker in tickers:
             pos = positions[ticker]
@@ -360,6 +361,7 @@ class Scheduler:
                 currency = raw[0]["currency"]
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
+                val_by_date: dict[str, float] = {}
                 for p in raw:
                     row_date = datetime.strptime(p["date"], "%Y-%m-%d").date()
                     if row_date < buy_date:
@@ -369,7 +371,7 @@ class Scheduler:
                     pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
                     val = pos.shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
-                    portfolio_by_date[p["date"]] = portfolio_by_date.get(p["date"], 0) + val
+                    val_by_date[p["date"]] = val
                 if points:
                     result.append({
                         "ticker": ticker,
@@ -379,8 +381,23 @@ class Scheduler:
                         "first_buy_date": pos.first_buy_date,
                         "points": points,
                     })
+                    ticker_value_series[ticker] = val_by_date
             except Exception:
                 continue
+
+        # Build portfolio total by forward-filling each ticker across the full date union.
+        # Without forward-fill, days where a ticker has no close (different exchange calendar)
+        # contribute 0 instead of its last known value, causing false dips in the total.
+        all_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
+        portfolio_by_date: dict[str, float] = {}
+        for d in all_dates:
+            portfolio_by_date[d] = 0.0
+        for vs in ticker_value_series.values():
+            last_val = 0.0
+            for d in all_dates:
+                if d in vs:
+                    last_val = vs[d]
+                portfolio_by_date[d] += last_val
 
         result.sort(key=lambda x: x["first_buy_date"] or "")
         portfolio_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_by_date.items())]
