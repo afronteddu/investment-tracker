@@ -51,10 +51,7 @@ WATCHLIST_BASE = [
     "SPY", "QQQ", "VWRL.AS", "ASML.AS",
 ]
 
-DEPLOYMENTS = [
-    {"date": "2026-05-19", "note": "Deploy 2nd tranche ~30% of 6-12mo bet"},
-    {"date": "2026-05-26", "note": "Deploy 3rd tranche ~33% of 6-12mo bet"},
-]
+DEPLOYMENTS = []
 
 # Shared state — mutated by scheduler, read by API handlers
 state: dict = {}

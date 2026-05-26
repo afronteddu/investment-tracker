@@ -75,9 +75,7 @@ Watchlist scan:
 Investment goals:
 1. Retirement DCA into diversified ETFs
 2. Medium-term stock picks, 6-12 month horizon
-3. High-conviction AI/tech bets (NBIS, VRT, APLD) targeting 6-7x
-
-Two more tranches to deploy: ~30% May 19, ~33% May 26.
+3. High-conviction AI/tech bets (NBIS, VRT, APLD) — all 3 tranches fully deployed, targeting €15–20k exit in 6–12 months. Position locked, no further additions.
 
 Give a concise briefing (max 250 words):
 1. What's moving and why it matters to this portfolio
