@@ -1221,16 +1221,17 @@ const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25 };
 const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6' };
 const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction' };
 
-// In Ireland: ETFs/ETCs taxed at 41% + deemed disposal every 8 years.
-// Individual stocks/shares: 33% CGT. No new ETF/ETC purchases recommended.
-const IE_TAX_41 = new Set(['IGLN.L','ISLN.L','IWDA.AS','VUSA.AS','IMAE.AS','AEME.PA','IEAG.AS']);
+// In Ireland: UCITS ETFs taxed at 41% exit tax + 8-year deemed disposal.
+// Physically-backed ETCs (IGLN, ISLN) are debt securities — 33% CGT, no deemed disposal.
+// Individual stocks: 33% CGT. No new UCITS ETF purchases recommended.
+const IE_TAX_41 = new Set(['IWDA.AS','VUSA.AS','IMAE.AS','AEME.PA','IEAG.AS']);
 
 // Sector/geography metadata for held tickers
 const TICKER_META = {
   // Retirement
   'BRK-B':   { sector:'Financials',   geo:'US',     type:'stock (33% CGT)', desc:'Berkshire Hathaway B' },
-  'IGLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (41% IE tax)', desc:'Physical Gold ETC' },
-  'ISLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (41% IE tax)', desc:'Physical Silver ETC' },
+  'IGLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (33% CGT)', desc:'Physical Gold ETC — debt security, not a fund' },
+  'ISLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (33% CGT)', desc:'Physical Silver ETC — debt security, not a fund' },
   'IWDA.AS': { sector:'Diversified',  geo:'Global', type:'ETF (41% IE tax)', desc:'MSCI World ETF' },
   'VUSA.AS': { sector:'Diversified',  geo:'US',     type:'ETF (41% IE tax)', desc:'S&P 500 ETF' },
   'IMAE.AS': { sector:'Diversified',  geo:'Europe', type:'ETF (41% IE tax)', desc:'MSCI Europe ETF' },
@@ -1369,7 +1370,7 @@ function renderStrategy(positions, lifetime) {
   const taxHeavyVal = retPos.filter(p => IE_TAX_41.has(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
   const taxHeavyPct = retVal > 0 ? taxHeavyVal/retVal*100 : 0;
   const taxWarning = taxHeavyVal > 0
-    ? `<br><span style="color:#fbbf24;font-size:12px">⚠️ ${taxHeavyPct.toFixed(0)}% of this bucket (€${Math.round(taxHeavyVal).toLocaleString()}) is in ETFs/ETCs taxed at 41% in Ireland with 8-year deemed disposal. Hold existing positions but add new retirement exposure via stocks only (BRK-B, XOM, MSFT).</span>`
+    ? `<br><span style="color:#fbbf24;font-size:12px">⚠️ ${taxHeavyPct.toFixed(0)}% of this bucket (€${Math.round(taxHeavyVal).toLocaleString()}) is in UCITS ETFs taxed at 41% in Ireland with 8-year deemed disposal. Hold existing positions but add new retirement exposure via stocks only (BRK-B, XOM, MSFT).</span>`
     : '';
   // ── Retirement action ──────────────────────────────────────────
   const retGap = Math.max(0, totalValue * retTargetPct / 100 - retVal);
@@ -1549,12 +1550,12 @@ function renderStrategy(positions, lifetime) {
       note: hcPctRisk > 25 ? 'Moonshot positions are appropriately sized but monitor. All tranches deployed — hold to exit window (6–12 months).' : 'Speculative exposure within risk budget.',
     },
     {
-      icon: '🇮🇪', label: `Irish tax: ${taxHeavyPct.toFixed(0)}% of retirement bucket (€${Math.round(taxHeavyVal).toLocaleString()}) in 41% ETF/ETC positions`,
+      icon: '🇮🇪', label: `Irish tax: ${taxHeavyPct.toFixed(0)}% of retirement bucket (€${Math.round(taxHeavyVal).toLocaleString()}) in 41% UCITS ETF positions`,
       level: taxHeavyVal > 0 ? 'warn' : 'ok',
       badge: taxHeavyVal > 0 ? 'LEGACY' : 'OK',
       note: taxHeavyVal > 0
-        ? 'Hold existing ETFs/ETCs (selling triggers 41% tax now). All new retirement purchases must be individual stocks — 33% CGT only.'
-        : 'No ETF/ETC tax exposure. All positions at 33% CGT.',
+        ? 'Hold existing UCITS ETFs (selling triggers 41% exit tax now). All new retirement purchases: individual stocks or ETCs — 33% CGT only.'
+        : 'No 41% ETF tax exposure. All positions at 33% CGT.',
     },
   ];
 
