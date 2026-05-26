@@ -1370,29 +1370,53 @@ function renderStrategy(positions, lifetime) {
   const taxHeavyVal = retPos.filter(p => IE_TAX_41.has(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
   const taxHeavyPct = retVal > 0 ? taxHeavyVal/retVal*100 : 0;
   const taxWarning = taxHeavyVal > 0
-    ? `<br><span style="color:#fbbf24;font-size:12px">⚠️ ${taxHeavyPct.toFixed(0)}% of this bucket (€${Math.round(taxHeavyVal).toLocaleString()}) is in UCITS ETFs taxed at 41% in Ireland with 8-year deemed disposal. Hold existing positions but add new retirement exposure via stocks only (BRK-B, XOM, MSFT).</span>`
+    ? `<div style="color:#fbbf24;font-size:11px;margin-top:5px">⚠️ €${Math.round(taxHeavyVal).toLocaleString()} in legacy UCITS ETFs (41% exit tax). Hold — selling now triggers that tax. All new buys: stocks or ETCs only.</div>`
     : '';
-  // ── Retirement action ──────────────────────────────────────────
-  const retGap = Math.max(0, totalValue * retTargetPct / 100 - retVal);
-  const retMonthlySuggested = retGap > 0 ? Math.round(retGap / 12) : 0;
-  const retProgressPct = Math.min(100, retVal / (totalValue * retTargetPct / 100) * 100);
-  const retBarColor = retProgressPct >= 90 ? 'var(--green)' : retProgressPct >= 70 ? '#fbbf24' : '#f87171';
-  const retProgressBar = `<div style="margin:8px 0 4px">
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
-      <span>€${Math.round(retVal).toLocaleString()} now</span><span>Target ${retTargetPct}% · €${Math.round(totalValue*retTargetPct/100).toLocaleString()}</span>
-    </div>
-    <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-      <div style="height:100%;width:${retProgressPct.toFixed(1)}%;background:${retBarColor};border-radius:4px;transition:width 0.6s"></div>
-    </div>
-    <div style="font-size:11px;color:${retBarColor};margin-top:3px">${retProgressPct.toFixed(1)}% of target</div>
-  </div>`;
-  const retAction = retProgressBar + (retDiff < -10
-    ? `<strong style="color:#fbbf24">Underweight by ${Math.abs(retDiff).toFixed(0)}%.</strong> Close gap in ~12 months: <strong>€${retMonthlySuggested}/mo</strong> into stocks only — BRK-B, XOM, or MSFT. <strong>No new ETFs</strong> (41% IE tax + 8yr deemed disposal).${taxWarning}`
-    : retDiff > 10
-    ? `<strong style="color:var(--red)">Overweight by ${retDiff.toFixed(0)}%.</strong> Pause retirement DCA — let growth and HC catch up.${taxWarning}`
-    : `<strong style="color:var(--green)">On target.</strong> Maintain DCA cadence. Next buy: BRK-B or XOM — stocks only, no ETFs.${taxWarning}`);
 
-  // ── Growth action — per-position breakdown ──────────────────────
+  // ── Retirement goal tracker: €100k by Dec 2030 ─────────────────
+  const RET_GOAL = 100000;
+  const RET_GOAL_DATE = new Date('2030-12-31');
+  const RET_MONTHLY = 1500;
+  const todayRet = new Date();
+  const monthsLeft = Math.max(1, (RET_GOAL_DATE.getFullYear() - todayRet.getFullYear()) * 12 + (RET_GOAL_DATE.getMonth() - todayRet.getMonth()));
+  // Project future value: current value compounded at 7%/yr + monthly contributions at 7%/yr
+  const rMonthly = 0.07 / 12;
+  const projectedVal = retVal * Math.pow(1 + rMonthly, monthsLeft) + RET_MONTHLY * (Math.pow(1 + rMonthly, monthsLeft) - 1) / rMonthly;
+  const projectedOnTrack = projectedVal >= RET_GOAL;
+  const retGoalPct = Math.min(100, retVal / RET_GOAL * 100);
+  const retGoalColor = retGoalPct >= 80 ? 'var(--green)' : retGoalPct >= 50 ? '#fbbf24' : '#60a5fa';
+  const retAction = `
+  <div style="margin:8px 0 6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>€${Math.round(retVal).toLocaleString()} now</span>
+      <span style="color:#60a5fa">€${(RET_GOAL/1000).toFixed(0)}k goal</span>
+      <span>Dec 2030</span>
+    </div>
+    <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+      <div style="height:100%;width:${retGoalPct.toFixed(1)}%;background:${retGoalColor};border-radius:5px;transition:width 0.6s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
+      <span style="color:${retGoalColor};font-weight:700">${retGoalPct.toFixed(1)}% of €${(RET_GOAL/1000).toFixed(0)}k</span>
+      <span style="color:${projectedOnTrack?'var(--green)':'#fbbf24'}">${projectedOnTrack ? '✓ On track' : '⚠ Behind pace'} · projected €${Math.round(projectedVal/1000).toFixed(0)}k</span>
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--muted)">${monthsLeft} months left · €${RET_MONTHLY.toLocaleString()}/mo DCA · 7% assumed annual return · rebalance 1×/year</div>
+  <div style="font-size:11px;color:var(--muted);margin-top:4px">${retDiff < -8 ? `Underweight vs 40% bucket target — prioritise retirement DCA this month.` : retDiff > 8 ? 'Overweight — let other buckets catch up before adding here.' : 'Bucket allocation on target.'} Next buy: BRK-B, XOM — no new UCITS ETFs.${taxWarning}</div>`;
+
+  // ── Growth goal tracker: €30k realistic / €50k aspirational by Dec 2028 ──
+  const GROW_LOW = 30000, GROW_HIGH = 50000;
+  const GROW_GOAL_DATE = new Date('2028-12-31');
+  const growCost = growPos.reduce((s,p)=>s+(p.total_cost_eur||0),0);
+  const growLowMarker = GROW_LOW / GROW_HIGH * 100; // 60%
+  const growCurrentPct = Math.min(100, growVal / GROW_HIGH * 100);
+  const growBarColor = growVal >= GROW_LOW ? 'var(--green)' : growVal >= growCost * 1.5 ? '#fbbf24' : '#34d399';
+  const monthsToGrow = Math.max(1, (GROW_GOAL_DATE.getFullYear() - new Date().getFullYear()) * 12 + (GROW_GOAL_DATE.getMonth() - new Date().getMonth()));
+  const growNeededLow = Math.max(0, GROW_LOW - growVal);
+  const growMultiLow  = growCost > 0 ? (GROW_LOW  / growCost).toFixed(1) : '—';
+  const growMultiHigh = growCost > 0 ? (GROW_HIGH / growCost).toFixed(1) : '—';
+  const growPnlPct = growCost > 0 ? (growVal - growCost) / growCost * 100 : 0;
+
+  // Per-position rows
   const growRows = growPos.map(p => {
     const pnl = p.pnl_pct || 0;
     const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
@@ -1403,16 +1427,16 @@ function renderStrategy(positions, lifetime) {
       note = 'Separate spin-off bet — independent thesis from AI cluster. Exit if thesis breaks.';
     } else if (p.ticker === 'NVDA') {
       signal = pnl > 80 ? 'LET RUN' : pnl > 50 ? 'HOLD' : 'ADD DIP';
-      note = pnl > 50 ? 'Multiple expansion already priced — let winners run, mental stop at 2× fair value.' : 'Core AI infrastructure hold. Add on pullbacks below €140.';
+      note = pnl > 50 ? 'Let winners run — mental stop at 2× fair value.' : 'Core AI infrastructure hold. Add on pullbacks below €140.';
     } else if (p.ticker === 'ASML.AS') {
-      signal = pnl > 40 ? 'HOLD' : pnl < 0 ? 'ADD DIP' : 'HOLD';
-      note = 'European semi monopoly. Pullbacks near €1,200 are historically good entries. Long hold.';
+      signal = pnl < 0 ? 'ADD DIP' : 'HOLD';
+      note = 'European semi monopoly. Pullbacks near €1,200 are historically good entries.';
     } else {
       signal = pnl > 30 ? 'TRIM ▲' : 'HOLD';
       note = 'Monitor multiples — hold unless valuation stretches beyond 2× fair value.';
     }
     const sigColor = signal.startsWith('TRIM') ? '#fbbf24' : signal === 'ADD DIP' ? 'var(--green)' : 'var(--muted)';
-    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #ffffff0f">
       <div style="width:52px;font-weight:700;font-size:13px;color:var(--fg)">${p.ticker}</div>
       <div style="width:54px;font-weight:700;font-size:13px;color:${pnlColor}">${pnlStr}</div>
       <div style="flex:1">
@@ -1421,7 +1445,25 @@ function renderStrategy(positions, lifetime) {
       </div>
     </div>`;
   }).join('');
-  const growAction = growRows || `<span style="color:var(--muted)">No growth positions yet.</span>`;
+
+  const growAction = `
+  <div style="margin:8px 0 6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>€${Math.round(growCost).toLocaleString()} cost</span>
+      <span style="color:#34d399">€30k</span>
+      <span style="color:var(--muted)">€50k</span>
+    </div>
+    <div style="position:relative;height:10px;background:var(--border);border-radius:5px;overflow:visible">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${growCurrentPct.toFixed(1)}%;background:${growBarColor};border-radius:5px;transition:width 0.6s"></div>
+      <div style="position:absolute;left:${growLowMarker}%;top:-3px;width:2px;height:16px;background:#34d399;border-radius:1px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
+      <span style="color:${growBarColor};font-weight:700">€${Math.round(growVal).toLocaleString()} · ${(growPnlPct>=0?'+':'')+growPnlPct.toFixed(1)}%</span>
+      <span style="color:var(--muted)">${growNeededLow > 0 ? `+€${Math.round(growNeededLow).toLocaleString()} to €30k (${growMultiLow}× cost)` : '✓ Realistic target reached'} · ${growMultiHigh}× for €50k</span>
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${monthsToGrow} months to Dec 2028 · contributions only from extras — no committed DCA</div>
+  ${growRows || '<span style="color:var(--muted)">No growth positions yet.</span>'}`;
 
   // ── HC: visual goal tracker ─────────────────────────────────────
   const EXIT_LOW = 15000, EXIT_HIGH = 20000;
@@ -1559,7 +1601,10 @@ function renderStrategy(positions, lifetime) {
     },
   ];
 
-  E('strat-risk').innerHTML = `<div class="strat-card">${risks.map(r => `
+  const activeRisks = risks.filter(r => r.level !== 'ok');
+  E('strat-risk').innerHTML = activeRisks.length === 0
+    ? `<div class="strat-card" style="color:var(--green);font-size:13px">✓ No active risk signals — portfolio is within all thresholds.</div>`
+    : `<div class="strat-card">${activeRisks.map(r => `
     <div class="risk-row">
       <div class="risk-icon">${r.icon}</div>
       <div class="risk-label">
