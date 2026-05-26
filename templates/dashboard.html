@@ -752,7 +752,7 @@ function _renderCharts(d) {
     return {
       label: s.ticker, data: allDates2.map(d => byDate[d] ?? null),
       borderColor: col, backgroundColor: col + '15',
-      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: false,
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true,
     };
   });
   pctDatasets.unshift({ label: '0%', data: allDates2.map(() => 0), borderColor: 'rgba(100,116,139,0.3)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false });
@@ -776,7 +776,7 @@ function _renderCharts(d) {
     return {
       label: s.ticker, data: allDates3.map(d => byDate[d] ?? null),
       borderColor: col, backgroundColor: col + '10',
-      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: false,
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true,
     };
   });
 
