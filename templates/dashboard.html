@@ -1287,172 +1287,154 @@ const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25 };
 const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6' };
 const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction' };
 
-// In Ireland: UCITS ETFs taxed at 41% exit tax + 8-year deemed disposal.
-// Physically-backed ETCs (IGLN, ISLN) are debt securities — 33% CGT, no deemed disposal.
-// Individual stocks: 33% CGT. No new UCITS ETF purchases recommended.
+// Ireland tax: UCITS ETFs = 41% exit tax + 8yr deemed disposal (HOLD, never add).
+// ETCs (IGLN, ISLN) = debt securities = 33% CGT, no deemed disposal.
+// Individual stocks = 33% CGT on disposal only. Annual CGT exemption €1,270.
 const IE_TAX_41 = new Set(['IWDA.AS','VUSA.AS','IMAE.AS','AEME.PA','IEAG.AS']);
+
+// Currency denomination per ticker (for FX concentration signal)
+const TICKER_CCY = {
+  'BRK-B':'USD','NVDA':'USD','SNDK':'USD','NBIS':'USD','VRT':'USD','APLD':'USD',
+  'ASML.AS':'EUR','IMAE.AS':'EUR','IWDA.AS':'EUR','VUSA.AS':'EUR','AEME.PA':'EUR','IEAG.AS':'EUR',
+  'IGLN.L':'GBP','ISLN.L':'GBP',
+  // Watchlist / suggestions
+  'NOVO-B.CO':'DKK','SAP':'EUR','SAP.DE':'EUR','OR.PA':'EUR','AIR.PA':'EUR','SIE.DE':'EUR',
+  'TTE.PA':'EUR','IBE.MC':'EUR','LDO.MI':'EUR','RHM.DE':'EUR',
+  'SHEL':'USD','SHEL.L':'GBP','BP.L':'GBP','RIO.L':'GBP','BA.L':'GBP',
+  'TSM':'USD','HDB':'USD','CEG':'USD','XOM':'USD','JNJ':'USD','WM':'USD',
+  'GOOGL':'USD','MSFT':'USD',
+};
 
 // Sector/geography metadata for held tickers
 const TICKER_META = {
   // Retirement
-  'BRK-B':   { sector:'Financials',   geo:'US',     type:'stock (33% CGT)', desc:'Berkshire Hathaway B' },
-  'IGLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (33% CGT)', desc:'Physical Gold ETC — debt security, not a fund' },
-  'ISLN.L':  { sector:'Commodities',  geo:'Global', type:'ETC (33% CGT)', desc:'Physical Silver ETC — debt security, not a fund' },
-  'IWDA.AS': { sector:'Diversified',  geo:'Global', type:'ETF (41% IE tax)', desc:'MSCI World ETF' },
-  'VUSA.AS': { sector:'Diversified',  geo:'US',     type:'ETF (41% IE tax)', desc:'S&P 500 ETF' },
-  'IMAE.AS': { sector:'Diversified',  geo:'Europe', type:'ETF (41% IE tax)', desc:'MSCI Europe ETF' },
-  'AEME.PA': { sector:'Diversified',  geo:'EM',     type:'ETF (41% IE tax)', desc:'MSCI EM ex-China ETF' },
-  'IEAG.AS': { sector:'Fixed Income', geo:'Europe', type:'ETF (41% IE tax)', desc:'EUR Govt Bond ETF' },
+  'BRK-B':   { sector:'Financials / Conglomerate', geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Berkshire Hathaway B — internally diversified (insurance, railroads, energy, consumer)' },
+  'IGLN.L':  { sector:'Commodities',  geo:'Global', ccy:'GBP', type:'ETC (33% CGT)', desc:'Physical Gold ETC — debt security, 33% CGT, no deemed disposal' },
+  'ISLN.L':  { sector:'Commodities',  geo:'Global', ccy:'GBP', type:'ETC (33% CGT)', desc:'Physical Silver ETC — debt security, 33% CGT, no deemed disposal' },
+  'IWDA.AS': { sector:'Diversified',  geo:'Global', ccy:'EUR', type:'ETF (41% IE tax)', desc:'MSCI World ETF — LEGACY, hold don\'t sell' },
+  'VUSA.AS': { sector:'Diversified',  geo:'US',     ccy:'EUR', type:'ETF (41% IE tax)', desc:'S&P 500 ETF — LEGACY, hold don\'t sell' },
+  'IMAE.AS': { sector:'Diversified',  geo:'Europe', ccy:'EUR', type:'ETF (41% IE tax)', desc:'MSCI Europe ETF — LEGACY, hold don\'t sell' },
+  'AEME.PA': { sector:'Diversified',  geo:'EM',     ccy:'EUR', type:'ETF (41% IE tax)', desc:'MSCI EM ex-China ETF — LEGACY, hold don\'t sell' },
+  'IEAG.AS': { sector:'Fixed Income', geo:'Europe', ccy:'EUR', type:'ETF (41% IE tax)', desc:'EUR Govt Bond ETF — LEGACY, hold don\'t sell' },
   // Growth
-  'NVDA':    { sector:'Semiconductors', geo:'US',     type:'stock (33% CGT)', desc:'Nvidia — AI GPUs' },
-  'ASML.AS': { sector:'Semiconductors', geo:'Europe', type:'stock (33% CGT)', desc:'ASML — EUV lithography' },
+  'NVDA':    { sector:'Semiconductors / AI Hardware', geo:'US', ccy:'USD', type:'stock (33% CGT)', desc:'Nvidia — AI GPU monopoly, data centre revenue' },
+  'ASML.AS': { sector:'Semiconductors / Equipment',   geo:'Europe', ccy:'EUR', type:'stock (33% CGT)', desc:'ASML — only maker of EUV lithography machines globally' },
+  'SNDK':    { sector:'Storage / Flash',  geo:'US', ccy:'USD', type:'stock (33% CGT)', desc:'SanDisk — WD spinoff, flash storage' },
   // High conviction
-  'NBIS':    { sector:'AI Infra',     geo:'Global', type:'stock (33% CGT)', desc:'Nebius — AI cloud (ex-Yandex)' },
-  'VRT':     { sector:'Data Centres', geo:'US',     type:'stock (33% CGT)', desc:'Vertiv — power/cooling infra' },
-  'APLD':    { sector:'AI Infra',     geo:'US',     type:'stock (33% CGT)', desc:'Applied Digital — HPC hosting' },
-  // Growth
-  'SNDK':    { sector:'Storage',      geo:'US',     type:'stock (33% CGT)', desc:'SanDisk — flash storage' },
+  'NBIS':    { sector:'AI Infra / Cloud', geo:'Global', ccy:'USD', type:'stock (33% CGT)', desc:'Nebius — AI cloud infrastructure (ex-Yandex)' },
+  'VRT':     { sector:'AI Infra / Power', geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Vertiv — power/thermal management for data centres' },
+  'APLD':    { sector:'AI Infra / HPC',   geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Applied Digital — HPC hosting for AI workloads' },
 };
 
-// Suggested additions — computed dynamically in renderStrategy() based on current gaps.
+// Suggested additions — grounded in actual portfolio gaps.
+// Priority: 'brk_fix' = BRK-B concentration fix | 'geo' = FX/geo diversification
+//           'energy' = energy/power sector | 'hc2027' = next HC cycle | 'em' = EM growth
 const SUGGESTION_POOL = [
-  // ── Europe ──
+
+  // ── BRK-B concentration fix: EUR/GBP compounders ──────────────
   {
-    ticker:'SAP', sector:'Enterprise SW', geo:'Europe (DE)', priority:'geo', bucket:'retirement',
-    exchange:'XETRA (SAP.DE)', degiro:'✓ Available',
-    buyGuide:'1 share (~€270–300)',
-    diversifies:'EUR-denominated, zero USD FX drag. European enterprise software — different cycle from US growth tech.',
-    why:'Cloud ERP monopoly, sticky recurring revenue. Trades at discount to Salesforce/ServiceNow. Stable compounder. Stock — 33% CGT.',
-  },
-  {
-    ticker:'NOVO-B.CO', sector:'Healthcare', geo:'Europe (DK)', priority:'geo', bucket:'retirement',
+    ticker:'NOVO-B.CO', sector:'Healthcare / GLP-1', geo:'Europe (DK)', ccy:'DKK',
+    priority:'brk_fix', bucket:'retirement',
     exchange:'Copenhagen (NOVO-B.CO)', degiro:'✓ Available',
-    buyGuide:'3–5 shares (~€150–250)',
-    diversifies:'First healthcare position. DKK-denominated, cuts USD concentration. Completely uncorrelated to AI cycle.',
-    why:'GLP-1 Ozempic monopoly with 10yr runway. Cash-generative, low beta. Best defensive compounder on any European exchange. Stock — 33% CGT.',
+    buyGuide:'10 shares now, 10 more at 240 DKK if it dips',
+    diversifies:'First healthcare position. DKK-denominated — cuts USD concentration. Zero AI/tech cycle correlation. Defensive compounder.',
+    why:'~70% below 2024 ATH at 10× PE, 5.5% dividend yield. Bear case (Lilly competition, oral generics) is real but already priced. Manufacturing scale moat takes years to replicate. Adjacent pipeline: NASH, CKD, rare blood disorders. At 10× PE the dividend alone pays you to wait. Stock — 33% CGT.',
+    bearCase:'Lilly tirzepatide clinically superior. Oral GLP-1 generics from China/India in 3–5 years. CagriSema pipeline failure already damaged credibility.',
+    conviction:'HIGH',
   },
   {
-    ticker:'SHEL', sector:'Energy', geo:'Europe (UK)', priority:'geo', bucket:'retirement',
-    exchange:'LSE (SHEL)', degiro:'✓ Available',
-    buyGuide:'5–10 shares (~€150–300)',
-    diversifies:'Energy sector absent. GBP-denominated reduces USD drag. Negative correlation to tech downturns.',
-    why:'~4% dividend yield. Hedges energy shocks that hurt AI data centre costs. Lower volatility than US energy peers. Stock — 33% CGT.',
+    ticker:'SAP.DE', sector:'Enterprise Software', geo:'Europe (DE)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Xetra (SAP.DE)', degiro:'✓ Available',
+    buyGuide:'1 share (~€180–200)',
+    diversifies:'EUR-denominated — zero USD drag. European software monopoly uncorrelated to hardware/AI capex.',
+    why:'Cloud ERP transition just hit operating leverage inflection: revenue +8% YoY, earnings +129%. Next 3 years: margin expansion from 30% → 40%+ as SaaS mix rises. Only global ERP vendor — displacing SAP requires 5+ years of enterprise migration. Stock — 33% CGT.',
+    bearCase:'Premium valuation (PE ~24). Enterprise IT spend contracts in a recession.',
+    conviction:'HIGH',
   },
   {
-    ticker:'RIO', sector:'Materials', geo:'Europe/Global', priority:'geo', bucket:'retirement',
-    exchange:'LSE (RIO)', degiro:'✓ Available',
-    buyGuide:'2–3 shares (~€120–180)',
-    diversifies:'Materials/commodities completely absent. Copper & lithium for energy transition. China demand hedge.',
-    why:'Global mining (copper, iron ore, lithium). Inflation hedge independent of AI cycle. ~5% dividend. Stock — 33% CGT.',
-  },
-  {
-    ticker:'OR', sector:'Consumer Staples', geo:'Europe (FR)', priority:'geo', bucket:'retirement',
+    ticker:'OR.PA', sector:'Consumer Staples / Beauty', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
     exchange:'Euronext Paris (OR.PA)', degiro:'✓ Available',
-    buyGuide:'1 share (~€350–400)',
-    diversifies:'First consumer staples exposure. EUR-denominated, premium brand pricing power, recession-resilient.',
-    why:"L'Oréal — dominant luxury/beauty brand. Consistent 10-15% earnings growth. Pure Europe compounder with EM distribution upside. Stock — 33% CGT.",
+    buyGuide:'1 share (~€380–420)',
+    diversifies:'First consumer staples. EUR-denominated. Pricing power through all macro cycles. EM distribution upside.',
+    why:"L'Oréal — 115 years of compounding at ~10%/yr. China drag (~25% revenue) is temporary, structural EM middle class growth is permanent. Recession-resilient (lipstick index). 2.1% dividend + buybacks. Stock — 33% CGT.",
+    bearCase:'China revenue recovery slower than expected. Prestige beauty faces Gen Z brand fragmentation.',
+    conviction:'MEDIUM',
   },
   {
-    ticker:'AIR', sector:'Aerospace', geo:'Europe (FR)', priority:'geo', bucket:'retirement',
+    ticker:'AIR.PA', sector:'Aerospace / Defence', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
     exchange:'Euronext Paris (AIR.PA)', degiro:'✓ Available',
-    buyGuide:'1–2 shares (~€170–340)',
-    diversifies:'Aerospace/defence absent. EUR-denominated. 20yr order backlog means revenues are locked in regardless of short-term macro.',
-    why:'Airbus — Boeing alternative with clean growth story. €1 trillion backlog. Benefits from European defence ramp. Stock — 33% CGT.',
+    buyGuide:'1–2 shares (~€180–360)',
+    diversifies:'Aerospace/defence gap. EUR-denominated. Backlog gives revenue visibility regardless of macro.',
+    why:'Airbus — €1 trillion order backlog (8+ years of production). Boeing supply crisis is a gift. European defence ramp adds military aircraft upside. No USD risk. Stock — 33% CGT.',
+    bearCase:'Supply chain bottlenecks limiting delivery cadence. Labour disputes.',
+    conviction:'MEDIUM',
   },
+
+  // ── Energy / Power: AI data centre electricity demand ─────────
   {
-    ticker:'SIE', sector:'Industrials', geo:'Europe (DE)', priority:'geo', bucket:'retirement',
-    exchange:'XETRA (SIE.DE)', degiro:'✓ Available',
-    buyGuide:'1 share (~€200–230)',
-    diversifies:'Industrial automation absent from portfolio. EUR-denominated, diversifies away from pure software/AI.',
-    why:'Siemens — industrial automation + digital factory software. AI hardware beneficiary via factory robots. European quality compounder. Stock — 33% CGT.',
-  },
-  // ── Asia / Pacific ──
-  {
-    ticker:'TSM', sector:'Semiconductors', geo:'Asia (TW)', priority:'geo', bucket:'retirement',
-    exchange:'NYSE ADR (TSM)', degiro:'✓ Available',
-    buyGuide:'1–2 shares (~€160–320)',
-    diversifies:'Only Asian exposure. Cuts US concentration. Semiconductor supply chain — makes every NVDA/AMD chip.',
-    why:'Profits regardless of AI software winner. Taiwan geopolitical risk is real but already priced. USD-denominated ADR. Stock — 33% CGT.',
-  },
-  {
-    ticker:'7203.T', sector:'Automotive', geo:'Asia (JP)', priority:'geo', bucket:'retirement',
-    exchange:'Tokyo (7203.T)', degiro:'✓ Available',
-    buyGuide:'10–20 shares (~€150–300)',
-    diversifies:'Japan exposure completely absent. Automotive sector adds non-tech, non-AI diversification. JPY hedge vs EUR/USD.',
-    why:'Toyota — hybrid/EV transition, world\'s largest automaker. Deep value vs Western peers, strong dividend. JPY-denominated natural currency hedge. Stock — 33% CGT.',
-  },
-  {
-    ticker:'6758.T', sector:'Consumer Electronics', geo:'Asia (JP)', priority:'geo', bucket:'growth',
-    exchange:'Tokyo (6758.T)', degiro:'✓ Available',
-    buyGuide:'3–5 shares (~€150–250)',
-    diversifies:'Japan/consumer electronics absent. PlayStation + semiconductors + sensors — different AI beneficiary from NVDA.',
-    why:'Sony — image sensors (in every smartphone/camera), PlayStation recurring revenue, entertainment IP. Defensive tech with Japan domicile. Stock — 33% CGT.',
-  },
-  {
-    ticker:'005930.KS', sector:'Semiconductors', geo:'Asia (KR)', priority:'geo', bucket:'retirement',
-    exchange:'Korea (005930.KS)', degiro:'✓ Available on some accounts',
-    buyGuide:'5–10 shares (~€250–500)',
-    diversifies:'Korean exposure, memory semiconductor diversification. HBM chips are critical for NVDA GPUs — direct AI supply chain.',
-    why:'Samsung Electronics — HBM3 memory for AI accelerators + consumer electronics + foundry. Deeply undervalued vs TSMC. Stock — 33% CGT.',
-  },
-  // ── Africa / EM ──
-  {
-    ticker:'AMS', sector:'Mining / Gold', geo:'Africa (ZA)', priority:'geo', bucket:'retirement',
-    exchange:'Johannesburg / LSE (AMS)', degiro:'✓ Available on LSE',
-    buyGuide:'10–20 shares (~€100–200)',
-    diversifies:'Africa exposure, gold mining hedge. Completely uncorrelated to AI/tech cycle. Inflation and USD weakness hedge.',
-    why:'Anglo American — diversified mining (copper, platinum, diamonds) with South Africa base. Copper demand driven by EV/AI data centre power. Stock — 33% CGT.',
-  },
-  // ── US — Sector diversification ──
-  {
-    ticker:'XOM', sector:'Energy', geo:'US', priority:'sector', bucket:'retirement',
-    exchange:'NYSE (XOM)', degiro:'✓ Available',
-    buyGuide:'3–5 shares (~€300–500)',
-    diversifies:'Energy absent. Uncorrelated to AI cycle. Bond substitute without 41% IE ETF tax.',
-    why:'Defensive cash flow, ~3.5% dividend. Energy crisis hedge. Useful defensive substitute for bond ETFs. Stock — 33% CGT.',
-  },
-  {
-    ticker:'JNJ', sector:'Healthcare', geo:'US', priority:'sector', bucket:'retirement',
-    exchange:'NYSE (JNJ)', degiro:'✓ Available',
-    buyGuide:'1–2 shares (~€165–330)',
-    diversifies:'Healthcare absent. Low beta, dividend payer. Reduces tech concentration in retirement bucket.',
-    why:'Pharma + medtech. ~3% dividend, low AI correlation. Only add if no European healthcare (NOVO-B) already held. Stock — 33% CGT.',
-  },
-  {
-    ticker:'GOOGL', sector:'AI Software', geo:'US', priority:'sector', bucket:'growth',
-    exchange:'Nasdaq (GOOGL)', degiro:'✓ Available',
-    buyGuide:'2–4 shares (~€340–680)',
-    diversifies:'AI software layer vs your AI hardware/infra concentration. Same tailwind, different risk profile.',
-    why:'Cheapest Mag-7 on P/E. Cloud + Search + YouTube. Only add once geographic balance is addressed. Stock — 33% CGT.',
-  },
-  {
-    ticker:'MSFT', sector:'AI Software', geo:'US', priority:'sector', bucket:'growth',
-    exchange:'Nasdaq (MSFT)', degiro:'✓ Available',
-    buyGuide:'1–2 shares (~€430–860)',
-    diversifies:'AI software to complement AI hardware (NVDA). More defensive — has recurring revenue and cashflow.',
-    why:'Azure + Copilot + OpenAI. More defensive than HC names. Pair with a non-US pick to offset concentration. Stock — 33% CGT.',
-  },
-  // ── Uncorrelated / theme ──
-  {
-    ticker:'CEG', sector:'Nuclear Energy', geo:'US', priority:'theme', bucket:'growth',
+    ticker:'CEG', sector:'Nuclear Energy', geo:'US', ccy:'USD',
+    priority:'energy', bucket:'growth',
     exchange:'Nasdaq (CEG)', degiro:'✓ Available',
-    buyGuide:'2–3 shares (~€360–540)',
-    diversifies:'Nuclear power for AI data centres. Different mechanism from NVDA/NBIS — energy supply, not compute.',
-    why:'Constellation Energy — baseload nuclear power contracted to hyperscalers. AI capex tailwind via electricity demand. Stock — 33% CGT.',
+    buyGuide:'2–3 shares (~€260–390) — after current pullback',
+    diversifies:'Nuclear baseload power. Different mechanism from NVDA/NBIS — energy supply, not compute. Zero AI software risk.',
+    why:'Largest US nuclear operator. Signed 20-year PPAs with Microsoft (Three Mile Island restart), Amazon, Meta. Data centres want 24/7 carbon-free power — only nuclear delivers. YTD -19% creates entry. Stock — 33% CGT.',
+    bearCase:'Nuclear subsidy regulatory uncertainty. Rate pressure from utilities sector repricing.',
+    conviction:'HIGH',
   },
   {
-    ticker:'WM', sector:'Utilities', geo:'US', priority:'theme', bucket:'retirement',
-    exchange:'NYSE (WM)', degiro:'✓ Available',
-    buyGuide:'2–3 shares (~€220–330)',
-    diversifies:'Waste management — recession-proof, regulated monopoly. Zero AI/tech correlation. Reliable compounder.',
-    why:'Waste Management Inc — monopoly pricing power, consistent dividend grower. Boring but compounds at 12%/yr. Stock — 33% CGT.',
+    ticker:'TTE.PA', sector:'Integrated Energy / LNG', geo:'Europe (FR)', ccy:'EUR',
+    priority:'energy', bucket:'retirement',
+    exchange:'Euronext Paris (TTE.PA)', degiro:'✓ Available',
+    buyGuide:'3–5 shares (~€180–300)',
+    diversifies:'EUR-denominated energy. LNG bridge fuel for EU + Asia coal phase-out. ~4% dividend.',
+    why:'TotalEnergies — most diversified European major (LNG + solar + oil). ~4% dividend, PE ~8–9×. LNG is the structural bridge fuel for the next 15 years. Better than XOM at these valuations. Stock — 33% CGT.',
+    bearCase:'Oil price collapse scenario. Green energy transition longer than expected.',
+    conviction:'MEDIUM',
   },
   {
-    ticker:'HIMS', sector:'Digital Health', geo:'US', priority:'theme', bucket:'growth',
-    exchange:'NYSE (HIMS)', degiro:'✓ Available',
-    buyGuide:'20–30 shares (~€200–300)',
-    diversifies:'Digital health, telehealth growth story. Consumer subscription model vs pure AI infrastructure bets.',
-    why:'Hims & Hers — GLP-1 compounding + telehealth platform. High growth, different risk factor from your AI cluster. Stock — 33% CGT.',
+    ticker:'SHEL.L', sector:'Integrated Energy / LNG', geo:'Europe (UK)', ccy:'GBP',
+    priority:'energy', bucket:'retirement',
+    exchange:'LSE (SHEL.L)', degiro:'✓ Available — buy on LSE for GBP',
+    buyGuide:'5–10 shares (~£350–700)',
+    diversifies:'GBP-denominated — cuts USD drag. Largest private LNG portfolio globally. Negative correlation to tech selloffs.',
+    why:'Shell — LNG + hydrogen + offshore wind. 3.5% dividend. More renewable exposure than BP. GBP denomination is an FX hedge vs USD-heavy portfolio. Stock — 33% CGT.',
+    bearCase:'LNG price normalization. Renewable transition capital misallocation.',
+    conviction:'MEDIUM',
+  },
+
+  // ── 2027 HC Candidates — start researching now ─────────────────
+  {
+    ticker:'LDO.MI', sector:'Defence / Aerospace', geo:'Europe (IT)', ccy:'EUR',
+    priority:'hc2027', bucket:'high_conviction',
+    exchange:'Borsa Italiana (LDO.MI)', degiro:'✓ Available',
+    buyGuide:'NOT YET — monitor for 6–12 months. Entry: €20–24',
+    diversifies:'European defence — structural NATO spending cycle, legally binding commitments. EUR-denominated, zero USD risk.',
+    why:'Leonardo SpA — Italian aerospace/defence. Helicopters, radar, cyber. PE ~14, dividend ~2%. Least priced-in of European defence names (vs Rheinmetall which has already 5×). EU defence integration disproportionately benefits Italian/French industrial defence. 10-year spending cycle visibility. Stock — 33% CGT.',
+    bearCase:'Russia-Ukraine peace deal triggers 30–40% sector correction. Political risk around Italian government.',
+    conviction:'WATCH — 2027 HC candidate',
+  },
+  {
+    ticker:'RHM.DE', sector:'Defence / Ammunition', geo:'Europe (DE)', ccy:'EUR',
+    priority:'hc2027', bucket:'high_conviction',
+    exchange:'Xetra (RHM.DE)', degiro:'✓ Available',
+    buyGuide:'NOT YET — wait for peace-talk dip 25–30%. Watch €900–1,000 range',
+    diversifies:'European defence supplier. Germany €500B defence fund directly funds Rheinmetall orders. EUR-denominated.',
+    why:'Rheinmetall — artillery shells, armoured vehicles, the ammunition factory of NATO. Revenue guidance €14–16B (from €9B in 2023). Has already run 5×. Wait for a geopolitical de-escalation dip to enter at a discount. Stock — 33% CGT.',
+    bearCase:'Peace dividend — ceasefire could crater the stock 30–40% quickly.',
+    conviction:'WATCH — 2027 HC candidate if dip materialises',
+  },
+  {
+    ticker:'HDB', sector:'Banking / EM Growth', geo:'India', ccy:'USD',
+    priority:'em', bucket:'retirement',
+    exchange:'NYSE ADR (HDB)', degiro:'✓ Available',
+    buyGuide:'10–15 shares (~€230–345) — wait for price stability',
+    diversifies:'First India exposure. 1.4B population financial inclusion story. Loan growth 15–20%/yr as middle class expands.',
+    why:'HDFC Bank — India largest private bank by assets. PE 15×, near 52-week lows after governance concerns already priced in. India GDP growing 6–7%/yr. Credit penetration still low — bank account + loan growth is structural. Stock — 33% CGT.',
+    bearCase:'Current 52-wk range $23–$40, trading at lows — governance issue needs resolution. Currency risk (USD ADR but INR underlying).',
+    conviction:'MEDIUM — research governance issue first',
   },
 ];
 
@@ -1483,9 +1465,37 @@ function renderStrategy(positions, lifetime) {
       <div style="width:54px;font-size:11px;color:${diffCol};text-align:right">target ${target}% <span style="font-weight:700">${diffStr}</span></div>
     </div>`;
   }).join('');
+
+  // ── Currency breakdown ─────────────────────────────────────────
+  const ccyMap = {};
+  positions.forEach(p => {
+    const ccy = (TICKER_META[p.ticker]||{}).ccy || TICKER_CCY[p.ticker] || 'USD';
+    ccyMap[ccy] = (ccyMap[ccy]||0) + (p.current_value_eur||0);
+  });
+  const ccyColors = { USD:'#f87171', EUR:'#60a5fa', GBP:'#34d399', DKK:'#fbbf24', OTHER:'#a78bfa' };
+  const ccySorted = Object.entries(ccyMap).sort((a,b)=>b[1]-a[1]);
+  const usdPct = totalValue > 0 ? (ccyMap['USD']||0)/totalValue*100 : 0;
+  const ccyBars = ccySorted.map(([ccy, val]) => {
+    const pct = totalValue > 0 ? val/totalValue*100 : 0;
+    const col = ccyColors[ccy] || ccyColors.OTHER;
+    return `<div class="alloc-bar-wrap">
+      <div class="alloc-bar-label" style="font-size:11px">${ccy}</div>
+      <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="alloc-bar-pct" style="color:${col}">${pct.toFixed(0)}%</div>
+      <div style="width:54px;font-size:10px;color:var(--muted);text-align:right">€${Math.round(val/1000*10)/10}k</div>
+    </div>`;
+  }).join('');
+  const usdWarn = usdPct > 70
+    ? `<div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ ${usdPct.toFixed(0)}% USD exposure — a 10% EUR/USD move = €${Math.round(totalValue*usdPct/100*0.1).toLocaleString()} P&L with no stock change. Add EUR/GBP positions to reduce.</div>`
+    : usdPct > 55
+    ? `<div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ ${usdPct.toFixed(0)}% USD — moderate FX concentration. Add NOVO-B, SAP.DE or TTE.PA to dilute.</div>`
+    : `<div style="font-size:11px;color:var(--green);margin-top:6px">✓ FX mix is reasonable.</div>`;
+
   E('strat-alloc').innerHTML = `
     <div class="strat-label">Bucket Allocation vs Target</div>
-    ${allocHtml}`;
+    ${allocHtml}
+    <div class="strat-label" style="margin-top:14px">Currency Exposure (FX Risk)</div>
+    ${ccyBars}${usdWarn}`;
 
   // ── Bucket cards ────────────────────────────────────────────────
   const retPos = positions.filter(p => p.bucket === 'retirement');
@@ -1520,12 +1530,35 @@ function renderStrategy(positions, lifetime) {
   const RET_MONTHLY = 1500;
   const todayRet = new Date();
   const monthsLeft = Math.max(1, (RET_GOAL_DATE.getFullYear() - todayRet.getFullYear()) * 12 + (RET_GOAL_DATE.getMonth() - todayRet.getMonth()));
-  // Project future value: current value compounded at 7%/yr + monthly contributions at 7%/yr
   const rMonthly = 0.07 / 12;
   const projectedVal = retVal * Math.pow(1 + rMonthly, monthsLeft) + RET_MONTHLY * (Math.pow(1 + rMonthly, monthsLeft) - 1) / rMonthly;
   const projectedOnTrack = projectedVal >= RET_GOAL;
   const retGoalPct = Math.min(100, retVal / RET_GOAL * 100);
   const retGoalColor = retGoalPct >= 80 ? 'var(--green)' : retGoalPct >= 50 ? '#fbbf24' : '#60a5fa';
+
+  // BRK-B concentration within retirement bucket
+  const brkPos = retPos.find(p => p.ticker === 'BRK-B');
+  const brkVal = brkPos ? (brkPos.current_value_eur||0) : 0;
+  const brkConc = retVal > 0 ? brkVal/retVal*100 : 0;
+  const brkConcColor = brkConc > 70 ? 'var(--red)' : brkConc > 50 ? '#fbbf24' : 'var(--green)';
+  const brkFill = Math.min(100, brkConc);
+  const brkNote = brkConc > 70
+    ? `<span style="color:var(--red)">⚠ BRK-B is ${brkConc.toFixed(0)}% of retirement bucket — too concentrated. Next buys should diversify: NOVO-B, SAP.DE, OR.PA, TTE.PA.</span>`
+    : brkConc > 50
+    ? `<span style="color:#fbbf24">BRK-B at ${brkConc.toFixed(0)}% — moderate concentration. Add 1 non-US stock to dilute.</span>`
+    : `<span style="color:var(--green)">BRK-B concentration within bounds.</span>`;
+
+  // Next buy guidance based on portfolio gaps
+  const hasHealthcare = positions.some(p => ['NOVO-B.CO','JNJ'].includes(p.ticker));
+  const hasEnergy = positions.some(p => ['TTE.PA','SHEL.L','CEG','XOM','BP.L'].includes(p.ticker));
+  const hasEurStock = positions.filter(p => (TICKER_META[p.ticker]||{}).ccy === 'EUR' && !IE_TAX_41.has(p.ticker) && p.bucket === 'retirement').length > 0;
+  const nextBuys = [];
+  if (!hasHealthcare) nextBuys.push('NOVO-B.CO (healthcare gap, 70% off ATH)');
+  if (brkConc > 60 && !hasEurStock) nextBuys.push('SAP.DE or OR.PA (EUR compounder, cuts USD concentration)');
+  if (!hasEnergy) nextBuys.push('TTE.PA or CEG (energy gap, AI data centre power thesis)');
+  if (!hasHealthcare && !nextBuys.includes('NOVO-B.CO')) nextBuys.push('NOVO-B.CO');
+  const nextBuyStr = nextBuys.length ? nextBuys.slice(0,2).join(' · ') : 'BRK-B DCA if below cost';
+
   const retAction = `
   <div style="margin:8px 0 6px">
     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
@@ -1541,8 +1574,20 @@ function renderStrategy(positions, lifetime) {
       <span style="color:${projectedOnTrack?'var(--green)':'#fbbf24'}">${projectedOnTrack ? '✓ On track' : '⚠ Behind pace'} · projected €${Math.round(projectedVal/1000).toFixed(0)}k</span>
     </div>
   </div>
-  <div style="font-size:12px;color:var(--muted)">${monthsLeft} months left · €${RET_MONTHLY.toLocaleString()}/mo DCA · 7% assumed annual return · rebalance 1×/year</div>
-  <div style="font-size:11px;color:var(--muted);margin-top:4px">${retDiff < -8 ? `Underweight vs 40% bucket target — prioritise retirement DCA this month.` : retDiff > 8 ? 'Overweight — let other buckets catch up before adding here.' : 'Bucket allocation on target.'} Next buy: BRK-B, XOM — no new UCITS ETFs.${taxWarning}</div>`;
+  <div style="margin:10px 0 4px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
+      <span>BRK-B concentration in retirement bucket</span>
+      <span style="color:${brkConcColor};font-weight:700">${brkConc.toFixed(0)}%</span>
+    </div>
+    <div style="position:relative;height:8px;background:var(--border);border-radius:4px;overflow:visible">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${brkFill}%;background:${brkConcColor};border-radius:4px;transition:width 0.6s"></div>
+      <div style="position:absolute;left:40%;top:-2px;width:2px;height:12px;background:#60a5fa44;border-radius:1px" title="40% healthy max"></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:3px">${brkNote}</div>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-top:8px">${monthsLeft} months to Dec 2030 · €${RET_MONTHLY.toLocaleString()}/mo DCA · 7%/yr assumed · no new UCITS ETFs</div>
+  <div style="font-size:11px;color:#60a5fa;margin-top:4px;font-weight:600">Next buy: ${nextBuyStr}</div>
+  ${taxWarning}`;
 
   // ── Growth goal tracker: €30k realistic / €50k aspirational by Dec 2028 ──
   const GROW_LOW = 30000, GROW_HIGH = 50000;
@@ -1686,59 +1731,100 @@ function renderStrategy(positions, lifetime) {
     _divCard('By Geography', geoMap, '#34d399') +
     _divCard('By Asset Type', typeMap, '#a78bfa');
 
-  // ── Risk signals ────────────────────────────────────────────────
-  const usVal = positions.filter(p => (TICKER_META[p.ticker]||{}).geo === 'US').reduce((s,p)=>s+(p.current_value_eur||0),0);
-  const usConc = totalValue > 0 ? usVal/totalValue*100 : 0;
+  // ── Risk signals — grounded in actual holdings ──────────────────
 
-  const aiVal = positions.filter(p => ['NVDA','NBIS','VRT','APLD','ASML.AS'].includes(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  // Signal 1: USD FX concentration
+  const usdConc = totalValue > 0 ? (ccyMap['USD']||0)/totalValue*100 : 0;
+  const eurConc  = totalValue > 0 ? (ccyMap['EUR']||0)/totalValue*100 : 0;
+  const fxImpact10pct = Math.round(totalValue * usdConc/100 * 0.10); // EUR impact of 10% USD move
+
+  // Signal 2: AI/data-centre cluster (NVDA + ASML + SNDK + NBIS + VRT + APLD)
+  const aiTickers = ['NVDA','ASML.AS','SNDK','NBIS','VRT','APLD'];
+  const aiVal = positions.filter(p => aiTickers.includes(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
   const aiConc = totalValue > 0 ? aiVal/totalValue*100 : 0;
 
-  const bondVal = positions.filter(p => (TICKER_META[p.ticker]||{}).type === 'bond').reduce((s,p)=>s+(p.current_value_eur||0),0);
-  const bondPct = totalValue > 0 ? bondVal/totalValue*100 : 0;
+  // Signal 3: BRK-B as % of retirement bucket
+  const brkConcRisk = brkConc; // already computed above
 
+  // Signal 4: HC bucket exit progress vs time
+  const hcPctRisk = hcPct;
+  const hcExitTarget = 17500;
+  const hcProgress = hcVal > 0 ? Math.min(100, hcVal/hcExitTarget*100) : 0;
+  const daysToExitStart = Math.max(0, Math.round((new Date('2026-11-11') - new Date()) / 86400000));
+  const daysToExitEnd   = Math.max(0, Math.round((new Date('2027-05-11') - new Date()) / 86400000));
+
+  // Signal 5: Healthcare/Energy sector gaps
+  const hasHealthcareRisk = !positions.some(p => ['NOVO-B.CO','JNJ','NVO','SNY'].includes(p.ticker));
+  const hasEnergyRisk     = !positions.some(p => ['TTE.PA','SHEL.L','CEG','XOM','BP.L','IBE.MC'].includes(p.ticker));
+
+  // Signal 6: Single largest position concentration
   const singleMax = Math.max(...positions.map(p => totalValue>0 ? (p.current_value_eur||0)/totalValue*100 : 0));
   const singleName = positions.find(p => totalValue>0 && Math.abs((p.current_value_eur||0)/totalValue*100 - singleMax) < 0.01)?.ticker || '?';
 
-  const hcPctRisk = hcPct;
+  // Signal 7: Irish tax legacy
+  const taxHeavyPct2 = retVal > 0 ? taxHeavyVal/retVal*100 : 0;
 
   const risks = [
     {
-      icon: '🇺🇸', label: `US concentration: ${usConc.toFixed(0)}% of portfolio in US assets`,
-      level: usConc > 75 ? 'danger' : usConc > 60 ? 'warn' : 'ok',
-      badge: usConc > 75 ? 'HIGH' : usConc > 60 ? 'MODERATE' : 'OK',
-      note: usConc > 60 ? 'Add individual stocks with non-US exposure: NVO (Denmark), ASML (NL), TSM (Taiwan). No ETFs — 41% IE tax.' : 'Well diversified geographically.',
+      icon: '💱',
+      label: `USD concentration: ${usdConc.toFixed(0)}% of portfolio — a 10% EUR/USD move = ±€${fxImpact10pct.toLocaleString()} with no stock change`,
+      level: usdConc > 72 ? 'danger' : usdConc > 55 ? 'warn' : 'ok',
+      badge: usdConc > 72 ? 'HIGH' : usdConc > 55 ? 'MODERATE' : 'OK',
+      note: usdConc > 55
+        ? `Add EUR-denominated stocks to dilute: NOVO-B.CO (DKK), SAP.DE (EUR), TTE.PA (EUR), OR.PA (EUR). Target <60% USD. No ETFs — 41% IE tax.`
+        : 'FX mix is reasonable — USD/EUR/GBP spread is adequate.',
     },
     {
-      icon: '🤖', label: `AI/tech theme: ${aiConc.toFixed(0)}% in AI-linked positions`,
-      level: aiConc > 50 ? 'danger' : aiConc > 35 ? 'warn' : 'ok',
-      badge: aiConc > 50 ? 'HIGH' : aiConc > 35 ? 'MODERATE' : 'OK',
-      note: aiConc > 35 ? 'Cyclical risk — AI capex cycle could reverse. Diversify with XOM (energy), NVO (healthcare), GOOGL (software). All stocks, 33% CGT.' : 'Balanced.',
+      icon: '🤖',
+      label: `AI/data-centre cluster: ${aiConc.toFixed(0)}% of portfolio in NVDA, ASML, SNDK, NBIS, VRT, APLD`,
+      level: aiConc > 55 ? 'danger' : aiConc > 40 ? 'warn' : 'ok',
+      badge: aiConc > 55 ? 'VERY HIGH' : aiConc > 40 ? 'HIGH' : 'OK',
+      note: aiConc > 40
+        ? `All 6 positions share the same macro risk: AI capex cycle reversal or hyperscaler spend cut. If any 2 of MSFT/AMZN/GOOGL/META trim capex >10%, all 6 re-rate together. Diversify with healthcare (NOVO-B), energy (CEG/TTE.PA), or consumer (OR.PA).`
+        : 'AI concentration within acceptable bounds.',
     },
     {
-      icon: '🎯', label: `Largest single position: ${singleName} at ${singleMax.toFixed(1)}%`,
-      level: singleMax > 25 ? 'danger' : singleMax > 18 ? 'warn' : 'ok',
-      badge: singleMax > 25 ? 'HIGH' : singleMax > 18 ? 'WATCH' : 'OK',
-      note: singleMax > 18 ? `Consider trimming ${singleName} above 25% or adding new positions to dilute concentration.` : 'Single-name concentration within bounds.',
+      icon: '🏛️',
+      label: `BRK-B is ${brkConcRisk.toFixed(0)}% of retirement bucket — concentration target is <40%`,
+      level: brkConcRisk > 65 ? 'danger' : brkConcRisk > 45 ? 'warn' : 'ok',
+      badge: brkConcRisk > 65 ? 'CONCENTRATED' : brkConcRisk > 45 ? 'WATCH' : 'OK',
+      note: brkConcRisk > 45
+        ? `BRK-B is internally diversified (insurance, railroads, energy) but it's one USD name. Add: NOVO-B.CO for healthcare/DKK, SAP.DE for EUR software, TTE.PA for EUR energy. Target BRK-B below 40% of retirement bucket.`
+        : 'BRK-B concentration within healthy range.',
     },
     {
-      icon: '🏦', label: `Bond/fixed income: ${bondPct.toFixed(1)}% of portfolio`,
-      level: bondPct < 5 ? 'warn' : 'ok',
-      badge: bondPct < 5 ? 'LOW' : 'OK',
-      note: bondPct < 5 ? 'Low bond exposure — but ETFs/bond ETFs are 41% tax in Ireland. Consider BRK-B or XOM as defensive substitutes instead.' : 'Adequate defensive buffer.',
+      icon: '🚀',
+      label: `HC exit: €${Math.round(hcVal).toLocaleString()} of €${hcExitTarget.toLocaleString()} target — ${hcProgress.toFixed(0)}% there${daysToExitStart > 0 ? ', window opens in ' + daysToExitStart + 'd' : ' · exit window open'}`,
+      level: hcVal >= hcExitTarget ? 'ok' : daysToExitStart < 60 && hcProgress < 60 ? 'danger' : daysToExitStart < 120 ? 'warn' : 'ok',
+      badge: hcVal >= hcExitTarget ? 'TARGET HIT' : daysToExitStart < 60 ? 'WATCH' : 'HOLD',
+      note: `NBIS + VRT + APLD — exit window ${daysToExitStart > 0 ? 'Nov 2026 – May 2027' : 'open now'}. No further capital additions. Exit if target hit or at window close — do not let HC become permanent holding.`,
     },
     {
-      icon: '🚀', label: `Speculative bucket: ${hcPctRisk.toFixed(1)}% in high-conviction bets`,
-      level: hcPctRisk > 35 ? 'danger' : hcPctRisk > 25 ? 'warn' : 'ok',
-      badge: hcPctRisk > 35 ? 'OVERSIZED' : hcPctRisk > 25 ? 'WATCH' : 'OK',
-      note: hcPctRisk > 25 ? 'Moonshot positions are appropriately sized but monitor. All tranches deployed — hold to exit window (6–12 months).' : 'Speculative exposure within risk budget.',
+      icon: '🏥',
+      label: `Healthcare: 0% allocation — entire portfolio has zero healthcare exposure`,
+      level: hasHealthcareRisk ? 'warn' : 'ok',
+      badge: hasHealthcareRisk ? 'MISSING' : 'OK',
+      note: hasHealthcareRisk
+        ? 'Healthcare is the most defensive sector in bear markets (negative AI cycle correlation). NOVO-B.CO is at 70% below 2024 ATH at 10× PE — the structural entry point for a 5–10yr hold. DKK-denominated, 5.5% dividend, 33% CGT.'
+        : 'Healthcare exposure present.',
     },
     {
-      icon: '🇮🇪', label: `Irish tax: ${taxHeavyPct.toFixed(0)}% of retirement bucket (€${Math.round(taxHeavyVal).toLocaleString()}) in 41% UCITS ETF positions`,
+      icon: '⚡',
+      label: `Energy: 0% allocation — no exposure to the sector most directly benefiting from AI data centre power demand`,
+      level: hasEnergyRisk ? 'warn' : 'ok',
+      badge: hasEnergyRisk ? 'MISSING' : 'OK',
+      note: hasEnergyRisk
+        ? 'Data centres will consume ~1,000 TWh/yr by 2030 (4× today). CEG (nuclear PPAs with MSFT/AMZN/META), TTE.PA (EUR LNG, 4% div), SHEL.L (GBP, LNG+renewables). Energy positions also hedge against cost shocks that hurt NBIS/APLD margins.'
+        : 'Energy exposure present.',
+    },
+    {
+      icon: '🇮🇪',
+      label: `Irish tax: €${Math.round(taxHeavyVal).toLocaleString()} (${taxHeavyPct2.toFixed(0)}% of retirement) in legacy UCITS ETFs at 41% exit tax`,
       level: taxHeavyVal > 0 ? 'warn' : 'ok',
       badge: taxHeavyVal > 0 ? 'LEGACY' : 'OK',
       note: taxHeavyVal > 0
-        ? 'Hold existing UCITS ETFs (selling triggers 41% exit tax now). All new retirement purchases: individual stocks or ETCs — 33% CGT only.'
-        : 'No 41% ETF tax exposure. All positions at 33% CGT.',
+        ? `Hold — do not sell (41% exit tax crystallises immediately). All new purchases: individual stocks or ETCs only (33% CGT). No new UCITS ETFs ever. Annual CGT exemption: €1,270 — use it by harvesting small losses each December.`
+        : 'No 41% ETF exposure. All positions at 33% CGT.',
     },
   ];
 
@@ -1755,48 +1841,63 @@ function renderStrategy(positions, lifetime) {
       <div class="risk-badge risk-${r.level}">${r.badge}</div>
     </div>`).join('')}</div>`;
 
-  // ── Suggestions — picked based on actual portfolio gaps ──────────
+  // ── Suggestions — ranked by actual portfolio gaps ────────────────
   const held = new Set(positions.map(p => p.ticker));
   const available = SUGGESTION_POOL.filter(s => !held.has(s.ticker));
 
-  // Score each suggestion: geo-diversifying picks score higher when US is heavy
+  // Rank: fix BRK-B concentration and sector gaps first
   const pickedSuggestions = [];
-  const needsGeo   = usConc > 55;  // portfolio is US-heavy
-  const needsSector = aiConc > 35; // portfolio is AI-heavy
+  const needsFX     = usdConc > 55;
+  const needsHealth = hasHealthcareRisk;
+  const needsEnergy = hasEnergyRisk;
+  const needsBrkFix = brkConcRisk > 50;
 
-  // Always include top non-US picks if US-heavy
-  if (needsGeo) {
-    available.filter(s => s.priority === 'geo').slice(0, 3).forEach(s => pickedSuggestions.push(s));
+  if (needsBrkFix || needsFX) {
+    available.filter(s => s.priority === 'brk_fix').forEach(s => {
+      if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
+    });
   }
-  // Include sector diversifiers if AI-heavy and not already in list
-  if (needsSector) {
-    available.filter(s => s.priority === 'sector' && !s.geo.startsWith('US'))
-      .slice(0, 1).forEach(s => { if (!pickedSuggestions.find(p=>p.ticker===s.ticker)) pickedSuggestions.push(s); });
-    // Only add US sector picks if geo is already balanced
-    if (!needsGeo) {
-      available.filter(s => s.priority === 'sector' && s.geo.startsWith('US'))
-        .slice(0, 1).forEach(s => { if (!pickedSuggestions.find(p=>p.ticker===s.ticker)) pickedSuggestions.push(s); });
-    }
+  if (needsEnergy) {
+    available.filter(s => s.priority === 'energy').forEach(s => {
+      if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
+    });
   }
-  // Fill remaining slots with theme/uncorrelated picks
-  available.filter(s => s.priority === 'theme' && !pickedSuggestions.find(p=>p.ticker===s.ticker))
-    .slice(0, Math.max(0, 8 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
-  // If still short, fill with remaining regardless of priority
-  available.filter(s => !pickedSuggestions.find(p=>p.ticker===s.ticker))
-    .slice(0, Math.max(0, 8 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
+  // Always show 2027 HC candidates + EM
+  available.filter(s => ['hc2027','em'].includes(s.priority)).forEach(s => {
+    if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
+  });
+  // Fill any remaining from pool
+  available.filter(s => !pickedSuggestions.find(p => p.ticker === s.ticker))
+    .slice(0, Math.max(0, 10 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
 
-  const gapNote = needsGeo && needsSector
-    ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is US-heavy and AI-concentrated — suggestions ranked to address both gaps first.</div>'
-    : needsGeo
-    ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is US-heavy — non-US picks ranked first.</div>'
-    : needsSector
-    ? '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">⚠️ Portfolio is AI/tech-concentrated — diversifying sectors ranked first.</div>'
-    : '<div style="font-size:12px;color:var(--green);margin-bottom:10px">✓ Geographic and sector balance is reasonable.</div>';
+  const priorityLabels = {
+    brk_fix: { label:'Retirement Diversification', color:'#60a5fa' },
+    energy:  { label:'Energy / Power', color:'#fbbf24' },
+    hc2027:  { label:'2027 HC Watch', color:'#f472b6' },
+    em:      { label:'EM / India Growth', color:'#34d399' },
+  };
 
   const _renderSuggestions = (priceMap) => {
     const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
-    const bucketLabel = b => b === 'high_conviction' ? 'High Conv.' : b === 'growth' ? 'Growth' : 'Retirement';
-    E('strat-suggestions').innerHTML = `<div class="strat-card">${gapNote}${pickedSuggestions.map(s => {
+    const bucketLabel = b => b === 'high_conviction' ? 'HC Watch' : b === 'growth' ? 'Growth' : 'Retirement';
+
+    const gapBanners = [];
+    if (needsBrkFix) gapBanners.push(`<span>🏛️ BRK-B ${brkConcRisk.toFixed(0)}% of retirement — add EUR/GBP compounders</span>`);
+    if (needsFX)     gapBanners.push(`<span>💱 ${usdConc.toFixed(0)}% USD — add non-USD names</span>`);
+    if (needsHealth) gapBanners.push(`<span>🏥 Zero healthcare — NOVO-B.CO is highest priority</span>`);
+    if (needsEnergy) gapBanners.push(`<span>⚡ Zero energy — CEG or TTE.PA</span>`);
+    const bannerHtml = gapBanners.length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${gapBanners.map(b=>`<div style="font-size:11px;color:#fbbf24;background:#fbbf2415;padding:3px 8px;border-radius:4px;border:1px solid #fbbf2430">${b}</div>`).join('')}</div>`
+      : `<div style="font-size:11px;color:var(--green);margin-bottom:10px">✓ Core gaps addressed.</div>`;
+
+    const convictionBadge = c => {
+      if (c && c.startsWith('HIGH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#4ade8022;color:#4ade80">HIGH</span>`;
+      if (c && c.startsWith('MEDIUM')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fbbf2422;color:#fbbf24">MEDIUM</span>`;
+      if (c && c.startsWith('WATCH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f472b622;color:#f472b6">WATCH</span>`;
+      return '';
+    };
+
+    E('strat-suggestions').innerHTML = `<div class="strat-card">${bannerHtml}${pickedSuggestions.map(s => {
       const q = priceMap[s.ticker];
       const priceStr = q && q.price != null
         ? `<span style="font-size:13px;font-weight:700;color:var(--fg)">${q.price.toFixed(2)}</span><span style="font-size:10px;color:var(--muted);margin-left:3px">${q.currency||''}</span>`
@@ -1806,8 +1907,15 @@ function renderStrategy(positions, lifetime) {
         : '';
       const bc = bucketColor(s.bucket);
       const bl = bucketLabel(s.bucket);
+      const pl = priorityLabels[s.priority] || { label: s.priority, color:'var(--muted)' };
+      const bearHtml = s.bearCase ? `<div style="font-size:10px;color:#f87171;margin-top:3px;padding:3px 8px;background:#f8717110;border-radius:4px;border-left:2px solid #f87171">⚠ Bear: ${s.bearCase}</div>` : '';
       return `
-      <div class="suggest-row" style="flex-direction:column;gap:6px;padding:12px 0">
+      <div class="suggest-row" style="flex-direction:column;gap:4px;padding:12px 0;border-bottom:1px solid #ffffff08">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${pl.color}18;color:${pl.color};border:1px solid ${pl.color}30">${pl.label}</span>
+          ${convictionBadge(s.conviction)}
+          <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${bc}22;color:${bc}">${bl} · ${s.ccy||''}</span>
+        </div>
         <div style="display:flex;align-items:flex-start;gap:10px">
           <div style="min-width:90px">
             <div class="suggest-ticker" style="color:var(--fg)">${s.ticker}</div>
@@ -1815,28 +1923,27 @@ function renderStrategy(positions, lifetime) {
             <div style="font-size:9px;color:#475569;margin-top:2px">${s.exchange||''}</div>
           </div>
           <div style="flex:1">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">
               ${priceStr}${dayStr ? ' ' + dayStr : ''}
-              <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${bc}22;color:${bc}">${bl}</span>
               <span style="font-size:10px;color:#fbbf24;font-weight:600">${s.buyGuide}</span>
             </div>
             <div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:3px">${s.why}</div>
-            <div style="font-size:11px;color:var(--muted);padding:5px 8px;background:var(--surface2);border-radius:5px;border-left:2px solid ${bc}">
+            <div style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--surface2);border-radius:5px;border-left:2px solid ${bc}">
               <span style="color:${bc};font-weight:700">Adds: </span>${s.diversifies}
             </div>
+            ${bearHtml}
           </div>
         </div>
       </div>`;
     }).join('')}</div>`;
   };
 
-  // Render immediately without prices, then fetch and re-render
   _renderSuggestions({});
   const suggTickers = pickedSuggestions.map(s => s.ticker).join(',');
   fetch(`/api/quotes?tickers=${encodeURIComponent(suggTickers)}`)
     .then(r => r.json())
     .then(priceMap => _renderSuggestions(priceMap))
-    .catch(() => { /* already rendered without prices */ });
+    .catch(() => {});
 }
 
 init();
