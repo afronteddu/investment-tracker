@@ -71,7 +71,7 @@
     /* ── Summary cards ── */
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -96,6 +96,8 @@
       margin-bottom: 12px;
     }
     @media (max-width: 900px) { .lifetime-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
 
     /* ── Deployment strip ── */
     .deploy-strip {
@@ -286,7 +288,7 @@
 
     /* ── Responsive ── */
     @media (max-width: 900px) {
-      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .summary-grid { grid-template-columns: repeat(3, 1fr); }
     }
     @media (max-width: 600px) {
       .page { padding: 12px; }
@@ -349,6 +351,16 @@
       <div class="card-label">FX Rate</div>
       <div class="card-value" id="s-fx" style="font-size:18px">—</div>
       <div class="card-sub" id="s-fx-sub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Today's Move</div>
+      <div class="card-value" id="s-today">—</div>
+      <div class="card-sub" id="s-today-sub"></div>
+    </div>
+    <div class="card" id="s-hc-card" style="border-color:var(--purple)22">
+      <div class="card-label">HC Exit Pulse</div>
+      <div class="card-value" id="s-hc-val">—</div>
+      <div class="card-sub" id="s-hc-sub"></div>
     </div>
   </div>
 
@@ -1023,6 +1035,65 @@ function renderSummary(positions, fx) {
     E('s-fx-sub').textContent = `= ${(1/fx.USD).toFixed(4)} USD`;
   }
   if (positions.length) E('portfolio-count').textContent = `${positions.length} positions`;
+
+  // ── Today's Move ────────────────────────────────────────────────
+  // Weighted portfolio day change: sum(value * day_pct) / sum(value with day data)
+  let dayNumer = 0, dayDenom = 0;
+  let bestMover = null, bestAbs = 0;
+  positions.forEach(p => {
+    const val = p.current_value_eur || 0;
+    if (p.day_pct != null && val > 0) {
+      dayNumer += val * p.day_pct;
+      dayDenom += val;
+      if (Math.abs(p.day_pct) > bestAbs) {
+        bestAbs = Math.abs(p.day_pct);
+        bestMover = p;
+      }
+    }
+  });
+  if (dayDenom > 0) {
+    const dayPct  = dayNumer / dayDenom;
+    const dayEur  = value > 0 ? value * dayPct / 100 : 0;
+    E('s-today').textContent = (dayPct >= 0 ? '+' : '') + fmt(dayPct) + '%';
+    E('s-today').className = 'card-value ' + cc(dayPct);
+    const subParts = [(dayPct >= 0 ? '+' : '') + fmtEur(dayEur) + ' today'];
+    if (bestMover) subParts.push(`top: ${bestMover.ticker} ${sign(bestMover.day_pct)}${fmt(bestMover.day_pct)}%`);
+    E('s-today-sub').textContent = subParts.join(' · ');
+    E('s-today-sub').className = 'card-sub ' + cc(dayPct);
+  } else {
+    E('s-today').textContent = '—';
+    E('s-today-sub').textContent = 'market closed';
+    E('s-today-sub').className = 'card-sub muted';
+  }
+
+  // ── HC Exit Pulse ────────────────────────────────────────────────
+  const HC_TARGET = 17500;
+  const hcPositions = positions.filter(p => p.bucket === 'high_conviction');
+  const hcVal  = hcPositions.reduce((s, p) => s + (p.current_value_eur || 0), 0);
+  const hcCost = hcPositions.reduce((s, p) => s + (p.total_cost_eur || 0), 0);
+  const hcPnlPct = hcCost > 0 ? (hcVal - hcCost) / hcCost * 100 : 0;
+  const hcProg = Math.min(100, hcVal / HC_TARGET * 100);
+  const hcColor = hcVal >= HC_TARGET ? 'var(--green)' : hcVal >= hcCost * 1.5 ? '#fbbf24' : 'var(--purple)';
+  const daysToWindow = Math.max(0, Math.round((new Date('2026-11-11') - new Date()) / 86400000));
+
+  if (hcVal > 0) {
+    E('s-hc-val').textContent = fmtEur(hcVal);
+    E('s-hc-val').className = 'card-value';
+    E('s-hc-val').style.color = hcColor;
+    const windowStr = daysToWindow > 0 ? `window in ${daysToWindow}d` : 'exit window open';
+    E('s-hc-sub').innerHTML =
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">` +
+        `<div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">` +
+          `<div style="width:${hcProg.toFixed(1)}%;height:100%;background:${hcColor};border-radius:2px;transition:width 0.6s"></div>` +
+        `</div>` +
+        `<span style="font-size:10px;color:${hcColor};font-weight:700;white-space:nowrap">${hcProg.toFixed(0)}%</span>` +
+      `</div>` +
+      `<span style="font-size:11px;color:var(--muted)">${(hcPnlPct>=0?'+':'')+hcPnlPct.toFixed(1)}% · €${Math.round(HC_TARGET/1000*10)/10}k target · ${windowStr}</span>`;
+    E('s-hc-card').style.borderColor = hcColor + '44';
+  } else {
+    E('s-hc-val').textContent = '—';
+    E('s-hc-sub').textContent = 'no HC positions';
+  }
 }
 
 // ── Portfolio table ───────────────────────────────────────────────
