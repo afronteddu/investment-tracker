@@ -157,7 +157,7 @@ def load_transactions(data_dir: str = "data/transactions") -> list[dict]:
             order_id = row[16] if len(row) > 16 else None
 
             # Deduplicate: prefer order_id when present, otherwise use content key
-            dedup_key = order_id if order_id else (row[0], row[2], row[6], row[15])
+            dedup_key = order_id if order_id else (row[0], row[3], str(row[6]), str(row[15]))
             if dedup_key in seen_orders:
                 continue
             seen_orders.add(dedup_key)
@@ -312,7 +312,7 @@ def compute_lifetime_stats(data_dir: str = "data/transactions") -> dict:
         for i, row in enumerate(ws.iter_rows(values_only=True)):
             if i == 0 or not row[0]:
                 continue
-            key = (row[0], row[2], row[6], row[15])
+            key = (row[0], row[3], str(row[6]), str(row[15]))
             if key in seen:
                 continue
             seen.add(key)
