@@ -35,6 +35,7 @@ class Scheduler:
         self._last_signals_refresh = None
         self._last_quotes_refresh = None
         self._last_history_refresh = None
+        self._last_health_check = None
 
     async def run(self):
         await asyncio.sleep(5)  # let uvicorn finish startup before any fetches
@@ -55,6 +56,11 @@ class Scheduler:
         if self._last_history_refresh is None or (now - self._last_history_refresh).total_seconds() >= 21600:
             self._last_history_refresh = now
             asyncio.create_task(self._refresh_history())
+
+        # Health check every 6 hours
+        if self._last_health_check is None or (now - self._last_health_check).total_seconds() >= 21600:
+            self._last_health_check = now
+            asyncio.create_task(self._run_health_check())
 
         # Refresh signals (RSI/earnings/news) every 30 min
         if self._last_signals_refresh is None or (now - self._last_signals_refresh).total_seconds() >= 1800:
@@ -680,3 +686,92 @@ class Scheduler:
                 "\n".join(lines),
                 alert_key=f"watch_{ticker}_{direction}_{int(abs(pct))}",
             )
+
+    async def _run_health_check(self):
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(None, self._health_check_sync)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("health check failed: %s", e)
+
+    def _health_check_sync(self):
+        from src.quotes import fetch_quotes, day_change_pct
+        from src.positions import compute_positions
+
+        issues = []
+        ok = []
+
+        # 1. Positions loaded
+        positions = self.state.get("positions", {})
+        if not positions:
+            issues.append("❌ No positions loaded — transaction files may be missing")
+        else:
+            ok.append(f"✅ {len(positions)} positions loaded")
+
+        # 2. Prices returning values
+        if positions:
+            tickers = list(positions.keys())
+            quotes = fetch_quotes(tickers)
+            missing_price = [t for t in tickers if quotes.get(t, {}).get("price") is None]
+            stale_price = [t for t in tickers if quotes.get(t, {}).get("price") is not None]
+            if missing_price:
+                issues.append(f"❌ No price for: {', '.join(missing_price)}")
+            if stale_price:
+                ok.append(f"✅ Prices OK: {', '.join(stale_price)}")
+
+        # 3. FX rates
+        fx = self.state.get("fx_cache", {})
+        if not fx or "USD" not in fx:
+            issues.append("❌ FX rates missing (USD/EUR unavailable)")
+        else:
+            ok.append(f"✅ FX OK: 1 USD = {fx.get('USD', '?')} EUR⁻¹")
+
+        # 4. History cache populated
+        history = self.state.get("history_cache")
+        if not history or not history.get("series"):
+            issues.append("❌ History cache empty — charts may not render")
+        else:
+            n_series = len(history["series"])
+            n_portfolio_pts = len(history.get("portfolio", []))
+            ok.append(f"✅ History: {n_series} series, {n_portfolio_pts} portfolio points")
+
+        # 5. Signals cache
+        signals = self.state.get("signals_cache", {})
+        missing_signals = [t for t in positions if t not in signals]
+        if missing_signals:
+            issues.append(f"⚠️ RSI missing for: {', '.join(missing_signals)}")
+        else:
+            ok.append(f"✅ Signals cached for all {len(positions)} holdings")
+
+        # 6. WebSocket payload ready
+        if not self.state.get("ws_payload_cache"):
+            issues.append("❌ WebSocket payload not built — live updates won't work")
+        else:
+            ok.append("✅ WebSocket payload ready")
+
+        # 7. Portfolio value sanity check
+        quotes_cache = self.state.get("quotes_cache", {})
+        total_value = 0.0
+        fx_rates = self.state.get("fx_cache", {})
+        for ticker, pos in positions.items():
+            q = quotes_cache.get(ticker, {})
+            price = q.get("price")
+            currency = q.get("currency", "EUR")
+            if price:
+                total_value += pos.shares * price * fx_rates.get(currency, 1.0)
+        if total_value > 0:
+            ok.append(f"✅ Portfolio value: €{total_value:,.0f}")
+        else:
+            issues.append("❌ Portfolio value = €0 — all prices may be stale")
+
+        # Build and send report
+        now_str = now_dublin().strftime("%d/%m %H:%M")
+        if issues:
+            title = f"⚠️ Dashboard health check — {len(issues)} issue(s)"
+            body = "\n".join(issues) + "\n\n" + "\n".join(ok)
+        else:
+            title = f"✅ Dashboard healthy — {now_str}"
+            body = "\n".join(ok)
+
+        notify(title, body, alert_key=f"health_{now_dublin().strftime('%Y-%m-%d-%H')}")
