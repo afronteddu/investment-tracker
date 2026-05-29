@@ -2012,14 +2012,13 @@ function renderStrategy(positions, lifetime) {
               <span style="color:${bc};font-weight:700">Adds: </span>${s.diversifies}
             </div>
             ${bearHtml}
-            <!-- AI Challenge row — ticker passed as plain string, suggestion looked up from _suggestionMap -->
-            <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
-              <input id="challenge-input-${tid}"
+            <!-- AI Challenge row — uses data-ticker + event delegation, no JS in attributes -->
+            <div class="challenge-row" style="display:flex;gap:6px;margin-top:8px;align-items:center">
+              <input class="challenge-input" data-ticker="${tid}"
                 type="text" placeholder="Challenge this… e.g. why not MSFT instead?"
                 style="flex:1;font-size:11px;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:5px;color:var(--fg);outline:none;min-width:0"
-                onkeydown="if(event.key==='Enter')_submitChallenge('${tid}')"
               />
-              <button onclick="_submitChallenge('${tid}')"
+              <button class="challenge-btn" data-ticker="${tid}"
                 style="font-size:10px;padding:5px 10px;background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:700">
                 Ask AI ▶
               </button>
@@ -2073,8 +2072,8 @@ function _formatChallengeResponse(text) {
 
 async function _submitChallenge(ticker) {
   const suggestion = _suggestionMap[ticker] || {};
-  const inputEl = document.getElementById(`challenge-input-${ticker}`);
-  const respEl = document.getElementById(`challenge-resp-${ticker}`);
+  const inputEl = document.querySelector(`.challenge-input[data-ticker="${ticker}"]`);
+  const respEl  = document.getElementById(`challenge-resp-${ticker}`);
   if (!inputEl || !respEl) return;
   const query = inputEl.value.trim();
   if (!query) { inputEl.focus(); return; }
@@ -2099,6 +2098,17 @@ async function _submitChallenge(ticker) {
     respEl.innerHTML = `<div style="font-size:11px;color:#f87171;padding:6px 0">Error: ${e.message}</div>`;
   }
 }
+
+// Event delegation — handles clicks/Enter for all challenge rows
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.challenge-btn');
+  if (btn) _submitChallenge(btn.dataset.ticker);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.classList.contains('challenge-input')) {
+    _submitChallenge(e.target.dataset.ticker);
+  }
+});
 
 // ── AI Health Badge ───────────────────────────────────────────────────────────
 function _updateAiHealthBadge(data) {
