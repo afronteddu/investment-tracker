@@ -427,8 +427,10 @@ class Scheduler:
                     close_eur = close * fx.get(currency, 1.0)
                     if first_close_eur is None:
                         first_close_eur = close_eur
-                    # % anchored to avg cost per share (same logic as open positions)
-                    pct = (close_eur - avg_cost_per_share) / avg_cost_per_share * 100 if avg_cost_per_share else 0
+                    # % anchored to first yahoo close in holding period — transaction
+                    # cost can't be used because Yahoo adjusts historical prices after
+                    # fund restructuring/consolidation, causing fake returns.
+                    pct = (close_eur - first_close_eur) / first_close_eur * 100 if first_close_eur else 0
                     val = peak_shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
                     val_by_date[p["date"]] = val
