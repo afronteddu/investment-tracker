@@ -436,6 +436,55 @@ async def drilldown(ticker: str, request: Request):
 connected: list[WebSocket] = []
 
 
+@app.get("/api/ai/health")
+async def ai_health(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    from src.briefing import ai_health_check
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, ai_health_check)
+    return result
+
+
+@app.post("/api/suggest/challenge")
+async def suggest_challenge(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    body = await request.json()
+    ticker = body.get("ticker", "").upper()
+    user_query = body.get("query", "").strip()
+    suggestion_meta = body.get("suggestion", {})
+
+    if not ticker or not user_query:
+        return {"error": "ticker and query required"}
+
+    portfolio_rows = _build_portfolio_data()
+
+    # Live quote for context (non-blocking, from cache first)
+    quotes = state.get("quotes_cache", {})
+    live_quote = None
+    if ticker in quotes:
+        q = quotes[ticker]
+        if q.get("price"):
+            live_quote = {"price": q["price"], "currency": q.get("currency", ""), "day_pct": day_change_pct(q)}
+    else:
+        try:
+            loop = asyncio.get_event_loop()
+            fresh = await loop.run_in_executor(None, fetch_quotes, [ticker])
+            q = fresh.get(ticker, {})
+            if q.get("price"):
+                live_quote = {"price": q["price"], "currency": q.get("currency", ""), "day_pct": day_change_pct(q)}
+        except Exception:
+            pass
+
+    from src.briefing import generate_challenge
+    loop = asyncio.get_event_loop()
+    analysis = await loop.run_in_executor(
+        None, generate_challenge, ticker, suggestion_meta, user_query, portfolio_rows, live_quote
+    )
+    return {"ticker": ticker, "query": user_query, "analysis": analysis}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     token = websocket.query_params.get("token", "")

@@ -551,6 +551,7 @@
     <div class="section-header" style="margin-top:0">
       <span class="section-title">Suggested Additions</span>
       <span class="muted" style="font-size:11px">to improve diversification</span>
+      <span id="ai-health-badge" style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:#ffffff10;color:var(--muted)">AI ···</span>
     </div>
     <div id="strat-suggestions"></div>
   </div>
@@ -1948,10 +1949,17 @@ function renderStrategy(positions, lifetime) {
     em:      { label:'EM / India Growth', color:'#34d399' },
   };
 
-  const _renderSuggestions = (priceMap) => {
-    const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
-    const bucketLabel = b => b === 'high_conviction' ? 'HC Watch' : b === 'growth' ? 'Growth' : 'Retirement';
+  const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
+  const bucketLabel = b => b === 'high_conviction' ? 'HC Watch' : b === 'growth' ? 'Growth' : 'Retirement';
 
+  const convictionBadge = c => {
+    if (c && c.startsWith('HIGH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#4ade8022;color:#4ade80">HIGH</span>`;
+    if (c && c.startsWith('MEDIUM')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fbbf2422;color:#fbbf24">MEDIUM</span>`;
+    if (c && c.startsWith('WATCH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f472b622;color:#f472b6">WATCH</span>`;
+    return '';
+  };
+
+  const _renderSuggestions = (priceMap) => {
     const gapBanners = [];
     if (needsBrkFix) gapBanners.push(`<span>🏛️ BRK-B ${brkConcRisk.toFixed(0)}% of retirement — add EUR/GBP compounders</span>`);
     if (needsFX)     gapBanners.push(`<span>💱 ${usdConc.toFixed(0)}% USD — add non-USD names</span>`);
@@ -1960,13 +1968,6 @@ function renderStrategy(positions, lifetime) {
     const bannerHtml = gapBanners.length
       ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${gapBanners.map(b=>`<div style="font-size:11px;color:#fbbf24;background:#fbbf2415;padding:3px 8px;border-radius:4px;border:1px solid #fbbf2430">${b}</div>`).join('')}</div>`
       : `<div style="font-size:11px;color:var(--green);margin-bottom:10px">✓ Core gaps addressed.</div>`;
-
-    const convictionBadge = c => {
-      if (c && c.startsWith('HIGH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#4ade8022;color:#4ade80">HIGH</span>`;
-      if (c && c.startsWith('MEDIUM')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fbbf2422;color:#fbbf24">MEDIUM</span>`;
-      if (c && c.startsWith('WATCH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f472b622;color:#f472b6">WATCH</span>`;
-      return '';
-    };
 
     E('strat-suggestions').innerHTML = `<div class="strat-card">${bannerHtml}${pickedSuggestions.map(s => {
       const q = priceMap[s.ticker];
@@ -1980,6 +1981,10 @@ function renderStrategy(positions, lifetime) {
       const bl = bucketLabel(s.bucket);
       const pl = priorityLabels[s.priority] || { label: s.priority, color:'var(--muted)' };
       const bearHtml = s.bearCase ? `<div style="font-size:10px;color:#f87171;margin-top:3px;padding:3px 8px;background:#f8717110;border-radius:4px;border-left:2px solid #f87171">⚠ Bear: ${s.bearCase}</div>` : '';
+      const cachedResponse = _challengeCache[s.ticker];
+      const challengeResponseHtml = cachedResponse
+        ? `<div id="challenge-resp-${s.ticker}" style="margin-top:8px">${_formatChallengeResponse(cachedResponse)}</div>`
+        : `<div id="challenge-resp-${s.ticker}"></div>`;
       return `
       <div class="suggest-row" style="flex-direction:column;gap:4px;padding:12px 0;border-bottom:1px solid #ffffff08">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
@@ -2003,6 +2008,19 @@ function renderStrategy(positions, lifetime) {
               <span style="color:${bc};font-weight:700">Adds: </span>${s.diversifies}
             </div>
             ${bearHtml}
+            <!-- AI Challenge row -->
+            <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
+              <input id="challenge-input-${s.ticker}"
+                type="text" placeholder="Challenge this… (e.g. 'why not just buy MSFT instead?')"
+                style="flex:1;font-size:11px;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:5px;color:var(--fg);outline:none;min-width:0"
+                onkeydown="if(event.key==='Enter')_submitChallenge('${s.ticker}', ${JSON.stringify(s).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')})"
+              />
+              <button onclick="_submitChallenge('${s.ticker}', ${JSON.stringify(s).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')})"
+                style="font-size:10px;padding:5px 10px;background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:700">
+                Ask AI ▶
+              </button>
+            </div>
+            ${challengeResponseHtml}
           </div>
         </div>
       </div>`;
@@ -2017,7 +2035,96 @@ function renderStrategy(positions, lifetime) {
     .catch(() => {});
 }
 
+// ── AI Challenge (Suggested Additions) ───────────────────────────────────────
+const _challengeCache = {};
+
+function _formatChallengeResponse(text) {
+  const sectionColors = {
+    'Bull Case': '#4ade80',
+    'Contrarian Take': '#f87171',
+    'Sources & Assumptions to Verify': '#fbbf24',
+    'Portfolio Fit Verdict': '#60a5fa',
+  };
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>');
+  Object.entries(sectionColors).forEach(([title, color]) => {
+    const escaped = title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    html = html.replace(
+      new RegExp(`## ${escaped}`, 'g'),
+      `</div><div class="challenge-section" style="border-left:2px solid ${color};padding:6px 10px;margin-top:6px;background:${color}0d">` +
+      `<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${title}</div>`
+    );
+  });
+  // Wrap lines
+  html = html.replace(/\n- /g, '<br>• ').replace(/\n\n/g,'<br>').replace(/\n/g,'<br>');
+  // Strip leading orphan </div>
+  html = html.replace(/^<\/div>/, '');
+  // Close last section
+  html += '</div>';
+  return `<div style="font-size:11px;color:#cbd5e1;line-height:1.6;border-radius:6px;overflow:hidden;border:1px solid #1e293b">${html}</div>`;
+}
+
+async function _submitChallenge(ticker, suggestion) {
+  const inputEl = document.getElementById(`challenge-input-${ticker}`);
+  const respEl = document.getElementById(`challenge-resp-${ticker}`);
+  if (!inputEl || !respEl) return;
+  const query = inputEl.value.trim();
+  if (!query) { inputEl.focus(); return; }
+
+  respEl.innerHTML = `<div style="font-size:11px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px">
+    <span style="display:inline-block;width:12px;height:12px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>
+    Analysing with full portfolio context…
+  </div>`;
+
+  try {
+    const res = await fetch('/api/suggest/challenge', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ticker, query, suggestion }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    _challengeCache[ticker] = data.analysis;
+    respEl.innerHTML = _formatChallengeResponse(data.analysis);
+  } catch(e) {
+    respEl.innerHTML = `<div style="font-size:11px;color:#f87171;padding:6px 0">Error: ${e.message}</div>`;
+  }
+}
+
+// ── AI Health Badge ───────────────────────────────────────────────────────────
+function _updateAiHealthBadge(data) {
+  const badge = document.getElementById('ai-health-badge');
+  if (!badge) return;
+  if (data.active === 'gemini') {
+    badge.textContent = 'AI · Gemini ✓';
+    badge.style.cssText = badge.style.cssText.replace(/color:[^;]+/, '') + ';color:#4ade80;background:#4ade8015;border:1px solid #4ade8030';
+  } else if (data.active === 'openai') {
+    badge.textContent = 'AI · GPT-4o ✓';
+    badge.style.cssText = badge.style.cssText.replace(/color:[^;]+/, '') + ';color:#fbbf24;background:#fbbf2415;border:1px solid #fbbf2430';
+  } else {
+    badge.textContent = 'AI · Offline';
+    badge.style.cssText = badge.style.cssText.replace(/color:[^;]+/, '') + ';color:#f87171;background:#f8717115;border:1px solid #f8717130';
+  }
+}
+
+function _pollAiHealth() {
+  fetch('/api/ai/health')
+    .then(r => r.json())
+    .then(d => _updateAiHealthBadge(d))
+    .catch(() => {
+      const badge = document.getElementById('ai-health-badge');
+      if (badge) { badge.textContent = 'AI · Offline'; badge.style.color='#f87171'; }
+    });
+}
+
 init();
+
+// Poll AI health on load and every 5 minutes
+_pollAiHealth();
+setInterval(_pollAiHealth, 5 * 60 * 1000);
 </script>
 </body>
 </html>

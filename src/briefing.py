@@ -149,6 +149,98 @@ def _fetch_fundamentals(ticker: str) -> dict:
         return {"error": str(e)[:100]}
 
 
+def ai_health_check() -> dict:
+    """Lightweight probe — returns which providers are live."""
+    google_key = os.getenv("GOOGLE_API_KEY", "")
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    result = {"gemini": False, "openai": False, "active": None}
+    if google_key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=google_key)
+            resp = client.models.generate_content(model="gemini-2.0-flash", contents="Reply OK")
+            if resp.text:
+                result["gemini"] = True
+                result["active"] = "gemini"
+        except Exception:
+            pass
+    if openai_key and not result["active"]:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=openai_key)
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini", max_tokens=5,
+                messages=[{"role": "user", "content": "Reply OK"}],
+            )
+            if resp.choices[0].message.content:
+                result["openai"] = True
+                result["active"] = "openai"
+        except Exception:
+            pass
+    return result
+
+
+def generate_challenge(
+    ticker: str,
+    suggestion: dict,
+    user_query: str,
+    portfolio_snapshot: list[dict],
+    live_quote: dict | None,
+) -> str:
+    """AI response to a user challenge on a suggested addition."""
+    positions_text = "\n".join(
+        f"- {p['ticker']} ({p['bucket']}): {p['shares']:.1f}sh @ avg €{p['avg_cost_eur']:.2f}, "
+        f"P&L {p.get('pnl_pct', 0):+.1f}%, value €{p.get('current_value_eur', 0):,.0f}"
+        for p in portfolio_snapshot
+    )
+
+    total_value = sum(p.get("current_value_eur", 0) or 0 for p in portfolio_snapshot)
+    total_cost = sum(p.get("total_cost_eur", 0) or 0 for p in portfolio_snapshot)
+    total_pnl_pct = (total_value - total_cost) / total_cost * 100 if total_cost else 0
+
+    price_str = ""
+    if live_quote and live_quote.get("price"):
+        day_pct = live_quote.get("day_pct") or 0
+        price_str = f"Live: {live_quote['price']:.2f} {live_quote.get('currency','')} ({day_pct:+.1f}% today)"
+
+    prompt = f"""You are a rigorous investment analyst with a contrarian mindset.
+Today is {datetime.now().strftime('%A %d %B %Y')}. Investor is in Dublin, Ireland.
+
+PORTFOLIO CONTEXT (total €{total_value:,.0f} | P&L {total_pnl_pct:+.1f}%):
+{positions_text}
+
+SUGGESTED ADDITION BEING CHALLENGED:
+Ticker: {ticker}
+Sector: {suggestion.get('sector','')} | Geography: {suggestion.get('geo','')} | Currency: {suggestion.get('ccy','')}
+Priority rationale: {suggestion.get('why','')}
+Buy guide: {suggestion.get('buyGuide','')}
+What it diversifies: {suggestion.get('diversifies','')}
+Known bear case: {suggestion.get('bearCase','')}
+Conviction: {suggestion.get('conviction','')}
+{price_str}
+
+USER'S CHALLENGE / QUESTION:
+"{user_query}"
+
+Respond using EXACTLY these four markdown sections with no intro text before the first header:
+
+## Bull Case
+One paragraph: why the original thesis holds. Quote at least one specific number (valuation, growth rate, market share). Be concise.
+
+## Contrarian Take
+Play devil's advocate hard. What is the strongest reason NOT to buy this? What would a short-seller say? What assumption in the thesis is most likely to be wrong? Be specific and direct.
+
+## Sources & Assumptions to Verify
+List 3 specific claims in the thesis that need verification before buying. For each, say what to check and where (e.g. company earnings release, analyst consensus, regulatory filing). No vague advice.
+
+## Portfolio Fit Verdict
+Given this specific portfolio (positions, buckets, concentrations above), should the investor add this position now, wait for a better entry, or skip it? Consider Irish CGT rules (33% on stocks, never ETFs). One clear recommendation with a specific condition if applicable.
+
+Max 400 words total. No disclaimers. Be direct."""
+
+    return _ask(prompt, max_tokens=600)
+
+
 def generate_drilldown(ticker: str, position: dict | None, quote: dict | None) -> str:
     name = position.get("name", ticker) if position else ticker
     bucket = position.get("bucket", "watchlist") if position else "watchlist"
