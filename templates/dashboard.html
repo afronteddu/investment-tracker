@@ -1959,6 +1959,9 @@ function renderStrategy(positions, lifetime) {
     return '';
   };
 
+  // Store suggestion objects by ticker so onclick handlers can look them up safely
+  pickedSuggestions.forEach(s => { _suggestionMap[s.ticker] = s; });
+
   const _renderSuggestions = (priceMap) => {
     const gapBanners = [];
     if (needsBrkFix) gapBanners.push(`<span>🏛️ BRK-B ${brkConcRisk.toFixed(0)}% of retirement — add EUR/GBP compounders</span>`);
@@ -1985,6 +1988,7 @@ function renderStrategy(positions, lifetime) {
       const challengeResponseHtml = cachedResponse
         ? `<div id="challenge-resp-${s.ticker}" style="margin-top:8px">${_formatChallengeResponse(cachedResponse)}</div>`
         : `<div id="challenge-resp-${s.ticker}"></div>`;
+      const tid = s.ticker;
       return `
       <div class="suggest-row" style="flex-direction:column;gap:4px;padding:12px 0;border-bottom:1px solid #ffffff08">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
@@ -1994,7 +1998,7 @@ function renderStrategy(positions, lifetime) {
         </div>
         <div style="display:flex;align-items:flex-start;gap:10px">
           <div style="min-width:90px">
-            <div class="suggest-ticker" style="color:var(--fg)">${s.ticker}</div>
+            <div class="suggest-ticker" style="color:var(--fg)">${tid}</div>
             <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.geo}</div>
             <div style="font-size:9px;color:#475569;margin-top:2px">${s.exchange||''}</div>
           </div>
@@ -2008,14 +2012,14 @@ function renderStrategy(positions, lifetime) {
               <span style="color:${bc};font-weight:700">Adds: </span>${s.diversifies}
             </div>
             ${bearHtml}
-            <!-- AI Challenge row -->
+            <!-- AI Challenge row — ticker passed as plain string, suggestion looked up from _suggestionMap -->
             <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
-              <input id="challenge-input-${s.ticker}"
-                type="text" placeholder="Challenge this… (e.g. 'why not just buy MSFT instead?')"
+              <input id="challenge-input-${tid}"
+                type="text" placeholder="Challenge this… e.g. why not MSFT instead?"
                 style="flex:1;font-size:11px;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:5px;color:var(--fg);outline:none;min-width:0"
-                onkeydown="if(event.key==='Enter')_submitChallenge('${s.ticker}', ${JSON.stringify(s).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')})"
+                onkeydown="if(event.key==='Enter')_submitChallenge('${tid}')"
               />
-              <button onclick="_submitChallenge('${s.ticker}', ${JSON.stringify(s).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')})"
+              <button onclick="_submitChallenge('${tid}')"
                 style="font-size:10px;padding:5px 10px;background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:700">
                 Ask AI ▶
               </button>
@@ -2037,6 +2041,7 @@ function renderStrategy(positions, lifetime) {
 
 // ── AI Challenge (Suggested Additions) ───────────────────────────────────────
 const _challengeCache = {};
+const _suggestionMap = {};
 
 function _formatChallengeResponse(text) {
   const sectionColors = {
@@ -2066,7 +2071,8 @@ function _formatChallengeResponse(text) {
   return `<div style="font-size:11px;color:#cbd5e1;line-height:1.6;border-radius:6px;overflow:hidden;border:1px solid #1e293b">${html}</div>`;
 }
 
-async function _submitChallenge(ticker, suggestion) {
+async function _submitChallenge(ticker) {
+  const suggestion = _suggestionMap[ticker] || {};
   const inputEl = document.getElementById(`challenge-input-${ticker}`);
   const respEl = document.getElementById(`challenge-resp-${ticker}`);
   if (!inputEl || !respEl) return;
