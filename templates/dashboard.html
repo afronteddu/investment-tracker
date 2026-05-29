@@ -1985,7 +1985,9 @@ function renderStrategy(positions, lifetime) {
       const pl = priorityLabels[s.priority] || { label: s.priority, color:'var(--muted)' };
       const bearHtml = s.bearCase ? `<div style="font-size:10px;color:#f87171;margin-top:3px;padding:3px 8px;background:#f8717110;border-radius:4px;border-left:2px solid #f87171">⚠ Bear: ${s.bearCase}</div>` : '';
       const cachedResponse = _challengeCache[s.ticker];
-      const challengeResponseHtml = cachedResponse
+      const challengeResponseHtml = cachedResponse === '__loading__'
+        ? `<div id="challenge-resp-${s.ticker}" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:12px;height:12px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>Analysing…</div></div>`
+        : cachedResponse
         ? `<div id="challenge-resp-${s.ticker}" style="margin-top:8px">${_formatChallengeResponse(cachedResponse)}</div>`
         : `<div id="challenge-resp-${s.ticker}"></div>`;
       const tid = s.ticker;
@@ -2070,18 +2072,32 @@ function _formatChallengeResponse(text) {
   return `<div style="font-size:11px;color:#cbd5e1;line-height:1.6;border-radius:6px;overflow:hidden;border:1px solid #1e293b">${html}</div>`;
 }
 
-async function _submitChallenge(ticker) {
-  const suggestion = _suggestionMap[ticker] || {};
-  const inputEl = document.querySelector(`.challenge-input[data-ticker="${ticker}"]`);
-  const respEl  = document.getElementById(`challenge-resp-${ticker}`);
-  if (!inputEl || !respEl) return;
-  const query = inputEl.value.trim();
-  if (!query) { inputEl.focus(); return; }
+const _challengeInFlight = new Set();
 
-  respEl.innerHTML = `<div style="font-size:11px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px">
+async function _submitChallenge(ticker) {
+  if (_challengeInFlight.has(ticker)) return; // already running
+  const suggestion = _suggestionMap[ticker] || {};
+
+  // Always re-query DOM — never cache elements across an await
+  const getInput = () => document.querySelector(`.challenge-input[data-ticker="${ticker}"]`);
+  const getResp  = () => document.getElementById(`challenge-resp-${ticker}`);
+
+  const query = (getInput() || {}).value?.trim();
+  if (!query) { const el = getInput(); if (el) el.focus(); return; }
+
+  _challengeInFlight.add(ticker);
+  // Store query so re-renders can restore the loading state
+  _challengeCache[ticker] = '__loading__';
+
+  const setResp = html => {
+    const el = getResp();
+    if (el) el.innerHTML = html;
+  };
+
+  setResp(`<div style="font-size:11px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px">
     <span style="display:inline-block;width:12px;height:12px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>
     Analysing with full portfolio context…
-  </div>`;
+  </div>`);
 
   try {
     const res = await fetch('/api/suggest/challenge', {
@@ -2093,9 +2109,12 @@ async function _submitChallenge(ticker) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     _challengeCache[ticker] = data.analysis;
-    respEl.innerHTML = _formatChallengeResponse(data.analysis);
+    setResp(_formatChallengeResponse(data.analysis));
   } catch(e) {
-    respEl.innerHTML = `<div style="font-size:11px;color:#f87171;padding:6px 0">Error: ${e.message}</div>`;
+    _challengeCache[ticker] = null;
+    setResp(`<div style="font-size:11px;color:#f87171;padding:6px 0">Error: ${e.message}</div>`);
+  } finally {
+    _challengeInFlight.delete(ticker);
   }
 }
 
