@@ -267,6 +267,13 @@ async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
+@app.get("/property", response_class=HTMLResponse)
+async def property_tracker(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    return templates.TemplateResponse("property.html", {"request": request})
+
+
 
 
 def _portfolio_payload() -> dict:

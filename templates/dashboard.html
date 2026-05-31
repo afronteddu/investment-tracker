@@ -71,7 +71,7 @@
     /* ── Summary cards ── */
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(7, 1fr);
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -96,7 +96,8 @@
       margin-bottom: 12px;
     }
     @media (max-width: 900px) { .lifetime-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 1300px) { .summary-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 900px)  { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 700px)  { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
 
     /* ── Deployment strip ── */
@@ -154,6 +155,7 @@
     .b-high { background: rgba(192,132,252,0.15); color: var(--purple); }
     .b-growth { background: rgba(251,191,36,0.12); color: var(--yellow); }
     .b-retirement { background: rgba(34,211,238,0.12); color: var(--cyan); }
+    .b-house { background: rgba(251,146,60,0.12); color: var(--orange); }
 
     .pct-big { font-size: 15px; font-weight: 700; }
     .bar-wrap { width: 60px; height: 4px; background: var(--border); border-radius: 2px; display: inline-block; vertical-align: middle; margin-left: 6px; }
@@ -288,7 +290,7 @@
 
     /* ── Responsive ── */
     @media (max-width: 900px) {
-      .summary-grid { grid-template-columns: repeat(3, 1fr); }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 600px) {
       .page { padding: 12px; }
@@ -325,6 +327,7 @@
     <div class="market-pills" id="market-pills"></div>
   </div>
   <div class="header-right">
+    <a href="/property" style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px;transition:all .15s" onmouseover="this.style.color='var(--orange)';this.style.borderColor='var(--orange)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">🏠 Property</a>
     <span class="update-time" id="update-time">connecting...</span>
     <button class="btn btn-sm" id="briefing-btn" onclick="generateBriefing()">AI Briefing</button>
   </div>
@@ -361,6 +364,11 @@
       <div class="card-label">HC Exit Pulse</div>
       <div class="card-value" id="s-hc-val">—</div>
       <div class="card-sub" id="s-hc-sub"></div>
+    </div>
+    <div class="card" id="s-house-card" style="border-color:#fb923c22;cursor:pointer" onclick="showDesktopPanel('strategy', document.getElementById('nav-strategy'))">
+      <div class="card-label">🏠 House Fund</div>
+      <div class="card-value" id="s-house-val" style="font-size:18px">—</div>
+      <div class="card-sub" id="s-house-sub"></div>
     </div>
   </div>
 
@@ -1115,8 +1123,8 @@ function renderPortfolio(positions) {
 
     const dayC = p.day_pct == null ? 'muted' : p.day_pct >= 0 ? 'green' : 'red';
     const pnlC = cc(p.pnl_pct);
-    const bClass = p.bucket === 'high_conviction' ? 'b-high' : p.bucket === 'growth' ? 'b-growth' : 'b-retirement';
-    const bLabel = p.bucket === 'high_conviction' ? 'High Conv.' : p.bucket === 'growth' ? 'Growth' : 'Retirement';
+    const bClass = p.bucket === 'high_conviction' ? 'b-high' : p.bucket === 'growth' ? 'b-growth' : p.bucket === 'house_savings' ? 'b-house' : 'b-retirement';
+    const bLabel = p.bucket === 'high_conviction' ? 'High Conv.' : p.bucket === 'growth' ? 'Growth' : p.bucket === 'house_savings' ? 'House' : 'Retirement';
 
     const barPct = p.pnl_pct != null ? Math.min(Math.abs(p.pnl_pct), 100) : 0;
     const barColor = p.pnl_pct >= 0 ? 'var(--green)' : 'var(--red)';
@@ -1355,9 +1363,9 @@ async function init() {
 }
 
 // ── Strategy Advisor ─────────────────────────────────────────────
-const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25 };
-const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6' };
-const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction' };
+const BUCKET_TARGETS = { retirement: 35, growth: 30, high_conviction: 25, house_savings: 10 };
+const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6', house_savings: '#fb923c' };
+const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction', house_savings: 'House Savings' };
 
 // Ireland tax: UCITS ETFs = 41% exit tax + 8yr deemed disposal (HOLD, never add).
 // ETCs (IGLN, ISLN) = debt securities = 33% CGT, no deemed disposal.
@@ -1517,7 +1525,7 @@ function renderStrategy(positions, lifetime) {
   if (!totalValue) return;
 
   // ── Bucket allocation ──────────────────────────────────────────
-  const bucketValues = { retirement:0, growth:0, high_conviction:0 };
+  const bucketValues = { retirement:0, growth:0, high_conviction:0, house_savings:0 };
   positions.forEach(p => {
     const b = p.bucket || 'growth';
     bucketValues[b] = (bucketValues[b] || 0) + (p.current_value_eur || 0);
@@ -1573,6 +1581,7 @@ function renderStrategy(positions, lifetime) {
   const retPos = positions.filter(p => p.bucket === 'retirement');
   const growPos = positions.filter(p => p.bucket === 'growth');
   const hcPos  = positions.filter(p => p.bucket === 'high_conviction');
+  // house_savings positions are parsed from portfolio but tracked separately in house section
 
   const retVal   = retPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
   const growVal  = growPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
@@ -1599,7 +1608,12 @@ function renderStrategy(positions, lifetime) {
   // ── Retirement goal tracker: €100k by Dec 2030 ─────────────────
   const RET_GOAL = 100000;
   const RET_GOAL_DATE = new Date('2030-12-31');
-  const RET_MONTHLY = 1500;
+  // RET_MONTHLY is the actual retirement allocation from the split (computed below from localStorage)
+  const _totalBudget   = +(localStorage.getItem('houseTotalBudget')   || 1500);
+  const _houseSharePct = +(localStorage.getItem('houseSharePct')      || 50);  // % of budget → house cash
+  const _retSharePct   = +(localStorage.getItem('retSharePct')        || 30);  // % → retirement
+  // growth gets the remainder implicitly: 100 - house - ret
+  const RET_MONTHLY = Math.round(_totalBudget * _retSharePct / 100);
   const todayRet = new Date();
   const monthsLeft = Math.max(1, (RET_GOAL_DATE.getFullYear() - todayRet.getFullYear()) * 12 + (RET_GOAL_DATE.getMonth() - todayRet.getMonth()));
   const rMonthly = 0.07 / 12;
@@ -1773,6 +1787,201 @@ function renderStrategy(positions, lifetime) {
     <div class="strat-card-body">${c.body}</div>
   </div>`).join('');
 
+  // ── House Fund goal tracker + Monthly Split Planner ────────────
+  // Target: €57k (€45k deposit + €12k costs on a €450k home)
+  // Split is user-controlled: total budget of €1,500/mo sliced into 3 pieces via sliders
+  const HOUSE_GOAL = 57000;
+  const HOUSE_DATE = new Date('2029-06-01');
+  const HOUSE_MONTHS_LEFT = Math.max(1,
+    (HOUSE_DATE.getFullYear() - new Date().getFullYear()) * 12 +
+    (HOUSE_DATE.getMonth() - new Date().getMonth()));
+
+  // User-controlled split (persisted in localStorage)
+  // _totalBudget, _houseSharePct, _retSharePct already loaded above for RET_MONTHLY
+  const _growthSharePct = Math.max(0, 100 - _houseSharePct - _retSharePct);
+  const houseAlloc  = Math.round(_totalBudget * _houseSharePct  / 100);
+  const retAlloc    = Math.round(_totalBudget * _retSharePct    / 100);
+  const growthAlloc = Math.round(_totalBudget * _growthSharePct / 100);
+
+  // House fund: cash savings (no market risk) — user updates manually
+  const houseSaved = +(localStorage.getItem('houseFundSaved') || 0);
+
+  // House savings portfolio bucket (house_savings) — liquid stocks held as part of deposit strategy
+  const hsSavPos = positions.filter(p => p.bucket === 'house_savings');
+  const hsSavVal = hsSavPos.reduce((s,p) => s + (p.current_value_eur || 0), 0);
+  const hsSavCost= hsSavPos.reduce((s,p) => s + (p.total_cost_eur || 0), 0);
+  const hsSavPnl = hsSavCost > 0 ? (hsSavVal - hsSavCost) / hsSavCost * 100 : 0;
+
+  // Combined house progress = cash savings + house_savings portfolio value
+  const houseTotalFunded = houseSaved + hsSavVal;
+  const houseNeeded = Math.max(0, HOUSE_GOAL - houseTotalFunded);
+  const housePct = Math.min(100, houseTotalFunded / HOUSE_GOAL * 100);
+  const houseColor = housePct >= 80 ? 'var(--green)' : housePct >= 40 ? '#fbbf24' : '#fb923c';
+  const houseMonthlyNeeded = houseNeeded > 0 ? Math.ceil(houseNeeded / HOUSE_MONTHS_LEFT) : 0;
+  const projectedHouseSaved = houseTotalFunded + houseAlloc * HOUSE_MONTHS_LEFT;
+  const houseOnTrack = projectedHouseSaved >= HOUSE_GOAL;
+
+  // House savings bucket: curated low-price (<€50/share), liquid, cash-like tickers
+  // Criteria: price <€50, high liquidity, low volatility vs HC/growth, sellable without pain in 2028
+  const HOUSE_SAVINGS_TICKERS = [
+    { ticker:'INTC',  price:'~$20',  why:'Deeply discounted semi — liquid, recovers slowly, easy to exit. 33% CGT.' },
+    { ticker:'T',     price:'~$22',  why:'AT&T: 5.5% dividend, very low volatility, cash-like behavior. 33% CGT.' },
+    { ticker:'VALE',  price:'~$10',  why:'Iron ore / nickel miner, high dividend (~8%), uncorrelated to AI. 33% CGT.' },
+    { ticker:'WBA',   price:'~$10',  why:'Walgreens turnaround — distressed, high dividend, clear exit trigger. 33% CGT.' },
+    { ticker:'F',     price:'~$10',  why:'Ford: EV pivot, low PE, 5% div, price <€10 so easy to DCA €100 increments. 33% CGT.' },
+    { ticker:'KHC',   price:'~$30',  why:'Kraft Heinz: consumer staple, 5% div, recession-proof, low beta. 33% CGT.' },
+    { ticker:'MPW',   price:'~$4',   why:'Medical REIT — beaten down, high yield, recovery play. Note: Irish REIT rules may apply — verify. 33% CGT.' },
+    { ticker:'SOFI',  price:'~$13',  why:'SoFi: fintech, low price, growing deposits. Liquid mid-cap, easy to DCA. 33% CGT.' },
+  ];
+
+  // Per-position rows for house_savings bucket
+  const hsSavRows = hsSavPos.length ? hsSavPos.map(p => {
+    const pnl = p.pnl_pct || 0;
+    const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const signal = pnl > 30 ? 'TRIM ▲ — ahead of plan' : pnl < -15 ? 'REVIEW — check thesis' : 'HOLD · DCA monthly';
+    const sigColor = signal.startsWith('TRIM') ? '#fbbf24' : signal.startsWith('REVIEW') ? '#f87171' : 'var(--muted)';
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff0f">
+      <div style="width:52px;font-weight:700;font-size:12px;color:#fb923c">${p.ticker}</div>
+      <div style="width:54px;font-weight:700;font-size:12px;color:${pnlColor}">${(pnl>=0?'+':'')+pnl.toFixed(1)}%</div>
+      <div style="flex:1;font-size:11px;color:${sigColor}">${signal}</div>
+    </div>`;
+  }).join('') : `<div style="font-size:11px;color:var(--muted);padding:6px 0">No house_savings positions yet — see ticker ideas below.</div>`;
+
+  const houseAction = `
+  <div style="margin:8px 0 10px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>Funded: €${Math.round(houseTotalFunded).toLocaleString()}</span>
+      <span style="color:${houseColor}">Goal: €${(HOUSE_GOAL/1000).toFixed(0)}k</span>
+      <span>${HOUSE_DATE.toLocaleDateString('en-IE',{month:'short',year:'numeric'})}</span>
+    </div>
+    <div style="position:relative;height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${Math.min(100, houseSaved/HOUSE_GOAL*100).toFixed(1)}%;background:#fb923c88;border-radius:5px 0 0 5px"></div>
+      <div style="position:absolute;left:${Math.min(100, houseSaved/HOUSE_GOAL*100).toFixed(1)}%;top:0;height:100%;width:${Math.min(100-houseSaved/HOUSE_GOAL*100, hsSavVal/HOUSE_GOAL*100).toFixed(1)}%;background:#fb923c;border-radius:0 5px 5px 0"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:3px;color:var(--muted)">
+      <span><span style="color:#fb923c88">■</span> Cash €${Math.round(houseSaved).toLocaleString()}</span>
+      <span><span style="color:#fb923c">■</span> Portfolio €${Math.round(hsSavVal).toLocaleString()} (${hsSavPnl>=0?'+':''}${hsSavPnl.toFixed(1)}%)</span>
+      <span style="color:${houseOnTrack?'var(--green)':'#fbbf24'}">${houseOnTrack?'✓ On track':'⚠ Behind'}</span>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+    <strong style="color:var(--text)">Two layers:</strong> (1) Monthly cash → PTSB/AIB high-yield deposit (~3%). (2) House savings portfolio — low-price liquid stocks, DCA monthly, liquidate 2028–2029 before purchase.<br>
+    <strong style="color:var(--text)">HTB:</strong> ~2029 after 4yr IE tax. New builds only, ≤€500k. <strong style="color:var(--text)">FHS:</strong> up to 30% gov equity tops up any shortfall.
+  </div>
+  <div style="margin-bottom:10px">${hsSavRows}</div>
+  <details style="margin-bottom:8px">
+    <summary style="font-size:11px;color:#fb923c;cursor:pointer;font-weight:600">Ticker ideas for house_savings bucket ▾</summary>
+    <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
+      ${HOUSE_SAVINGS_TICKERS.map(t => `<div style="display:flex;gap:8px;font-size:11px;padding:3px 0">
+        <span style="width:52px;font-weight:700;color:#fb923c">${t.ticker}</span>
+        <span style="width:44px;color:var(--muted)">${t.price}</span>
+        <span style="flex:1;color:#94a3b8">${t.why}</span>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px">Add these in portfolio.yaml with bucket: house_savings. They appear in the portfolio table with the 🏠 badge.</div>
+  </details>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:11px;color:var(--muted);width:120px">Cash saved (€)</span>
+    <input type="number" id="house-saved-input" value="${houseSaved}" min="0" max="200000" step="500"
+      style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text);font-size:12px;outline:none">
+    <button onclick="_updateHouseSaved()" style="font-size:11px;padding:4px 10px;background:#fb923c20;color:#fb923c;border:1px solid #fb923c40;border-radius:5px;cursor:pointer;font-weight:700">Save</button>
+  </div>`;
+
+  // ── Monthly Split Planner (slider-based, €1,500 total) ────────────
+  // growth% = 100 - house% - ret%, clamped to 0
+  const _growthPct_disp = Math.max(0, 100 - _houseSharePct - _retSharePct);
+  const splitAction = `
+  <div style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+      <span style="font-size:11px;color:var(--muted)">Monthly budget (€)</span>
+      <input type="number" id="split-budget-input" value="${_totalBudget}" min="100" max="10000" step="100"
+        style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text);font-size:12px;outline:none">
+      <button onclick="_updateSplit()" style="font-size:11px;padding:4px 10px;background:#60a5fa20;color:#60a5fa;border:1px solid #60a5fa40;border-radius:5px;cursor:pointer;font-weight:700">Apply</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Drag sliders — growth gets the remainder automatically.</div>
+
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:#fb923c;font-weight:700">🏠 House (cash + house_savings DCA)</span>
+        <span id="split-house-label" style="font-weight:700;color:#fb923c">${_houseSharePct}% · €${houseAlloc.toLocaleString()}/mo</span>
+      </div>
+      <input type="range" id="split-house-slider" min="10" max="80" step="5" value="${_houseSharePct}"
+        oninput="_onSplitSlide()" style="width:100%;accent-color:#fb923c">
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ Split 60% cash deposit (PTSB), 40% into house_savings bucket stocks.</div>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:#60a5fa;font-weight:700">🛡️ Retirement (BRK-B / NOVO-B / SAP.DE)</span>
+        <span id="split-ret-label" style="font-weight:700;color:#60a5fa">${_retSharePct}% · €${retAlloc.toLocaleString()}/mo</span>
+      </div>
+      <input type="range" id="split-ret-slider" min="5" max="60" step="5" value="${_retSharePct}"
+        oninput="_onSplitSlide()" style="width:100%;accent-color:#60a5fa">
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ Long-hold compounders, 33% CGT on exit. No liquidation before 2030.</div>
+    </div>
+
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:#34d399;font-weight:700">📈 Growth / HC (NVDA / ASML / next HC)</span>
+        <span id="split-growth-label" style="font-weight:700;color:#34d399">${_growthPct_disp}% · €${growthAlloc.toLocaleString()}/mo</span>
+      </div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+        <div id="split-growth-bar" style="height:100%;width:${_growthPct_disp}%;background:#34d399;border-radius:4px;transition:width .2s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ Only deploy if house fund is on pace. Pause growth DCA if house is behind.</div>
+    </div>
+
+    <div id="split-verdict" style="font-size:11px;padding:7px 10px;border-radius:6px;border:1px solid ${houseOnTrack?'#4ade8030':'#fbbf2430'};background:${houseOnTrack?'#4ade8012':'#fbbf2412'};color:${houseOnTrack?'var(--green)':'#fbbf24'}">
+      ${houseOnTrack
+        ? `✓ €${houseAlloc.toLocaleString()}/mo into house fund → €${Math.round(projectedHouseSaved).toLocaleString()} by Jun 2029 · goal covered.`
+        : `⚠ €${houseAlloc.toLocaleString()}/mo → €${Math.round(projectedHouseSaved).toLocaleString()} by Jun 2029, €${Math.round(HOUSE_GOAL-projectedHouseSaved).toLocaleString()} short. FHS bridges the gap — or increase house %.`}
+    </div>
+  </div>`;
+
+  // Render house fund + split planner as two cards in a grid below the 3 bucket cards
+  const _oldHouseSection = document.getElementById('house-section');
+  if (_oldHouseSection) _oldHouseSection.remove();
+  const houseSection = document.createElement('div');
+  houseSection.id = 'house-section';
+  houseSection.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:24px';
+  houseSection.innerHTML = `
+    <div class="strat-card" style="border-color:#fb923c20">
+      <div class="strat-card-title" style="color:#fb923c">🏠 House Fund — Dublin Property Goal <span style="float:right;font-size:13px;font-weight:700;color:#fb923c">${housePct.toFixed(1)}%</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Target €450k purchase · ~2029 · D01–D08 area</div>
+      <div class="strat-card-body">${houseAction}</div>
+    </div>
+    <div class="strat-card" style="border-color:#60a5fa20">
+      <div class="strat-card-title" style="color:#60a5fa">📊 Monthly Allocation Split</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Defense + growth + house — rebalanced monthly</div>
+      <div class="strat-card-body">${splitAction}</div>
+    </div>`;
+
+  // Insert after bucket cards element
+  const bucketsEl = E('strat-buckets');
+  if (bucketsEl.nextSibling) {
+    bucketsEl.parentNode.insertBefore(houseSection, bucketsEl.nextSibling);
+  } else {
+    bucketsEl.parentNode.appendChild(houseSection);
+  }
+
+  // Update header KPI card
+  const houseValEl = E('s-house-val');
+  const houseSubEl = E('s-house-sub');
+  if (houseValEl) {
+    houseValEl.textContent = `€${Math.round(houseTotalFunded).toLocaleString()}`;
+    houseValEl.style.color = houseColor;
+    if (houseSubEl) {
+      houseSubEl.innerHTML =
+        `<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">` +
+          `<div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">` +
+            `<div style="width:${housePct.toFixed(1)}%;height:100%;background:${houseColor};border-radius:2px"></div>` +
+          `</div>` +
+          `<span style="font-size:10px;color:${houseColor};font-weight:700;white-space:nowrap">${housePct.toFixed(0)}%</span>` +
+        `</div>` +
+        `<span style="font-size:11px;color:var(--muted)">€${(HOUSE_GOAL/1000).toFixed(0)}k goal · need €${houseMonthlyNeeded.toLocaleString()}/mo</span>`;
+    }
+  }
+
   // ── Diversification ─────────────────────────────────────────────
   const sectorMap = {}, geoMap = {}, typeMap = {};
   positions.forEach(p => {
@@ -1888,6 +2097,13 @@ function renderStrategy(positions, lifetime) {
       note: hasEnergyRisk
         ? 'Data centres will consume ~1,000 TWh/yr by 2030 (4× today). CEG (nuclear PPAs with MSFT/AMZN/META), TTE.PA (EUR LNG, 4% div), SHEL.L (GBP, LNG+renewables). Energy positions also hedge against cost shocks that hurt NBIS/APLD margins.'
         : 'Energy exposure present.',
+    },
+    {
+      icon: '🏠',
+      label: `House fund: €${Math.round(houseSaved).toLocaleString()} of €${(HOUSE_GOAL/1000).toFixed(0)}k target (${housePct.toFixed(0)}%) — need €${houseMonthlyNeeded.toLocaleString()}/mo to hit Jun 2029`,
+      level: housePct < 20 ? 'warn' : 'ok',
+      badge: housePct < 20 ? 'BUILDING' : housePct < 60 ? 'IN PROGRESS' : 'ON TRACK',
+      note: `Keep house fund in cash only — no market risk on a 3-year liability. AIB Notice Account or PTSB Online Saver (~3%). FHS bridges any remaining gap at purchase (gov equity, no income test). HTB new-build refund available ~2029 after 4yr Irish tax history.`,
     },
     {
       icon: '🇮🇪',
@@ -2153,6 +2369,41 @@ function _pollAiHealth() {
       const badge = document.getElementById('ai-health-badge');
       if (badge) { badge.textContent = 'AI · Offline'; badge.style.color='#f87171'; }
     });
+}
+
+// ── House fund localStorage helpers ──────────────────────────────
+function _updateHouseSaved() {
+  const v = +(document.getElementById('house-saved-input')?.value || 0);
+  if (!isNaN(v) && v >= 0) {
+    localStorage.setItem('houseFundSaved', v);
+    renderStrategy(_latestPortfolio, {});
+  }
+}
+
+function _updateSplit() {
+  const b = +(document.getElementById('split-budget-input')?.value || 1500);
+  const h = +(document.getElementById('split-house-slider')?.value || 50);
+  const r = +(document.getElementById('split-ret-slider')?.value  || 30);
+  if (!isNaN(b) && b > 0) localStorage.setItem('houseTotalBudget', b);
+  if (!isNaN(h)) localStorage.setItem('houseSharePct', h);
+  if (!isNaN(r)) localStorage.setItem('retSharePct', r);
+  renderStrategy(_latestPortfolio, {});
+}
+
+function _onSplitSlide() {
+  // Live-update labels without full re-render
+  const budget = +(document.getElementById('split-budget-input')?.value || localStorage.getItem('houseTotalBudget') || 1500);
+  const h = +(document.getElementById('split-house-slider')?.value || 50);
+  const r = +(document.getElementById('split-ret-slider')?.value  || 30);
+  const g = Math.max(0, 100 - h - r);
+  const hE = document.getElementById('split-house-label');
+  const rE = document.getElementById('split-ret-label');
+  const gE = document.getElementById('split-growth-label');
+  const gB = document.getElementById('split-growth-bar');
+  if (hE) hE.textContent = `${h}% · €${Math.round(budget*h/100).toLocaleString()}/mo`;
+  if (rE) rE.textContent = `${r}% · €${Math.round(budget*r/100).toLocaleString()}/mo`;
+  if (gE) gE.textContent = `${g}% · €${Math.round(budget*g/100).toLocaleString()}/mo`;
+  if (gB) gB.style.width = g + '%';
 }
 
 init();

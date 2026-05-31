@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dublin Property Tracker</title>
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #13161d;
+      --surface2: #1a1f2b;
+      --border: #222736;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #4ade80;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --blue: #60a5fa;
+      --purple: #c084fc;
+      --cyan: #22d3ee;
+      --orange: #fb923c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      font-size: 14px; min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--blue); }
+    .header-right { display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--muted); }
+    .phase-badge {
+      background: rgba(96,165,250,0.15); color: var(--blue);
+      border: 1px solid rgba(96,165,250,0.3); border-radius: 20px;
+      padding: 3px 10px; font-size: 11px; font-weight: 600;
+    }
+
+    /* ── Nav tabs ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex; gap: 0;
+    }
+    .tab {
+      padding: 12px 18px; font-size: 13px; font-weight: 500;
+      color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+    /* ── Layout ── */
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── KPI grid ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 18px;
+    }
+    .kpi-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .kpi-green { color: var(--green); }
+    .kpi-yellow { color: var(--yellow); }
+    .kpi-blue { color: var(--blue); }
+    .kpi-orange { color: var(--orange); }
+
+    /* ── Section ── */
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Cards ── */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px;
+    }
+    .card h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--blue); }
+    .card p { font-size: 13px; line-height: 1.6; color: var(--text); }
+
+    /* ── Info rows ── */
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { font-size: 12px; color: var(--muted); }
+    .info-val { font-size: 13px; font-weight: 600; text-align: right; }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .tl-step { display: flex; gap: 14px; }
+    .tl-left { display: flex; flex-direction: column; align-items: center; }
+    .tl-dot {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .tl-dot-done { background: rgba(74,222,128,0.2); color: var(--green); border: 1px solid rgba(74,222,128,0.4); }
+    .tl-dot-active { background: rgba(96,165,250,0.2); color: var(--blue); border: 1px solid rgba(96,165,250,0.4); }
+    .tl-dot-todo { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .tl-line { width: 1px; flex: 1; background: var(--border); min-height: 16px; }
+    .tl-body { padding-bottom: 20px; flex: 1; }
+    .tl-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 28px; }
+    .tl-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .tl-tag {
+      display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px;
+      border-radius: 4px; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .tag-time { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+    .tag-money { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .tag-action { background: rgba(96,165,250,0.12); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+
+    /* ── Scheme cards ── */
+    .scheme-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px;
+    }
+    .scheme-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .scheme-name { font-size: 14px; font-weight: 700; }
+    .scheme-badge {
+      font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .badge-green { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .badge-blue { background: rgba(96,165,250,0.15); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+    .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+    .badge-red { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+
+    /* ── Budget calculator ── */
+    .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 700px) { .calc-grid { grid-template-columns: 1fr; } }
+    .input-group { margin-bottom: 14px; }
+    .input-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 0.4px; }
+    input[type=range] { width: 100%; accent-color: var(--blue); }
+    .input-value { font-size: 18px; font-weight: 700; color: var(--blue); margin-top: 4px; }
+    .result-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
+    }
+    .result-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .result-row:last-child { border-bottom: none; }
+    .result-key { color: var(--muted); }
+    .result-val { font-weight: 600; }
+    .result-val.good { color: var(--green); }
+    .result-val.warn { color: var(--yellow); }
+    .result-val.bad { color: var(--red); }
+    .result-total { font-size: 16px; font-weight: 700; color: var(--blue); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--blue); display: flex; justify-content: space-between; }
+
+    /* ── Area table ── */
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: left; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    tr:hover td { background: var(--surface2); }
+    .area-tag {
+      display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px;
+      border-radius: 4px; text-transform: uppercase;
+    }
+    .area-d1 { background: rgba(96,165,250,0.15); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+    .area-commute { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .area-value { background: rgba(251,191,36,0.12); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+    .area-far { background: rgba(100,116,139,0.12); color: var(--muted); border: 1px solid var(--border); }
+    .score-bar { display: flex; align-items: center; gap: 6px; }
+    .bar { height: 6px; border-radius: 3px; background: var(--blue); }
+
+    /* ── Watchlist ── */
+    .wl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .wl-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+    }
+    .wl-card:hover { border-color: var(--blue); cursor: pointer; }
+    .wl-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .wl-addr { font-size: 13px; font-weight: 600; line-height: 1.3; }
+    .wl-price { font-size: 16px; font-weight: 700; color: var(--blue); }
+    .wl-meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .wl-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .wl-status {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .status-watching { background: rgba(96,165,250,0.15); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+    .status-viewed { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .status-bid { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+    .status-passed { background: rgba(100,116,139,0.12); color: var(--muted); border: 1px solid var(--border); }
+    .btn {
+      background: var(--blue); color: #000; border: none; border-radius: 6px;
+      padding: 7px 16px; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn-ghost { background: transparent; color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+    .btn-ghost:hover { background: rgba(96,165,250,0.1); }
+    .btn-red { background: transparent; color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+    .btn-red:hover { background: rgba(248,113,113,0.1); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      z-index: 200; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 28px; width: 100%; max-width: 520px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+    input[type=text], input[type=number], input[type=url], select, textarea {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: 13px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+    textarea { resize: vertical; min-height: 70px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+    /* ── Checklist ── */
+    .checklist { display: flex; flex-direction: column; gap: 8px; }
+    .check-item { display: flex; gap: 12px; align-items: flex-start; }
+    .check-box {
+      width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; margin-top: 2px;
+      border: 1.5px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .check-box.checked { background: var(--blue); border-color: var(--blue); }
+    .check-box.checked::after { content: '✓'; color: #000; font-size: 11px; font-weight: 700; }
+    .check-text { font-size: 13px; line-height: 1.5; }
+    .check-text.done { text-decoration: line-through; color: var(--muted); }
+
+    /* ── Alert banner ── */
+    .alert {
+      border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+      font-size: 13px; line-height: 1.5;
+    }
+    .alert-blue { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.3); color: var(--blue); }
+    .alert-green { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
+    .alert-yellow { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--yellow); }
+
+    /* ── Misc ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 650px) { .two-col { grid-template-columns: 1fr; } }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Dublin <span>Property</span></div>
+  <div class="header-right">
+    <span class="phase-badge" id="phaseBadge">Phase 1 — Research</span>
+    <span id="headerDate"></span>
+    <a href="/" style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px;transition:all .15s" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">📈 Portfolio</a>
+  </div>
+</header>
+
+<nav>
+  <div class="tab active" data-tab="overview">Overview</div>
+  <div class="tab" data-tab="budget">Budget Calc</div>
+  <div class="tab" data-tab="schemes">Schemes</div>
+  <div class="tab" data-tab="areas">Areas</div>
+  <div class="tab" data-tab="process">Process</div>
+  <div class="tab" data-tab="watchlist">Watchlist</div>
+  <div class="tab" data-tab="checklist">Checklist</div>
+</nav>
+
+<main>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 1 — OVERVIEW
+  ═══════════════════════════════════════════════════════ -->
+  <div class="page active" id="tab-overview">
+
+    <div class="alert alert-blue">
+      You're a First-Time Buyer (FTB) in Ireland — this unlocks the best deposit rules, tax schemes, and government equity support.
+      Dublin median price is <strong>€480,000</strong> (April 2025, CSO). Prices growing ~6% per year.
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Dublin Median Price</div>
+        <div class="kpi-value kpi-blue">€480k</div>
+        <div class="kpi-sub">+6.1% YoY · CSO Apr 2025</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">FTB Max Mortgage</div>
+        <div class="kpi-value kpi-green">4× salary</div>
+        <div class="kpi-sub">Central Bank LTI rule</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Minimum Deposit (FTB)</div>
+        <div class="kpi-value kpi-yellow">10%</div>
+        <div class="kpi-sub">90% LTV permitted</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">HTB Max Refund</div>
+        <div class="kpi-value kpi-green">€30,000</div>
+        <div class="kpi-sub">New builds only · Gov scheme</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">FHS Equity Top-Up</div>
+        <div class="kpi-value kpi-blue">up to 30%</div>
+        <div class="kpi-sub">Gov buys equity · repay later</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Stamp Duty</div>
+        <div class="kpi-value kpi-orange">1–2%</div>
+        <div class="kpi-sub">1% up to €1m · 2% above</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Where You Stand Right Now</div>
+      <div class="two-col">
+        <div class="card">
+          <h3>Your Situation</h3>
+          <div class="info-row"><span class="info-key">Status</span><span class="info-val" style="color:var(--green)">First-Time Buyer (FTB)</span></div>
+          <div class="info-row"><span class="info-key">Location</span><span class="info-val">D01, Dublin City</span></div>
+          <div class="info-row"><span class="info-key">Employer</span><span class="info-val">Salesforce (EMEA HQ nearby)</span></div>
+          <div class="info-row"><span class="info-key">Arrived in Ireland</span><span class="info-val">Oct 2025</span></div>
+          <div class="info-row"><span class="info-key">Mortgage eligibility</span><span class="info-val">4× gross salary</span></div>
+        </div>
+        <div class="card">
+          <h3>Key Tasks Before Applying</h3>
+          <div class="info-row"><span class="info-key">Tax residency</span><span class="info-val" style="color:var(--yellow)">Establish Irish tax record (HTB needs 4 yrs)</span></div>
+          <div class="info-row"><span class="info-key">Build deposit</span><span class="info-val">10% min + costs (~€15–20k extra)</span></div>
+          <div class="info-row"><span class="info-key">AIP (mortgage)</span><span class="info-val">Get Approval in Principle first</span></div>
+          <div class="info-row"><span class="info-key">Revenue account</span><span class="info-val">Register on myAccount (revenue.ie)</span></div>
+          <div class="info-row"><span class="info-key">PPS number</span><span class="info-val">Required for all applications</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">The Numbers That Drive Everything</div>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Mortgage Capacity (Central Bank Rules)</h3>
+          <div class="info-row"><span class="info-key">FTB LTI limit</span><span class="info-val">4× gross annual income</span></div>
+          <div class="info-row"><span class="info-key">Example: €80k salary</span><span class="info-val" style="color:var(--blue)">€320k mortgage</span></div>
+          <div class="info-row"><span class="info-key">Example: €100k salary</span><span class="info-val" style="color:var(--blue)">€400k mortgage</span></div>
+          <div class="info-row"><span class="info-key">Max LTV (FTB)</span><span class="info-val">90% (10% deposit required)</span></div>
+          <div class="info-row"><span class="info-key">Lender exceptions</span><span class="info-val">15% of loans can exceed LTI</span></div>
+        </div>
+        <div class="card">
+          <h3>Government Incentives (FTB only)</h3>
+          <div class="info-row"><span class="info-key">Help-to-Buy (HTB)</span><span class="info-val" style="color:var(--green)">Up to €30,000 tax refund</span></div>
+          <div class="info-row"><span class="info-key">HTB eligible on</span><span class="info-val">New builds only (≤€500k)</span></div>
+          <div class="info-row"><span class="info-key">First Home Scheme (FHS)</span><span class="info-val" style="color:var(--blue)">Up to 30% equity top-up</span></div>
+          <div class="info-row"><span class="info-key">FHS price cap (Dublin)</span><span class="info-val">€500,000</span></div>
+          <div class="info-row"><span class="info-key">Combined HTB + FHS</span><span class="info-val" style="color:var(--yellow)">FHS capped at 20% if using HTB</span></div>
+        </div>
+        <div class="card">
+          <h3>Buying Costs to Budget For</h3>
+          <div class="info-row"><span class="info-key">Stamp duty (up to €1m)</span><span class="info-val">1% of purchase price</span></div>
+          <div class="info-row"><span class="info-key">Solicitor fees</span><span class="info-val">~€2,000–€3,500</span></div>
+          <div class="info-row"><span class="info-key">Valuation report</span><span class="info-val">~€150–€200</span></div>
+          <div class="info-row"><span class="info-key">Structural survey</span><span class="info-val">~€400–€600</span></div>
+          <div class="info-row"><span class="info-key">Land Registry fee</span><span class="info-val">~€400–€800</span></div>
+          <div class="info-row"><span class="info-key">Total extra costs</span><span class="info-val" style="color:var(--orange)">~€8k–€12k on a €400k home</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Dublin Price Map (CSO April 2025)</div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Median Price</th>
+              <th>YoY Growth</th>
+              <th>Your Distance to Work</th>
+              <th>FHS Eligible</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Dún Laoghaire-Rathdown (D18, A94)</td><td style="color:var(--red)">€670,000</td><td>+4.3%</td><td>~30 min DART</td><td style="color:var(--red)">No (over €500k)</td></tr>
+            <tr><td>Dublin City (D01–D09)</td><td style="color:var(--yellow)">€480,000</td><td>+6.1%</td><td>Walking / 10 min</td><td style="color:var(--yellow)">Borderline</td></tr>
+            <tr><td>South Dublin (D24, D22)</td><td style="color:var(--green)">€455,000</td><td>+5.8%</td><td>30–40 min LUAS/bus</td><td style="color:var(--green)">Yes</td></tr>
+            <tr><td>Fingal (D15, K36)</td><td style="color:var(--green)">~€420,000</td><td>+9.2%</td><td>35–50 min bus/rail</td><td style="color:var(--green)">Yes</td></tr>
+            <tr><td>Blackrock (A94)</td><td style="color:var(--red)">€750,000</td><td>+4%</td><td>~25 min DART</td><td style="color:var(--red)">No</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 2 — BUDGET CALCULATOR
+  ═══════════════════════════════════════════════════════ -->
+  <div class="page" id="tab-budget">
+
+    <div class="section">
+      <div class="section-title">Budget Calculator</div>
+      <div class="calc-grid">
+        <div class="card">
+          <h3>Your Inputs</h3>
+
+          <div class="input-group">
+            <label class="input-label">Annual Gross Salary (€)</label>
+            <input type="range" id="sliderSalary" min="40000" max="200000" step="1000" value="90000">
+            <div class="input-value" id="valSalary">€90,000</div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Partner Salary (€, set 0 if none)</label>
+            <input type="range" id="sliderPartner" min="0" max="150000" step="1000" value="0">
+            <div class="input-value" id="valPartner">€0 (solo)</div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Savings Available for Deposit (€)</label>
+            <input type="range" id="sliderSavings" min="20000" max="200000" step="5000" value="50000">
+            <div class="input-value" id="valSavings">€50,000</div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">HTB Tax Refund (€, if using new build)</label>
+            <input type="range" id="sliderHTB" min="0" max="30000" step="1000" value="0">
+            <div class="input-value" id="valHTB">€0 (not claiming yet)</div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">FHS Equity Contribution (€)</label>
+            <input type="range" id="sliderFHS" min="0" max="150000" step="5000" value="0">
+            <div class="input-value" id="valFHS">€0 (not using)</div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Mortgage Term (years)</label>
+            <input type="range" id="sliderTerm" min="10" max="35" step="1" value="30">
+            <div class="input-value" id="valTerm">30 years</div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Interest Rate (%)</label>
+            <input type="range" id="sliderRate" min="2.5" max="6" step="0.1" value="3.8">
+            <div class="input-value" id="valRate">3.8%</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="result-box" id="calcResults">
+            <!-- filled by JS -->
+          </div>
+
+          <div style="margin-top:16px;" class="card">
+            <h3>How to Read This</h3>
+            <p style="font-size:12px;color:var(--muted);line-height:1.7;">
+              <strong style="color:var(--text)">Borrowing limit</strong> is the hard ceiling from Central Bank rules (4× FTB salary).<br><br>
+              <strong style="color:var(--text)">Budget = mortgage + your deposit + HTB + FHS.</strong> The deposit must be at least 10% of the purchase price.<br><br>
+              <strong style="color:var(--text)">Monthly repayment</strong> is principal + interest. Budget ~20–25% of net monthly income maximum.<br><br>
+              <strong style="color:var(--text)">HTB</strong> only applies to new builds ≤€500k. It's a refund of income tax you've paid in Ireland over 4 years — if you arrived in Oct 2025, you're building this history now.<br><br>
+              <strong style="color:var(--text)">FHS</strong> is government equity — they own a % of your home and you repay when you sell or refinance. No monthly charge for first 5 years.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 3 — SCHEMES
+  ═══════════════════════════════════════════════════════ -->
+  <div class="page" id="tab-schemes">
+
+    <div class="section">
+      <div class="section-title">Government Incentives for First-Time Buyers</div>
+      <div class="card-grid">
+
+        <div class="scheme-card">
+          <div class="scheme-header">
+            <div class="scheme-name">Help to Buy (HTB)</div>
+            <span class="scheme-badge badge-green">Use this first</span>
+          </div>
+          <div class="info-row"><span class="info-key">What it is</span><span class="info-val">Refund of income tax & DIRT paid</span></div>
+          <div class="info-row"><span class="info-key">Maximum amount</span><span class="info-val" style="color:var(--green)">€30,000</span></div>
+          <div class="info-row"><span class="info-key">Eligible properties</span><span class="info-val">New builds only</span></div>
+          <div class="info-row"><span class="info-key">Price cap</span><span class="info-val">≤ €500,000</span></div>
+          <div class="info-row"><span class="info-key">How it works</span><span class="info-val">Refund of last 4 years' income tax</span></div>
+          <div class="info-row"><span class="info-key">Your status (May 2026)</span><span class="info-val" style="color:var(--yellow)">~7 months of IE tax history</span></div>
+          <div class="info-row"><span class="info-key">When you can claim</span><span class="info-val">After ~Oct 2029 (full 4 tax years)</span></div>
+          <div class="divider"></div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+            The refund is calculated on Irish income tax paid in the 4 calendar years before application. You arrived Oct 2025, so your first full Irish tax year is 2026. You'll have a meaningful claim by 2028–2029. Register on <a href="https://www.revenue.ie/en/online-services/index.aspx" target="_blank">myAccount</a> now so PAYE is tracked from day one.
+          </p>
+          <div style="margin-top:12px;">
+            <a href="https://www.revenue.ie/en/property/help-to-buy-incentive/index.aspx" target="_blank" class="btn btn-sm btn-ghost">Revenue HTB Guide →</a>
+          </div>
+        </div>
+
+        <div class="scheme-card">
+          <div class="scheme-header">
+            <div class="scheme-name">First Home Scheme (FHS)</div>
+            <span class="scheme-badge badge-blue">Bridge the gap</span>
+          </div>
+          <div class="info-row"><span class="info-key">What it is</span><span class="info-val">Gov buys equity stake in your home</span></div>
+          <div class="info-row"><span class="info-key">Maximum equity stake</span><span class="info-val" style="color:var(--blue)">30% (or 20% if using HTB)</span></div>
+          <div class="info-row"><span class="info-key">Price cap (Dublin)</span><span class="info-val">≤ €500,000</span></div>
+          <div class="info-row"><span class="info-key">Income limit</span><span class="info-val" style="color:var(--green)">None</span></div>
+          <div class="info-row"><span class="info-key">Monthly charge</span><span class="info-val" style="color:var(--green)">€0 for first 5 years</span></div>
+          <div class="info-row"><span class="info-key">Year 6–15 charge</span><span class="info-val">1.75% of outstanding equity/yr</span></div>
+          <div class="info-row"><span class="info-key">Year 16–30 charge</span><span class="info-val">2.15% of outstanding equity/yr</span></div>
+          <div class="info-row"><span class="info-key">Repayment trigger</span><span class="info-val">Sale, remortgage, or voluntary</span></div>
+          <div class="info-row"><span class="info-key">Residency required</span><span class="info-val">Right to reside in Ireland</span></div>
+          <div class="divider"></div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+            If you buy a €480k home and need a €48k boost (10%), FHS contributes that as ~10% equity. The gov owns 10% of future value changes. If the home rises to €600k, you owe them €60k to redeem. <strong style="color:var(--text)">Trap:</strong> equity rises with property value — plan to redeem early or factor into exit strategy.
+          </p>
+          <div style="margin-top:12px;">
+            <a href="https://www.firsthomescheme.ie/" target="_blank" class="btn btn-sm btn-ghost">FHS Official Site →</a>
+          </div>
+        </div>
+
+        <div class="scheme-card">
+          <div class="scheme-header">
+            <div class="scheme-name">Central Bank Mortgage Rules</div>
+            <span class="scheme-badge badge-yellow">Hard limits</span>
+          </div>
+          <div class="info-row"><span class="info-key">FTB LTI (max borrow)</span><span class="info-val">4× gross combined income</span></div>
+          <div class="info-row"><span class="info-key">FTB LTV (max loan/value)</span><span class="info-val">90% (min 10% deposit)</span></div>
+          <div class="info-row"><span class="info-key">2nd buyer LTI</span><span class="info-val">3.5× income</span></div>
+          <div class="info-row"><span class="info-key">Buy-to-let LTV</span><span class="info-val">70% (30% deposit)</span></div>
+          <div class="info-row"><span class="info-key">Exception quota</span><span class="info-val">15% of FTB loans can exceed LTI</span></div>
+          <div class="info-row"><span class="info-key">Stress test</span><span class="info-val">Banks add ~2% to rate for affordability</span></div>
+          <div class="divider"></div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+            Each bank calculates net disposable income differently. AIB, BOI, and Avant are the main lenders. Use a mortgage broker (free service, they search all lenders) to find the best terms. Avant Money often has competitive rates for FTBs.
+          </p>
+        </div>
+
+        <div class="scheme-card">
+          <div class="scheme-header">
+            <div class="scheme-name">Stamp Duty & Tax</div>
+            <span class="scheme-badge badge-red">Unavoidable costs</span>
+          </div>
+          <div class="info-row"><span class="info-key">Stamp duty rate (≤€1m)</span><span class="info-val">1% of purchase price</span></div>
+          <div class="info-row"><span class="info-key">Example: €450k home</span><span class="info-val" style="color:var(--orange)">€4,500</span></div>
+          <div class="info-row"><span class="info-key">Example: €500k home</span><span class="info-val" style="color:var(--orange)">€5,000</span></div>
+          <div class="info-row"><span class="info-key">FTB exemption?</span><span class="info-val" style="color:var(--red)">No — all buyers pay 1%</span></div>
+          <div class="info-row"><span class="info-key">Capital Gains Tax (if you sell)</span><span class="info-val">Exempt on primary residence</span></div>
+          <div class="info-row"><span class="info-key">LPT (property tax)</span><span class="info-val">~€400–€1,200/year (band based)</span></div>
+          <div class="divider"></div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+            Good news: as a primary residence, <strong style="color:var(--text)">no CGT when you sell</strong> regardless of gain. Local Property Tax (LPT) is low — a €450k home is typically Band 5 at ~€562/year.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 4 — AREAS
+  ═══════════════════════════════════════════════════════ -->
+  <div class="page" id="tab-areas">
+
+    <div class="alert alert-blue">
+      You work in D01 (Salesforce EMEA HQ). The table below rates areas by commute, price, value for money, and FHS eligibility. Sorted by recommended priority.
+    </div>
+
+    <div class="section">
+      <div class="section-title">Area Intelligence</div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Area / Eircode</th>
+              <th>Type</th>
+              <th>Typical 2-Bed</th>
+              <th>Typical 3-Bed</th>
+              <th>Commute to D01</th>
+              <th>FHS Cap OK</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody id="areaTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Area Deep Dives</div>
+      <div class="card-grid" id="areaCards"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 5 — PROCESS
+  ═══════════════════════════════════════════════════════ -->
+  <div class="page" id="tab-process">
+
+    <div class="section">
+      <div class="section-title">The Full Irish Buying Process — Step by Step</div>
+      <div class="timeline" id="processTimeline"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 6 — WATCHLIST
+  ═══════════════════════════════════════════════════════ -->
+  <div class="page" id="tab-watchlist">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:13px;color:var(--muted)">Track properties you're actively watching. All data stored locally.</div>
+      <button class="btn" onclick="openAddModal()">+ Add Property</button>
+    </div>
+
+    <div class="kpi-grid" id="wlStats"></div>
+
+    <div class="wl-grid" id="wlGrid">
+      <div class="empty-state">
+        <div class="empty-icon">🏠</div>
+        <h3>No properties tracked yet</h3>
+        <p>Add a property from Daft.ie or MyHome.ie to start tracking</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 7 — CHECKLIST
+  ═══════════════════════════════════════════════════════ -->
+  <div class="page" id="tab-checklist">
+
+    <div class="section">
+      <div class="section-title">Pre-Purchase Checklist</div>
+      <div class="two-col">
+        <div class="card">
+          <h3>1. Financial Foundations</h3>
+          <div class="checklist" id="checkFinance"></div>
+        </div>
+        <div class="card">
+          <h3>2. Government Schemes</h3>
+          <div class="checklist" id="checkSchemes"></div>
+        </div>
+        <div class="card">
+          <h3>3. Mortgage & Lender</h3>
+          <div class="checklist" id="checkMortgage"></div>
+        </div>
+        <div class="card">
+          <h3>4. Property Search</h3>
+          <div class="checklist" id="checkSearch"></div>
+        </div>
+        <div class="card">
+          <h3>5. Legal & Closing</h3>
+          <div class="checklist" id="checkLegal"></div>
+        </div>
+        <div class="card">
+          <h3>6. Post-Purchase</h3>
+          <div class="checklist" id="checkPost"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Add Property Modal ── -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h2>Add Property to Watchlist</h2>
+    <div class="form-group">
+      <label class="form-label">Address / Description</label>
+      <input type="text" id="propAddr" placeholder="e.g. 14 Rathmines Road, Dublin 6">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Asking Price (€)</label>
+        <input type="number" id="propPrice" placeholder="450000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Area / Eircode</label>
+        <input type="text" id="propArea" placeholder="D06 / Rathmines">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Beds</label>
+        <input type="number" id="propBeds" placeholder="3" min="1" max="8">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="propType">
+          <option value="Semi-D">Semi-Detached</option>
+          <option value="Terrace">Terrace</option>
+          <option value="Detached">Detached</option>
+          <option value="Apartment">Apartment</option>
+          <option value="New Build">New Build</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Listing URL (Daft / MyHome)</label>
+      <input type="url" id="propUrl" placeholder="https://www.daft.ie/...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select id="propStatus">
+        <option value="watching">Watching</option>
+        <option value="viewed">Viewed</option>
+        <option value="bid">Bid Made</option>
+        <option value="passed">Passed</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea id="propNotes" placeholder="Pros, cons, observations from viewing..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="saveProperty()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── View/Edit Modal ── -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <h2 id="viewTitle">Property Details</h2>
+    <div id="viewContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-red btn-sm" id="deleteBtn">Delete</button>
+      <button class="btn btn-ghost" onclick="closeViewModal()">Close</button>
+      <button class="btn btn-sm" id="editStatusBtn">Update Status</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Tab routing ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Header date ──────────────────────────────────────────────────────────────
+document.getElementById('headerDate').textContent = new Date().toLocaleDateString('en-IE', { day:'numeric', month:'short', year:'numeric' });
+
+// ── BUDGET CALCULATOR ────────────────────────────────────────────────────────
+const sliders = {
+  salary: document.getElementById('sliderSalary'),
+  partner: document.getElementById('sliderPartner'),
+  savings: document.getElementById('sliderSavings'),
+  htb: document.getElementById('sliderHTB'),
+  fhs: document.getElementById('sliderFHS'),
+  term: document.getElementById('sliderTerm'),
+  rate: document.getElementById('sliderRate'),
+};
+
+function fmt(n) { return '€' + n.toLocaleString('en-IE'); }
+function fmtK(n) { return n >= 1000 ? '€' + (n/1000).toFixed(0) + 'k' : fmt(n); }
+
+function updateCalc() {
+  const salary = +sliders.salary.value;
+  const partner = +sliders.partner.value;
+  const savings = +sliders.savings.value;
+  const htb = +sliders.htb.value;
+  const fhs = +sliders.fhs.value;
+  const term = +sliders.term.value;
+  const rate = +sliders.rate.value;
+
+  document.getElementById('valSalary').textContent = fmt(salary);
+  document.getElementById('valPartner').textContent = partner === 0 ? '€0 (solo)' : fmt(partner);
+  document.getElementById('valSavings').textContent = fmt(savings);
+  document.getElementById('valHTB').textContent = htb === 0 ? '€0 (not claiming yet)' : fmt(htb);
+  document.getElementById('valFHS').textContent = fhs === 0 ? '€0 (not using)' : fmt(fhs);
+  document.getElementById('valTerm').textContent = term + ' years';
+  document.getElementById('valRate').textContent = rate.toFixed(1) + '%';
+
+  const totalIncome = salary + partner;
+  const maxMortgage = totalIncome * 4;
+  const buying_costs = 12000; // estimated solicitor + stamp + survey etc
+  const usableDeposit = Math.max(0, savings - buying_costs);
+  const totalBudget = maxMortgage + usableDeposit + htb + fhs;
+
+  // Minimum deposit check (10% of purchase price)
+  // purchase_price = mortgage + deposit, so deposit >= 0.1 * purchase_price
+  // => deposit >= mortgage / 9
+  const minDeposit10pct = maxMortgage / 9;
+  const depositOk = usableDeposit + htb >= minDeposit10pct;
+
+  // Monthly repayment
+  const r = rate / 100 / 12;
+  const n = term * 12;
+  const monthly = maxMortgage * r * Math.pow(1+r, n) / (Math.pow(1+r, n) - 1);
+
+  // Net monthly income estimate (rough: 35% tax/USC/PRSI on salary)
+  const netMonthly = totalIncome * 0.65 / 12;
+  const repaymentRatio = monthly / netMonthly * 100;
+  const repaymentClass = repaymentRatio > 35 ? 'bad' : repaymentRatio > 28 ? 'warn' : 'good';
+
+  const depositClass = depositOk ? 'good' : 'bad';
+  const budgetClass = totalBudget > 600000 ? 'warn' : 'good';
+
+  document.getElementById('calcResults').innerHTML = `
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Your Numbers</div>
+    <div class="result-row"><span class="result-key">Combined gross income</span><span class="result-val">${fmt(totalIncome)}</span></div>
+    <div class="result-row"><span class="result-key">Max mortgage (4× LTI)</span><span class="result-val result-val kpi-blue">${fmt(maxMortgage)}</span></div>
+    <div class="result-row"><span class="result-key">Usable deposit (after ~€12k costs)</span><span class="result-val ${depositClass}">${fmt(usableDeposit)}</span></div>
+    <div class="result-row"><span class="result-key">HTB refund</span><span class="result-val">${fmt(htb)}</span></div>
+    <div class="result-row"><span class="result-key">FHS equity contribution</span><span class="result-val">${fmt(fhs)}</span></div>
+    <div class="result-row"><span class="result-key">Min deposit needed (10% rule)</span><span class="result-val ${depositClass}">${fmt(Math.ceil(minDeposit10pct))}</span></div>
+    <div class="result-row"><span class="result-key">Deposit adequate?</span><span class="result-val ${depositClass}">${depositOk ? 'Yes' : 'No — need more savings'}</span></div>
+    <div class="result-total"><span>Max purchase budget</span><span>${fmt(totalBudget)}</span></div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Monthly Cost Estimate</div>
+      <div class="result-row"><span class="result-key">Est. monthly repayment</span><span class="result-val">${fmt(Math.round(monthly))}/mo</span></div>
+      <div class="result-row"><span class="result-key">Est. net monthly income</span><span class="result-val">${fmt(Math.round(netMonthly))}/mo</span></div>
+      <div class="result-row"><span class="result-key">Repayment as % of net income</span><span class="result-val ${repaymentClass}">${repaymentRatio.toFixed(1)}% ${repaymentRatio > 35 ? '⚠ high' : repaymentRatio > 28 ? '~ borderline' : '✓ ok'}</span></div>
+    </div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Buying Costs Breakdown</div>
+      <div class="result-row"><span class="result-key">Stamp duty (1% of purchase)</span><span class="result-val">${fmt(Math.round(totalBudget * 0.01))}</span></div>
+      <div class="result-row"><span class="result-key">Solicitor</span><span class="result-val">~€2,500</span></div>
+      <div class="result-row"><span class="result-key">Survey + valuation</span><span class="result-val">~€700</span></div>
+      <div class="result-row"><span class="result-key">Land registry + misc</span><span class="result-val">~€600</span></div>
+    </div>
+  `;
+}
+
+Object.values(sliders).forEach(s => s.addEventListener('input', updateCalc));
+updateCalc();
+
+// ── AREAS ────────────────────────────────────────────────────────────────────
+const AREAS = [
+  {
+    name: 'Rathmines / Rathgar', eircode: 'D06',
+    type: 'City suburb', priority: 1, priorityLabel: 'Top Pick',
+    bed2: '€380–460k', bed3: '€450–550k',
+    commute: '25 min (bus/LUAS)', fhs: true, fhsNote: 'Most properties ≤€500k',
+    score: 90,
+    notes: 'Vibrant area, good restaurants, bars, parks. Close to Grand Canal. Popular with young professionals. Mix of Georgian houses and apartments. Slightly pricier but strong capital appreciation.',
+    transport: 'LUAS Green Line, multiple bus routes. Cycle to D01 in ~20 min.',
+    links: [
+      { label: 'Daft — Rathmines houses', url: 'https://www.daft.ie/property-for-sale/rathmines-dublin-6' },
+    ]
+  },
+  {
+    name: 'Stoneybatter / Smithfield', eircode: 'D07',
+    type: 'City inner', priority: 2, priorityLabel: 'Closest Value',
+    bed2: '€350–430k', bed3: '€420–520k',
+    commute: '15 min (walk/Luas)', fhs: true, fhsNote: 'Good availability ≤€500k',
+    score: 88,
+    notes: 'Trendy area, excellent cafés and pubs, Smithfield market. Walking distance to D01. Strong rental demand (useful if you ever move out). Mix of terraces and apartments.',
+    transport: 'LUAS Red Line (Smithfield), 15-min walk to D01. Excellent cycling.',
+    links: [
+      { label: 'Daft — Stoneybatter houses', url: 'https://www.daft.ie/property-for-sale/stoneybatter-dublin-7' },
+    ]
+  },
+  {
+    name: 'Drumcondra / Glasnevin', eircode: 'D09 / D11',
+    type: 'Northside suburb', priority: 3, priorityLabel: 'Good Value',
+    bed2: '€320–400k', bed3: '€390–490k',
+    commute: '25–35 min (bus)', fhs: true, fhsNote: 'Most properties well within cap',
+    score: 78,
+    notes: 'Quieter, family-friendly, good schools. National Botanic Gardens nearby. More competitive prices than southside equivalents. DCU campus brings some rental interest.',
+    transport: 'Bus Connects Core route to city centre. Cycling ok.',
+    links: [
+      { label: 'Daft — Drumcondra houses', url: 'https://www.daft.ie/property-for-sale/drumcondra-dublin-9' },
+    ]
+  },
+  {
+    name: 'Ranelagh / Sandymount', eircode: 'D04 / D06W',
+    type: 'City premium', priority: 4, priorityLabel: 'Aspirational',
+    bed2: '€450–580k', bed3: '€550–750k',
+    commute: '20–30 min (DART/LUAS)', fhs: false, fhsNote: 'Many over €500k',
+    score: 65,
+    notes: 'One of Dublin\'s most desirable areas. Excellent amenities, DART access, strong schools. 3-beds typically exceed FHS cap — factor that in.',
+    transport: 'LUAS Green Line (Ranelagh), DART (Sandymount). Good cycling.',
+    links: [
+      { label: 'Daft — Ranelagh houses', url: 'https://www.daft.ie/property-for-sale/ranelagh-dublin-6' },
+    ]
+  },
+  {
+    name: 'Inchicore / Drimnagh', eircode: 'D08 / D12',
+    type: 'Emerging westside', priority: 5, priorityLabel: 'Value Buy',
+    bed2: '€280–360k', bed3: '€350–440k',
+    commute: '25–35 min (LUAS)', fhs: true, fhsNote: 'Very affordable for FHS',
+    score: 74,
+    notes: 'Up-and-coming area benefitting from LUAS Red Line extension and new developments. Lower entry point. Watch for gentrification — good 5-year appreciation potential.',
+    transport: 'LUAS Red Line (Drimnagh/Blackhorse stop). Bus 40 to city.',
+    links: [
+      { label: 'Daft — Inchicore houses', url: 'https://www.daft.ie/property-for-sale/inchicore-dublin-8' },
+    ]
+  },
+  {
+    name: 'Clontarf / Raheny', eircode: 'D03 / D05',
+    type: 'Northside coastal', priority: 6, priorityLabel: 'Quality of Life',
+    bed2: '€400–520k', bed3: '€480–700k',
+    commute: '30 min (DART)', fhs: false, fhsNote: '3-beds often exceed cap',
+    score: 70,
+    notes: 'Beautiful seafront location, Bull Island, excellent schools. DART gives reliable commute. 2-beds might work with FHS; 3-beds push over €500k.',
+    transport: 'DART (Clontarf Road / Raheny). Coastal cycle path into city.',
+    links: [
+      { label: 'Daft — Clontarf houses', url: 'https://www.daft.ie/property-for-sale/clontarf-dublin-3' },
+    ]
+  },
+];
+
+function renderAreas() {
+  const tbody = document.getElementById('areaTableBody');
+  tbody.innerHTML = AREAS.map(a => `
+    <tr>
+      <td><strong>${a.name}</strong><br><span style="font-size:11px;color:var(--muted)">${a.eircode}</span></td>
+      <td>${a.type}</td>
+      <td>${a.bed2}</td>
+      <td>${a.bed3}</td>
+      <td>${a.commute}</td>
+      <td style="color:${a.fhs ? 'var(--green)' : 'var(--red)'};">${a.fhs ? 'Yes' : 'Partial'}<br><span style="font-size:11px;color:var(--muted)">${a.fhsNote}</span></td>
+      <td>
+        <div class="score-bar">
+          <div class="bar" style="width:${a.score}px"></div>
+          <span style="font-size:11px;color:var(--muted)">${a.score}/100</span>
+        </div>
+        <span class="area-tag ${a.priority <= 2 ? 'area-d1' : a.priority <= 4 ? 'area-commute' : 'area-value'}" style="margin-top:4px;">${a.priorityLabel}</span>
+      </td>
+    </tr>
+  `).join('');
+
+  const cardsEl = document.getElementById('areaCards');
+  cardsEl.innerHTML = AREAS.map(a => `
+    <div class="card">
+      <h3>${a.name} <span style="font-size:11px;color:var(--muted);font-weight:400">${a.eircode}</span></h3>
+      <div class="info-row"><span class="info-key">2-Bed range</span><span class="info-val">${a.bed2}</span></div>
+      <div class="info-row"><span class="info-key">3-Bed range</span><span class="info-val">${a.bed3}</span></div>
+      <div class="info-row"><span class="info-key">Commute to D01</span><span class="info-val">${a.commute}</span></div>
+      <div class="info-row"><span class="info-key">FHS eligible</span><span class="info-val" style="color:${a.fhs ? 'var(--green)' : 'var(--yellow)'}">${a.fhs ? 'Yes — ' + a.fhsNote : a.fhsNote}</span></div>
+      <div class="info-row"><span class="info-key">Transport</span><span class="info-val" style="font-size:12px;text-align:right;max-width:60%">${a.transport}</span></div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px;">${a.notes}</p>
+      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">
+        ${a.links.map(l => `<a href="${l.url}" target="_blank" class="btn btn-sm btn-ghost">${l.label} →</a>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+renderAreas();
+
+// ── PROCESS TIMELINE ──────────────────────────────────────────────────────────
+const STEPS = [
+  { n:1, title:'Register on Revenue myAccount', time:'Now', status:'todo',
+    desc:'Create your Revenue.ie myAccount. Ensure PAYE is being recorded from your Irish employment. This starts building your HTB-eligible tax history from 2025.',
+    tags:['action','Immediate'], links:[{label:'myAccount →', url:'https://www.ros.ie/myaccount-web/sign_in.html'}] },
+  { n:2, title:'Get your PPS number confirmed', time:'Now', status:'todo',
+    desc:'You need a valid PPS number for all mortgage and scheme applications. Confirm it\'s linked to your employer and Revenue. Check PPSN on your payslip or MyWelfare.ie.',
+    tags:['action','1 day'] },
+  { n:3, title:'Save your 10% deposit + costs', time:'Ongoing', status:'todo',
+    desc:'Target: 10% of purchase price + ~€12k for buying costs. On a €450k home that\'s €45k + €12k = €57k minimum. Factor in your monthly savings rate.',
+    tags:['money','6–18 months'] },
+  { n:4, title:'Get Approval in Principle (AIP)', time:'~3–6 months before buying', status:'todo',
+    desc:'Approach 2–3 lenders (AIB, BOI, Avant via broker) for AIP. This is a letter saying how much they\'ll lend you. Valid ~6–12 months. Required before making any bid.',
+    tags:['action','2–4 weeks'], links:[{label:'CCPC Mortgage Comparison →', url:'https://www.ccpc.ie/consumers/money/mortgages/'}] },
+  { n:5, title:'Research areas and properties', time:'Anytime', status:'todo',
+    desc:'Use Daft.ie, MyHome.ie, and the Property Price Register to understand what sells for what. Visit open viewings. Use this tracker\'s Watchlist tab.',
+    tags:['action','Ongoing'], links:[
+      {label:'Daft.ie →', url:'https://www.daft.ie/property-for-sale/dublin'},
+      {label:'Property Price Register →', url:'https://www.propertypriceregister.ie/'},
+    ] },
+  { n:6, title:'Engage a solicitor', time:'Before making an offer', status:'todo',
+    desc:'Get a conveyancing solicitor before you bid — you\'ll need them quickly once an offer is accepted. Cost: €2,000–€3,500. Ask for recommendations or check Law Society.',
+    tags:['action','1–2 weeks'], links:[{label:'Find a solicitor →', url:'https://www.lawsociety.ie/Find-a-Solicitor'}] },
+  { n:7, title:'Make an offer', time:'When ready', status:'todo',
+    desc:'Offers are made verbally through the estate agent. No legal commitment yet. Bidding wars are common in Dublin — set your max and stick to it.',
+    tags:['action','Ongoing'] },
+  { n:8, title:'Offer accepted — pay booking deposit', time:'At sale agreed', status:'todo',
+    desc:'Booking deposit (~€5,000–€10,000) is paid to the estate agent. Not legally binding yet — you can still walk away. Sale is "Agreed" at this point.',
+    tags:['money','1–3 days'] },
+  { n:9, title:'Surveys and valuation', time:'After offer accepted', status:'todo',
+    desc:'Your bank requires a valuation report (€150–200). Separately, get an independent structural survey (€400–600) — highly recommended. BER (energy rating) must be provided by seller.',
+    tags:['money','1–2 weeks'] },
+  { n:10, title:'Apply for First Home Scheme (if using)', time:'Concurrent with mortgage', status:'todo',
+    desc:'Apply for FHS approval in parallel with your full mortgage application. The FHS eligibility certificate is needed before drawdown.',
+    tags:['action','2–4 weeks'], links:[{label:'FHS Application →', url:'https://www.firsthomescheme.ie/apply/'}] },
+  { n:11, title:'Full mortgage application', time:'After offer accepted', status:'todo',
+    desc:'Submit full docs: payslips (6 months), bank statements (6 months), P60/P21, employment letter, ID. Bank will issue a Loan Offer letter (legally binding commitment).',
+    tags:['action','2–6 weeks'] },
+  { n:12, title:'Sign contracts', time:'~4–8 weeks after offer', status:'todo',
+    desc:'Your solicitor reviews the Contract for Sale. You pay 10% deposit (less booking deposit already paid). This is legally binding — you lose your deposit if you walk away.',
+    tags:['money','1 week'] },
+  { n:13, title:'Closing (completion)', time:'Agreed date', status:'todo',
+    desc:'Bank releases mortgage funds to your solicitor. Solicitor pays the balance. Stamp duty is paid. Keys are handed over. You are now a homeowner.',
+    tags:['action','1 day'] },
+  { n:14, title:'Register the property', time:'After closing', status:'todo',
+    desc:'Your solicitor registers the deed with the Property Registration Authority (PRA). Land Registry fee applies. This takes a few weeks.',
+    tags:['action','2–4 weeks'] },
+  { n:15, title:'Move in & file HTB claim (new build)', time:'After closing', status:'todo',
+    desc:'If you bought a new build, file your HTB claim on myAccount. The refund goes to the developer against your purchase price. You need to have lived there.',
+    tags:['money','1–2 weeks'] },
+];
+
+function renderProcess() {
+  const el = document.getElementById('processTimeline');
+  el.innerHTML = STEPS.map((s, i) => `
+    <div class="tl-step">
+      <div class="tl-left">
+        <div class="tl-dot tl-dot-todo">${s.n}</div>
+        ${i < STEPS.length - 1 ? '<div class="tl-line"></div>' : ''}
+      </div>
+      <div class="tl-body">
+        <div class="tl-title">${s.title}</div>
+        <div class="tl-desc">${s.desc}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">
+          ${s.tags.map((t, ti) => `<span class="tl-tag ${ti === 0 ? 'tag-action' : 'tag-time'}">${t}</span>`).join('')}
+          ${(s.links || []).map(l => `<a href="${l.url}" target="_blank" style="font-size:10px;color:var(--blue);margin-left:4px;">${l.label}</a>`).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+renderProcess();
+
+// ── WATCHLIST (localStorage) ──────────────────────────────────────────────────
+let properties = JSON.parse(localStorage.getItem('dublinProperties') || '[]');
+let currentViewId = null;
+
+function saveProperties() { localStorage.setItem('dublinProperties', JSON.stringify(properties)); }
+
+function openAddModal() {
+  ['propAddr','propPrice','propArea','propBeds','propUrl','propNotes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('propType').value = 'Semi-D';
+  document.getElementById('propStatus').value = 'watching';
+  document.getElementById('addModal').classList.add('open');
+}
+function closeModal() { document.getElementById('addModal').classList.remove('open'); }
+
+function saveProperty() {
+  const addr = document.getElementById('propAddr').value.trim();
+  if (!addr) return;
+  const prop = {
+    id: Date.now(),
+    addr,
+    price: +document.getElementById('propPrice').value || 0,
+    area: document.getElementById('propArea').value.trim(),
+    beds: +document.getElementById('propBeds').value || 0,
+    type: document.getElementById('propType').value,
+    url: document.getElementById('propUrl').value.trim(),
+    status: document.getElementById('propStatus').value,
+    notes: document.getElementById('propNotes').value.trim(),
+    added: new Date().toISOString(),
+  };
+  properties.push(prop);
+  saveProperties();
+  closeModal();
+  renderWatchlist();
+}
+
+const STATUS_MAP = {
+  watching: { label:'Watching', cls:'status-watching' },
+  viewed: { label:'Viewed', cls:'status-viewed' },
+  bid: { label:'Bid Made', cls:'status-bid' },
+  passed: { label:'Passed', cls:'status-passed' },
+};
+
+function renderWatchlist() {
+  const grid = document.getElementById('wlGrid');
+  const stats = document.getElementById('wlStats');
+
+  const counts = { watching:0, viewed:0, bid:0, passed:0 };
+  properties.forEach(p => counts[p.status]++);
+  const avgPrice = properties.length ? Math.round(properties.filter(p=>p.price).reduce((a,b)=>a+b.price,0) / properties.filter(p=>p.price).length) : 0;
+
+  stats.innerHTML = `
+    <div class="kpi"><div class="kpi-label">Tracked</div><div class="kpi-value kpi-blue">${properties.length}</div></div>
+    <div class="kpi"><div class="kpi-label">Watching</div><div class="kpi-value kpi-blue">${counts.watching}</div></div>
+    <div class="kpi"><div class="kpi-label">Viewed</div><div class="kpi-value kpi-green">${counts.viewed}</div></div>
+    <div class="kpi"><div class="kpi-label">Bid Made</div><div class="kpi-value kpi-yellow">${counts.bid}</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Asking</div><div class="kpi-value kpi-orange">${avgPrice ? fmtK(avgPrice) : '—'}</div></div>
+  `;
+
+  if (!properties.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🏠</div><h3>No properties tracked yet</h3><p>Click "+ Add Property" to start</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = properties.map(p => {
+    const s = STATUS_MAP[p.status] || STATUS_MAP.watching;
+    return `
+      <div class="wl-card" onclick="viewProperty(${p.id})">
+        <div class="wl-header">
+          <div class="wl-addr">${p.addr}</div>
+          <div class="wl-price">${p.price ? fmtK(p.price) : '—'}</div>
+        </div>
+        <div class="wl-meta">${[p.beds ? p.beds+'bed' : '', p.type, p.area].filter(Boolean).join(' · ')}</div>
+        <div class="wl-tags">
+          <span class="wl-status ${s.cls}">${s.label}</span>
+          ${p.url ? '<span class="wl-status status-watching" style="cursor:pointer" onclick="event.stopPropagation();window.open(\''+p.url+'\',\'_blank\')">View Listing ↗</span>' : ''}
+        </div>
+        ${p.notes ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">' + p.notes.substring(0, 80) + (p.notes.length > 80 ? '...' : '') + '</div>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function viewProperty(id) {
+  const p = properties.find(x => x.id === id);
+  if (!p) return;
+  currentViewId = id;
+  const s = STATUS_MAP[p.status] || STATUS_MAP.watching;
+  document.getElementById('viewTitle').textContent = p.addr;
+  document.getElementById('viewContent').innerHTML = `
+    <div class="info-row"><span class="info-key">Price</span><span class="info-val">${p.price ? fmt(p.price) : '—'}</span></div>
+    <div class="info-row"><span class="info-key">Area</span><span class="info-val">${p.area || '—'}</span></div>
+    <div class="info-row"><span class="info-key">Type</span><span class="info-val">${p.type} · ${p.beds || '?'} bed</span></div>
+    <div class="info-row"><span class="info-key">Status</span><span class="info-val"><span class="wl-status ${s.cls}">${s.label}</span></span></div>
+    ${p.url ? `<div class="info-row"><span class="info-key">Listing</span><span class="info-val"><a href="${p.url}" target="_blank">Open →</a></span></div>` : ''}
+    <div class="info-row"><span class="info-key">Added</span><span class="info-val">${new Date(p.added).toLocaleDateString('en-IE')}</span></div>
+    ${p.notes ? `<div style="margin-top:14px;font-size:13px;color:var(--muted);line-height:1.6">${p.notes}</div>` : ''}
+    <div style="margin-top:16px;">
+      <label class="form-label">Update Status</label>
+      <select id="statusUpdate">
+        ${Object.entries(STATUS_MAP).map(([k,v]) => `<option value="${k}" ${k===p.status?'selected':''}>${v.label}</option>`).join('')}
+      </select>
+    </div>
+  `;
+  document.getElementById('deleteBtn').onclick = () => { deleteProperty(id); closeViewModal(); };
+  document.getElementById('editStatusBtn').onclick = () => updateStatus(id);
+  document.getElementById('viewModal').classList.add('open');
+}
+
+function updateStatus(id) {
+  const newStatus = document.getElementById('statusUpdate').value;
+  const p = properties.find(x => x.id === id);
+  if (p) { p.status = newStatus; saveProperties(); renderWatchlist(); closeViewModal(); }
+}
+
+function deleteProperty(id) {
+  properties = properties.filter(x => x.id !== id);
+  saveProperties();
+  renderWatchlist();
+}
+
+function closeViewModal() { document.getElementById('viewModal').classList.remove('open'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); }));
+
+renderWatchlist();
+
+// ── CHECKLIST ─────────────────────────────────────────────────────────────────
+const CHECKLISTS = {
+  checkFinance: [
+    'Open an Irish bank account (AIB, BOI, or N26 as bridge)',
+    'Register with Revenue — myAccount at revenue.ie',
+    'Confirm PPS number is linked to PAYE',
+    'Set up a dedicated savings account for deposit (separate from current)',
+    'Calculate your target deposit: 10% of target price + €12k costs',
+    'Review and improve your credit history (check with ICB)',
+    'Stop any large unexplained transactions 6 months before applying',
+  ],
+  checkSchemes: [
+    'Verify HTB eligibility: Are you a genuine FTB?',
+    'Note: HTB requires 4 years of Irish tax history — yours starts in 2025',
+    'If buying new build: Register interest for HTB now on Revenue myAccount',
+    'Check FHS eligibility calculator at firsthomescheme.ie',
+    'Confirm property you want is under €500k for FHS/HTB',
+    'Understand FHS equity charge: 0% yr 1–5, 1.75% yr 6–15',
+  ],
+  checkMortgage: [
+    'Compare lenders: AIB, Bank of Ireland, Avant Money, EBS',
+    'Consider using a mortgage broker (free — they search all lenders)',
+    'Gather documents: 6 months payslips, 6 months bank statements, P60',
+    'Get letter from employer confirming salary and employment type',
+    'Apply for Approval in Principle (AIP) from preferred lender',
+    'AIP received — note expiry date (valid 6–12 months)',
+    'Compare fixed vs variable rate options',
+    'Check green mortgage rates (BER A or B = lower rates at some banks)',
+  ],
+  checkSearch: [
+    'Create alerts on Daft.ie for target areas and price range',
+    'Create alerts on MyHome.ie',
+    'Visit multiple open viewings to calibrate market sense',
+    'Check sold prices on Property Price Register before bidding',
+    'Research BER ratings — A/B gets green mortgage discounts',
+    'Check local authority planning permissions near property',
+    'Research management fees if buying apartment',
+    'Check pyrite/mica/defect risk for new builds in area',
+  ],
+  checkLegal: [
+    'Engage a solicitor before making any offer',
+    'Solicitor reviews title deeds and planning permission',
+    'Commission independent structural survey on property',
+    'Bank orders valuation report (required for mortgage)',
+    'Review and sign contracts — solicitor confirms all is clear',
+    'Pay 10% deposit on signing contracts',
+    'Confirm closing date with solicitor and lender',
+    'Arrange home insurance effective from completion date (required by bank)',
+  ],
+  checkPost: [
+    'Register as owner with Land Registry (solicitor handles)',
+    'Pay Local Property Tax (LPT) — register with Revenue',
+    'Set up utility accounts (Electric Ireland, Gas Networks)',
+    'Change address with Revenue, employer, bank, Revenue',
+    'If new build: File HTB claim on myAccount',
+    'Consider life insurance/mortgage protection (required by most lenders)',
+  ],
+};
+
+let checkStates = JSON.parse(localStorage.getItem('dublinChecklist') || '{}');
+
+function saveChecks() { localStorage.setItem('dublinChecklist', JSON.stringify(checkStates)); }
+
+function renderChecklist() {
+  Object.entries(CHECKLISTS).forEach(([id, items]) => {
+    const el = document.getElementById(id);
+    el.innerHTML = items.map((text, i) => {
+      const key = id + '_' + i;
+      const checked = !!checkStates[key];
+      return `
+        <div class="check-item">
+          <div class="check-box ${checked ? 'checked' : ''}" onclick="toggleCheck('${key}', this, document.getElementById('ct_${key}'))"></div>
+          <div class="check-text ${checked ? 'done' : ''}" id="ct_${key}">${text}</div>
+        </div>
+      `;
+    }).join('');
+  });
+}
+
+function toggleCheck(key, boxEl, textEl) {
+  checkStates[key] = !checkStates[key];
+  saveChecks();
+  boxEl.classList.toggle('checked');
+  textEl.classList.toggle('done');
+}
+
+renderChecklist();
+</script>
+</body>
+</html>

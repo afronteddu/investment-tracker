@@ -15,7 +15,7 @@ settings:
 # shares: number of shares held
 # target_price: your exit / take-profit level
 # stop_loss: optional — alert if price drops below this
-# bucket: retirement | growth | high_conviction
+# bucket: retirement | growth | high_conviction | house_savings
 # notes: free text
 
 positions:
