@@ -1823,15 +1823,19 @@ function renderStrategy(positions, lifetime) {
 
   // House savings bucket: curated low-price (<€50/share), liquid, cash-like tickers
   // Criteria: price <€50, high liquidity, low volatility vs HC/growth, sellable without pain in 2028
-  // Criteria: price <€45 (easy €100–200 DCA), pays dividend (compensated while waiting),
-  // low beta (<0.9), mega/large cap liquidity (sell easily in 2028 with no slippage), 33% CGT.
+  // Two-tier structure within house_savings:
+  // CORE (60% of bucket) — low-beta, high dividend, near-cash. Job: don't lose money.
+  // SATELLITE (40% of bucket) — beaten-down mega-caps, clear 3-yr catalyst, still liquid.
+  // Hard rule: nothing with beta >1.0 or no dividend. FHS covers shortfalls, not this bucket.
   const HOUSE_SAVINGS_TICKERS = [
-    { ticker:'T',     price:'~$22',  why:'AT&T — 5.5% dividend, beta ~0.4, telecom utility. Near cash-like stability. Pays you to wait 3 years. 33% CGT.' },
-    { ticker:'KHC',   price:'~$30',  why:'Kraft Heinz — consumer staple, 5%+ dividend, beta ~0.5, recession-proof. Berkshire-backed. 33% CGT.' },
-    { ticker:'BTI',   price:'~$35',  why:'British American Tobacco ADR — 8% dividend yield, beta ~0.5, very low volatility. Controversial but financially stable. 33% CGT.' },
-    { ticker:'MO',    price:'~$55',  why:'Altria — 8%+ dividend, beta ~0.4. Dominant US tobacco. Dividend alone returns deposit cost over 3 years. 33% CGT.' },
-    { ticker:'VZ',    price:'~$42',  why:'Verizon — 6.5% dividend, beta ~0.4, telecom infrastructure. Mirror of T with slightly different debt profile. 33% CGT.' },
-    { ticker:'IBM',   price:'~$240', why:'IBM — 3% dividend, beta ~0.7, hybrid cloud transformation on track. Large cap, very liquid. Note: higher unit price — buy 1 share/mo. 33% CGT.' },
+    // ── CORE: stable income, low volatility ───────────────────────────────────────
+    { tier:'CORE',    ticker:'T',   price:'~$22', div:'5.5%', beta:'0.4', why:'AT&T — telecom utility, near cash-like. Dividend pays you ~16% total over 3 years just to hold. 33% CGT.' },
+    { tier:'CORE',    ticker:'VZ',  price:'~$42', div:'6.5%', beta:'0.4', why:'Verizon — same thesis as T, slightly different debt mix. Both together = diversified US telecom income. 33% CGT.' },
+    { tier:'CORE',    ticker:'KHC', price:'~$30', div:'5.5%', beta:'0.5', why:'Kraft Heinz — Berkshire-backed consumer staple. Recession-proof brands (Heinz, Kraft, Oscar Mayer). 33% CGT.' },
+    // ── SATELLITE: beaten-down recovery plays, 3-yr upside with downside cushion ──
+    { tier:'SATELLITE', ticker:'PFE',  price:'~$25', div:'6.2%', beta:'0.6', why:'Pfizer — 50%+ off ATH, Seagen oncology pipeline, antiviral portfolio. 6% div compensates while thesis plays. Recovery target ~$35–40 by 2028. 33% CGT.' },
+    { tier:'SATELLITE', ticker:'BAC',  price:'~$42', div:'2.5%', beta:'0.7', why:'Bank of America — Buffett\'s largest position (~1B shares). Rate normalisation, expense discipline, loan growth. Beaten down vs peers. Target ~$55–60 by 2028. 33% CGT.' },
+    { tier:'SATELLITE', ticker:'CVS',  price:'~$55', div:'4.5%', beta:'0.6', why:'CVS Health — pharmacy + insurance + MinuteClinics. 60%+ below ATH, strategic review underway. 4.5% div + recovery upside. Target ~$80 if separation executes. 33% CGT.' },
   ];
 
   // Per-position rows for house_savings bucket
@@ -1872,11 +1876,21 @@ function renderStrategy(positions, lifetime) {
   <details style="margin-bottom:8px">
     <summary style="font-size:11px;color:#fb923c;cursor:pointer;font-weight:600">Ticker ideas for house_savings bucket ▾</summary>
     <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
-      ${HOUSE_SAVINGS_TICKERS.map(t => `<div style="display:flex;gap:8px;font-size:11px;padding:3px 0">
-        <span style="width:52px;font-weight:700;color:#fb923c">${t.ticker}</span>
-        <span style="width:44px;color:var(--muted)">${t.price}</span>
-        <span style="flex:1;color:#94a3b8">${t.why}</span>
-      </div>`).join('')}
+      ${HOUSE_SAVINGS_TICKERS.map(t => {
+        const tierColor = t.tier === 'CORE' ? '#60a5fa' : '#fbbf24';
+        return `<div style="display:flex;gap:8px;font-size:11px;padding:5px 0;border-bottom:1px solid #ffffff08">
+          <span style="width:8px;height:auto;background:${tierColor};border-radius:2px;flex-shrink:0"></span>
+          <span style="width:46px;font-weight:700;color:#fb923c">${t.ticker}</span>
+          <span style="width:36px;color:var(--muted);font-size:10px">${t.price}</span>
+          <span style="width:30px;color:var(--green);font-weight:600;font-size:10px">${t.div}</span>
+          <span style="width:30px;color:var(--muted);font-size:10px">β${t.beta}</span>
+          <span style="flex:1;color:#94a3b8">${t.why}</span>
+        </div>`;
+      }).join('')}
+      <div style="margin-top:6px;font-size:10px;color:var(--muted)">
+        <span style="color:#60a5fa">■</span> CORE — 60% of bucket (T + VZ + KHC): stable income, hold regardless.
+        <span style="color:#fbbf24;margin-left:8px">■</span> SATELLITE — 40% (PFE + BAC + CVS): recovery upside + dividend floor.
+      </div>
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:6px">Add these in portfolio.yaml with bucket: house_savings. They appear in the portfolio table with the 🏠 badge.</div>
   </details>
@@ -1907,7 +1921,7 @@ function renderStrategy(positions, lifetime) {
       </div>
       <input type="range" id="split-house-slider" min="10" max="80" step="5" value="${_houseSharePct}"
         oninput="_onSplitSlide()" style="width:100%;accent-color:#fb923c">
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% to cash deposit (AIB 7-day Notice / BOI Online Saver / Revolut ~3.25%), 40% into house_savings bucket stocks (T, KHC, BTI, VZ — high-div, low-beta).</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% house_savings stocks: <span style="color:#60a5fa">CORE</span> T, VZ, KHC (income) + <span style="color:#fbbf24">SATELLITE</span> PFE, BAC, CVS (recovery upside).</div>
     </div>
 
     <div style="margin-bottom:8px">
