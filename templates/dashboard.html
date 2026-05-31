@@ -1823,15 +1823,15 @@ function renderStrategy(positions, lifetime) {
 
   // House savings bucket: curated low-price (<€50/share), liquid, cash-like tickers
   // Criteria: price <€50, high liquidity, low volatility vs HC/growth, sellable without pain in 2028
+  // Criteria: price <€45 (easy €100–200 DCA), pays dividend (compensated while waiting),
+  // low beta (<0.9), mega/large cap liquidity (sell easily in 2028 with no slippage), 33% CGT.
   const HOUSE_SAVINGS_TICKERS = [
-    { ticker:'INTC',  price:'~$20',  why:'Deeply discounted semi — liquid, recovers slowly, easy to exit. 33% CGT.' },
-    { ticker:'T',     price:'~$22',  why:'AT&T: 5.5% dividend, very low volatility, cash-like behavior. 33% CGT.' },
-    { ticker:'VALE',  price:'~$10',  why:'Iron ore / nickel miner, high dividend (~8%), uncorrelated to AI. 33% CGT.' },
-    { ticker:'WBA',   price:'~$10',  why:'Walgreens turnaround — distressed, high dividend, clear exit trigger. 33% CGT.' },
-    { ticker:'F',     price:'~$10',  why:'Ford: EV pivot, low PE, 5% div, price <€10 so easy to DCA €100 increments. 33% CGT.' },
-    { ticker:'KHC',   price:'~$30',  why:'Kraft Heinz: consumer staple, 5% div, recession-proof, low beta. 33% CGT.' },
-    { ticker:'MPW',   price:'~$4',   why:'Medical REIT — beaten down, high yield, recovery play. Note: Irish REIT rules may apply — verify. 33% CGT.' },
-    { ticker:'SOFI',  price:'~$13',  why:'SoFi: fintech, low price, growing deposits. Liquid mid-cap, easy to DCA. 33% CGT.' },
+    { ticker:'T',     price:'~$22',  why:'AT&T — 5.5% dividend, beta ~0.4, telecom utility. Near cash-like stability. Pays you to wait 3 years. 33% CGT.' },
+    { ticker:'KHC',   price:'~$30',  why:'Kraft Heinz — consumer staple, 5%+ dividend, beta ~0.5, recession-proof. Berkshire-backed. 33% CGT.' },
+    { ticker:'BTI',   price:'~$35',  why:'British American Tobacco ADR — 8% dividend yield, beta ~0.5, very low volatility. Controversial but financially stable. 33% CGT.' },
+    { ticker:'MO',    price:'~$55',  why:'Altria — 8%+ dividend, beta ~0.4. Dominant US tobacco. Dividend alone returns deposit cost over 3 years. 33% CGT.' },
+    { ticker:'VZ',    price:'~$42',  why:'Verizon — 6.5% dividend, beta ~0.4, telecom infrastructure. Mirror of T with slightly different debt profile. 33% CGT.' },
+    { ticker:'IBM',   price:'~$240', why:'IBM — 3% dividend, beta ~0.7, hybrid cloud transformation on track. Large cap, very liquid. Note: higher unit price — buy 1 share/mo. 33% CGT.' },
   ];
 
   // Per-position rows for house_savings bucket
@@ -1865,7 +1865,7 @@ function renderStrategy(positions, lifetime) {
     </div>
   </div>
   <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-    <strong style="color:var(--text)">Two layers:</strong> (1) Monthly cash → PTSB/AIB high-yield deposit (~3%). (2) House savings portfolio — low-price liquid stocks, DCA monthly, liquidate 2028–2029 before purchase.<br>
+    <strong style="color:var(--text)">Two layers:</strong> (1) Monthly cash → Irish high-yield deposit (AIB 7-day Notice ~3%, Bank of Ireland Online Saver, or Revolut Savings Vault ~3.25%). (2) House savings portfolio — low-beta dividend stocks, DCA monthly, liquidate 2028–2029 before purchase.<br>
     <strong style="color:var(--text)">HTB:</strong> ~2029 after 4yr IE tax. New builds only, ≤€500k. <strong style="color:var(--text)">FHS:</strong> up to 30% gov equity tops up any shortfall.
   </div>
   <div style="margin-bottom:10px">${hsSavRows}</div>
@@ -1907,7 +1907,7 @@ function renderStrategy(positions, lifetime) {
       </div>
       <input type="range" id="split-house-slider" min="10" max="80" step="5" value="${_houseSharePct}"
         oninput="_onSplitSlide()" style="width:100%;accent-color:#fb923c">
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ Split 60% cash deposit (PTSB), 40% into house_savings bucket stocks.</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% to cash deposit (AIB 7-day Notice / BOI Online Saver / Revolut ~3.25%), 40% into house_savings bucket stocks (T, KHC, BTI, VZ — high-div, low-beta).</div>
     </div>
 
     <div style="margin-bottom:8px">
@@ -2103,7 +2103,7 @@ function renderStrategy(positions, lifetime) {
       label: `House fund: €${Math.round(houseSaved).toLocaleString()} of €${(HOUSE_GOAL/1000).toFixed(0)}k target (${housePct.toFixed(0)}%) — need €${houseMonthlyNeeded.toLocaleString()}/mo to hit Jun 2029`,
       level: housePct < 20 ? 'warn' : 'ok',
       badge: housePct < 20 ? 'BUILDING' : housePct < 60 ? 'IN PROGRESS' : 'ON TRACK',
-      note: `Keep house fund in cash only — no market risk on a 3-year liability. AIB Notice Account or PTSB Online Saver (~3%). FHS bridges any remaining gap at purchase (gov equity, no income test). HTB new-build refund available ~2029 after 4yr Irish tax history.`,
+      note: `Keep cash layer in Irish deposit accounts (AIB 7-day Notice ~3%, BOI Online Saver, or Revolut Savings Vault ~3.25% — all DIRT-taxed at 33%). House_savings bucket holds low-beta dividend stocks (T, KHC, BTI, VZ) — not pure cash, but low-volatility with dividend income while waiting. Liquidate before 2029 purchase. FHS bridges any remaining gap.`,
     },
     {
       icon: '🇮🇪',
