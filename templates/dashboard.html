@@ -555,6 +555,13 @@
     </div>
     <div id="strat-risk" style="margin-bottom:24px"></div>
 
+    <!-- December CGT exemption reminder -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Tax Calendar</span>
+      <span class="muted" style="font-size:11px">annual action — do not skip</span>
+    </div>
+    <div id="strat-tax-calendar" style="margin-bottom:24px"></div>
+
     <!-- Suggested watchlist additions -->
     <div class="section-header" style="margin-top:0">
       <span class="section-title">Suggested Additions</span>
@@ -1383,6 +1390,7 @@ const TICKER_CCY = {
   'SHEL':'USD','SHEL.L':'GBP','BP.L':'GBP','RIO.L':'GBP','BA.L':'GBP',
   'TSM':'USD','HDB':'USD','CEG':'USD','XOM':'USD','JNJ':'USD','WM':'USD',
   'GOOGL':'USD','MSFT':'USD',
+  'UCG.MI':'EUR','ROG.SW':'CHF',
 };
 
 // Sector/geography metadata for held tickers
@@ -1404,6 +1412,9 @@ const TICKER_META = {
   'NBIS':    { sector:'AI Infra / Cloud', geo:'Global', ccy:'USD', type:'stock (33% CGT)', desc:'Nebius — AI cloud infrastructure (ex-Yandex)' },
   'VRT':     { sector:'AI Infra / Power', geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Vertiv — power/thermal management for data centres' },
   'APLD':    { sector:'AI Infra / HPC',   geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Applied Digital — HPC hosting for AI workloads' },
+  // House savings
+  'UCG.MI':  { sector:'Financials / Banking', geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'UniCredit — Italian bank, no USD risk, 7%+ dividend yield' },
+  'ROG.SW':  { sector:'Healthcare / Pharma',  geo:'Europe (CH)', ccy:'CHF', type:'stock (33% CGT)', desc:'Roche — oncology + diagnostics leader, 3.5% CHF dividend, defensive' },
 };
 
 // Suggested additions — grounded in actual portfolio gaps.
@@ -1828,9 +1839,11 @@ function renderStrategy(positions, lifetime) {
   // GROWTH SATELLITE (35%) — aggressive non-AI plays for higher 3yr upside.
   const HOUSE_SAVINGS_TICKERS = [
     // ── CORE: stable income, low volatility ───────────────────────────────────────
-    { tier:'CORE',    ticker:'T',   price:'~$22', div:'5.5%', beta:'0.4', why:'AT&T — telecom utility. Dividend alone returns ~16% over 3 years. Debt paydown on track. 33% CGT.' },
-    { tier:'CORE',    ticker:'VZ',  price:'~$42', div:'6.5%', beta:'0.4', why:'Verizon — same utility thesis, different debt mix. T+VZ together = diversified US telecom income. 33% CGT.' },
-    { tier:'CORE',    ticker:'KHC', price:'~$30', div:'5.5%', beta:'0.5', why:'Kraft Heinz — Berkshire-backed staple. Recession-proof brands (Heinz, Kraft, Oscar Mayer). 33% CGT.' },
+    { tier:'CORE',    ticker:'T',      price:'~$22',  div:'5.5%', beta:'0.4', why:'AT&T — telecom utility. Dividend alone returns ~16% over 3 years. Debt paydown on track. 33% CGT.' },
+    { tier:'CORE',    ticker:'VZ',     price:'~$42',  div:'6.5%', beta:'0.4', why:'Verizon — same utility thesis, different debt mix. T+VZ together = diversified US telecom income. 33% CGT.' },
+    { tier:'CORE',    ticker:'KHC',    price:'~$30',  div:'5.5%', beta:'0.5', why:'Kraft Heinz — Berkshire-backed staple. Recession-proof brands (Heinz, Kraft, Oscar Mayer). 33% CGT.' },
+    { tier:'CORE',    ticker:'UCG.MI', price:'~€44',  div:'7.2%', beta:'0.9', why:'UniCredit — Italian bank, EUR-denominated, cuts USD FX risk. Record profits, 7%+ dividend + buybacks. Capital-light model vs US banks. ECB rate cuts are a mild headwind already priced. 33% CGT.' },
+    { tier:'CORE',    ticker:'ROG.SW', price:'~CHF260', div:'3.5%', beta:'0.5', why:'Roche — Swiss pharma giant, oncology + diagnostics. CHF denomination adds FX diversification. 3.5% CHF dividend. Pipeline weight-loss drug (CT-388) could rerate vs Novo/Lilly. Defensive, 52-week lows. 33% CGT.' },
     // ── RECOVERY SATELLITE: dividend floor + clear 3yr catalyst ──────────────────
     { tier:'RECOVERY', ticker:'PFE',  price:'~$25', div:'6.2%', beta:'0.6', why:'Pfizer — 50%+ below ATH, Seagen oncology pipeline rebuilding. 6.2% div compensates while thesis plays. Target ~$35–40 by 2028–2029. 33% CGT.' },
     { tier:'RECOVERY', ticker:'CVS',  price:'~$55', div:'4.5%', beta:'0.6', why:'CVS Health — pharmacy + Aetna + MinuteClinics. 60%+ below ATH, strategic review/break-up catalyst. Target ~$80 if separation executes. 33% CGT.' },
@@ -1890,7 +1903,7 @@ function renderStrategy(positions, lifetime) {
         </div>`;
       }).join('')}
       <div style="margin-top:6px;font-size:10px;color:var(--muted)">
-        <span style="color:#60a5fa">■</span> CORE 40% (T + VZ + KHC) — income floor, hold regardless.
+        <span style="color:#60a5fa">■</span> CORE 40% (T + VZ + KHC + UCG.MI + ROG.SW) — income floor, EUR/CHF mix, hold regardless.
         <span style="color:#fbbf24;margin-left:8px">■</span> RECOVERY 25% (PFE + CVS) — dividend + catalyst upside.
         <span style="color:#4ade80;margin-left:8px">■</span> GROWTH 35% (NU + PYPL + ABNB) — aggressive non-AI, higher 3yr upside.
       </div>
@@ -1924,7 +1937,7 @@ function renderStrategy(positions, lifetime) {
       </div>
       <input type="range" id="split-house-slider" min="10" max="80" step="5" value="${_houseSharePct}"
         oninput="_onSplitSlide()" style="width:100%;accent-color:#fb923c">
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% stocks: <span style="color:#60a5fa">CORE</span> T, VZ, KHC (income) + <span style="color:#fbbf24">RECOVERY</span> PFE, CVS + <span style="color:#4ade80">GROWTH</span> NU, PYPL, ABNB (non-AI upside).</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% stocks: <span style="color:#60a5fa">CORE</span> T, VZ, KHC, UCG.MI, ROG.SW (income + EUR/CHF) + <span style="color:#fbbf24">RECOVERY</span> PFE, CVS + <span style="color:#4ade80">GROWTH</span> NU, PYPL, ABNB (non-AI upside).</div>
     </div>
 
     <div style="margin-bottom:8px">
@@ -2145,6 +2158,41 @@ function renderStrategy(positions, lifetime) {
       </div>
       <div class="risk-badge risk-${r.level}">${r.badge}</div>
     </div>`).join('')}</div>`;
+
+  // ── December CGT annual exemption reminder ──────────────────────
+  const _now = new Date();
+  const _month = _now.getMonth(); // 0=Jan … 11=Dec
+  const _daysToDecember = (() => {
+    const dec1 = new Date(_now.getFullYear(), 11, 1);
+    if (_now >= dec1) return 0;
+    return Math.ceil((dec1 - _now) / 86400000);
+  })();
+  const _isDecember = _month === 11;
+  const _isNovDec   = _month >= 10;
+  const _taxCalColor  = _isDecember ? '#4ade80' : _isNovDec ? '#fbbf24' : '#94a3b8';
+  const _taxCalBorder = _isDecember ? '#4ade8030' : _isNovDec ? '#fbbf2430' : '#ffffff10';
+  const _taxCalBg     = _isDecember ? '#4ade8008' : _isNovDec ? '#fbbf2408' : 'transparent';
+  const _taxCalBadge  = _isDecember ? 'ACT NOW' : _isNovDec ? 'SOON' : `${_daysToDecember}d`;
+  const _taxCalMsg    = _isDecember
+    ? `<strong style="color:#4ade80">December — act now.</strong> You have until 31 Dec to crystallise up to €1,270 in net gains (or losses) tax-free under the annual CGT exemption. Review all positions: sell anything showing a small gain or loss to use the allowance, then buy back after 4 weeks if desired. This resets your cost basis and eliminates future CGT on that slice.`
+    : _isNovDec
+    ? `<strong style="color:#fbbf24">November — prepare.</strong> December CGT window is weeks away. Start reviewing which positions have small unrealised gains or losses you could crystallise. Aim to have your trade list ready by 1 Dec so you're not rushing before 31 Dec.`
+    : `Every December, Ireland's €1,270 annual CGT exemption resets. Use it or lose it — sell positions with gains/losses up to that limit by 31 Dec each year to reduce your future tax bill. This is a recurring annual action. ${_daysToDecember} days until December.`;
+  const _taxCalHtml = `<div class="strat-card" style="border-color:${_taxCalBorder};background:${_taxCalBg}">
+    <div class="risk-row">
+      <div class="risk-icon">🇮🇪</div>
+      <div class="risk-label">
+        <div style="font-weight:600;color:${_taxCalColor}">Annual CGT Exemption Window — every December</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.6">${_taxCalMsg}</div>
+        <div style="font-size:11px;margin-top:8px;padding:6px 10px;background:#ffffff08;border-radius:5px;border-left:3px solid ${_taxCalColor}">
+          <strong>Checklist:</strong> (1) Sum all realised gains/losses YTD. (2) Identify positions with small unrealised gains or losses. (3) Sell up to €1,270 net before 31 Dec. (4) Optionally re-buy after 4 weeks to reset cost basis. (5) File CG1 return by 31 Oct following year.
+        </div>
+      </div>
+      <div class="risk-badge risk-${_isDecember ? 'warn' : 'ok'}" style="background:${_taxCalColor}20;color:${_taxCalColor};border-color:${_taxCalColor}40">${_taxCalBadge}</div>
+    </div>
+  </div>`;
+  const _taxCalEl = E('strat-tax-calendar');
+  if (_taxCalEl) _taxCalEl.innerHTML = _taxCalHtml;
 
   // ── Suggestions — ranked by actual portfolio gaps ────────────────
   const held = new Set(positions.map(p => p.ticker));
