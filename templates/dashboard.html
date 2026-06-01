@@ -1610,7 +1610,7 @@ function renderStrategy(positions, lifetime) {
   const RET_GOAL_DATE = new Date('2030-12-31');
   // RET_MONTHLY is the actual retirement allocation from the split (computed below from localStorage)
   const _totalBudget   = +(localStorage.getItem('houseTotalBudget')   || 1500);
-  const _houseSharePct = +(localStorage.getItem('houseSharePct')      || 50);  // % of budget → house cash
+  const _houseSharePct = +(localStorage.getItem('houseSharePct')      || 55);  // % of budget → house cash
   const _retSharePct   = +(localStorage.getItem('retSharePct')        || 30);  // % → retirement
   // growth gets the remainder implicitly: 100 - house - ret
   const RET_MONTHLY = Math.round(_totalBudget * _retSharePct / 100);
@@ -1822,20 +1822,22 @@ function renderStrategy(positions, lifetime) {
   const houseOnTrack = projectedHouseSaved >= HOUSE_GOAL;
 
   // House savings bucket: curated low-price (<€50/share), liquid, cash-like tickers
-  // Criteria: price <€50, high liquidity, low volatility vs HC/growth, sellable without pain in 2028
-  // Two-tier structure within house_savings:
-  // CORE (60% of bucket) — low-beta, high dividend, near-cash. Job: don't lose money.
-  // SATELLITE (40% of bucket) — beaten-down mega-caps, clear 3-yr catalyst, still liquid.
-  // Hard rule: nothing with beta >1.0 or no dividend. FHS covers shortfalls, not this bucket.
+  // Three-tier house_savings structure (revised June 2026):
+  // CORE (40%) — low-beta income, hold regardless. Job: don't lose money.
+  // RECOVERY SATELLITE (25%) — dividend floor + beaten-down mega-cap catalysts.
+  // GROWTH SATELLITE (35%) — aggressive non-AI plays for higher 3yr upside.
   const HOUSE_SAVINGS_TICKERS = [
     // ── CORE: stable income, low volatility ───────────────────────────────────────
-    { tier:'CORE',    ticker:'T',   price:'~$22', div:'5.5%', beta:'0.4', why:'AT&T — telecom utility, near cash-like. Dividend pays you ~16% total over 3 years just to hold. 33% CGT.' },
-    { tier:'CORE',    ticker:'VZ',  price:'~$42', div:'6.5%', beta:'0.4', why:'Verizon — same thesis as T, slightly different debt mix. Both together = diversified US telecom income. 33% CGT.' },
-    { tier:'CORE',    ticker:'KHC', price:'~$30', div:'5.5%', beta:'0.5', why:'Kraft Heinz — Berkshire-backed consumer staple. Recession-proof brands (Heinz, Kraft, Oscar Mayer). 33% CGT.' },
-    // ── SATELLITE: beaten-down recovery plays, 3-yr upside with downside cushion ──
-    { tier:'SATELLITE', ticker:'PFE',  price:'~$25', div:'6.2%', beta:'0.6', why:'Pfizer — 50%+ off ATH, Seagen oncology pipeline, antiviral portfolio. 6% div compensates while thesis plays. Recovery target ~$35–40 by 2028. 33% CGT.' },
-    { tier:'SATELLITE', ticker:'BAC',  price:'~$42', div:'2.5%', beta:'0.7', why:'Bank of America — Buffett\'s largest position (~1B shares). Rate normalisation, expense discipline, loan growth. Beaten down vs peers. Target ~$55–60 by 2028. 33% CGT.' },
-    { tier:'SATELLITE', ticker:'CVS',  price:'~$55', div:'4.5%', beta:'0.6', why:'CVS Health — pharmacy + insurance + MinuteClinics. 60%+ below ATH, strategic review underway. 4.5% div + recovery upside. Target ~$80 if separation executes. 33% CGT.' },
+    { tier:'CORE',    ticker:'T',   price:'~$22', div:'5.5%', beta:'0.4', why:'AT&T — telecom utility. Dividend alone returns ~16% over 3 years. Debt paydown on track. 33% CGT.' },
+    { tier:'CORE',    ticker:'VZ',  price:'~$42', div:'6.5%', beta:'0.4', why:'Verizon — same utility thesis, different debt mix. T+VZ together = diversified US telecom income. 33% CGT.' },
+    { tier:'CORE',    ticker:'KHC', price:'~$30', div:'5.5%', beta:'0.5', why:'Kraft Heinz — Berkshire-backed staple. Recession-proof brands (Heinz, Kraft, Oscar Mayer). 33% CGT.' },
+    // ── RECOVERY SATELLITE: dividend floor + clear 3yr catalyst ──────────────────
+    { tier:'RECOVERY', ticker:'PFE',  price:'~$25', div:'6.2%', beta:'0.6', why:'Pfizer — 50%+ below ATH, Seagen oncology pipeline rebuilding. 6.2% div compensates while thesis plays. Target ~$35–40 by 2028–2029. 33% CGT.' },
+    { tier:'RECOVERY', ticker:'CVS',  price:'~$55', div:'4.5%', beta:'0.6', why:'CVS Health — pharmacy + Aetna + MinuteClinics. 60%+ below ATH, strategic review/break-up catalyst. Target ~$80 if separation executes. 33% CGT.' },
+    // ── GROWTH SATELLITE: aggressive non-AI, uncorrelated to HC/growth bets ──────
+    { tier:'GROWTH',  ticker:'NU',   price:'~$11', div:'—', beta:'1.3', why:'Nubank — world\'s largest digital bank by customers (100M+). 40%+ revenue growth, now profitable. LatAm financial inclusion story. Easy to DCA at $11. Not AI. 33% CGT.' },
+    { tier:'GROWTH',  ticker:'PYPL', price:'~$65', div:'—', beta:'1.0', why:'PayPal — 60%+ below ATH, PE ~15×, $5B FCF, buybacks. New CEO executing Braintree recovery + Venmo monetisation + stablecoin. Target ~$90–100 by 2028. Not AI. 33% CGT.' },
+    { tier:'GROWTH',  ticker:'ABNB', price:'~$125', div:'—', beta:'1.1', why:'Airbnb — most capital-efficient travel platform. $10B+ FCF/yr, aggressive buybacks. Travel supercycle post-COVID. Long-term target ~$180–200 as earnings compound. Not AI. 33% CGT.' },
   ];
 
   // Per-position rows for house_savings bucket
@@ -1877,7 +1879,7 @@ function renderStrategy(positions, lifetime) {
     <summary style="font-size:11px;color:#fb923c;cursor:pointer;font-weight:600">Ticker ideas for house_savings bucket ▾</summary>
     <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
       ${HOUSE_SAVINGS_TICKERS.map(t => {
-        const tierColor = t.tier === 'CORE' ? '#60a5fa' : '#fbbf24';
+        const tierColor = t.tier === 'CORE' ? '#60a5fa' : t.tier === 'RECOVERY' ? '#fbbf24' : '#4ade80';
         return `<div style="display:flex;gap:8px;font-size:11px;padding:5px 0;border-bottom:1px solid #ffffff08">
           <span style="width:8px;height:auto;background:${tierColor};border-radius:2px;flex-shrink:0"></span>
           <span style="width:46px;font-weight:700;color:#fb923c">${t.ticker}</span>
@@ -1888,8 +1890,9 @@ function renderStrategy(positions, lifetime) {
         </div>`;
       }).join('')}
       <div style="margin-top:6px;font-size:10px;color:var(--muted)">
-        <span style="color:#60a5fa">■</span> CORE — 60% of bucket (T + VZ + KHC): stable income, hold regardless.
-        <span style="color:#fbbf24;margin-left:8px">■</span> SATELLITE — 40% (PFE + BAC + CVS): recovery upside + dividend floor.
+        <span style="color:#60a5fa">■</span> CORE 40% (T + VZ + KHC) — income floor, hold regardless.
+        <span style="color:#fbbf24;margin-left:8px">■</span> RECOVERY 25% (PFE + CVS) — dividend + catalyst upside.
+        <span style="color:#4ade80;margin-left:8px">■</span> GROWTH 35% (NU + PYPL + ABNB) — aggressive non-AI, higher 3yr upside.
       </div>
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:6px">Add these in portfolio.yaml with bucket: house_savings. They appear in the portfolio table with the 🏠 badge.</div>
@@ -1921,7 +1924,7 @@ function renderStrategy(positions, lifetime) {
       </div>
       <input type="range" id="split-house-slider" min="10" max="80" step="5" value="${_houseSharePct}"
         oninput="_onSplitSlide()" style="width:100%;accent-color:#fb923c">
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% house_savings stocks: <span style="color:#60a5fa">CORE</span> T, VZ, KHC (income) + <span style="color:#fbbf24">SATELLITE</span> PFE, BAC, CVS (recovery upside).</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% stocks: <span style="color:#60a5fa">CORE</span> T, VZ, KHC (income) + <span style="color:#fbbf24">RECOVERY</span> PFE, CVS + <span style="color:#4ade80">GROWTH</span> NU, PYPL, ABNB (non-AI upside).</div>
     </div>
 
     <div style="margin-bottom:8px">
@@ -1931,7 +1934,7 @@ function renderStrategy(positions, lifetime) {
       </div>
       <input type="range" id="split-ret-slider" min="5" max="60" step="5" value="${_retSharePct}"
         oninput="_onSplitSlide()" style="width:100%;accent-color:#60a5fa">
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ Long-hold compounders, 33% CGT on exit. No liquidation before 2030.</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ BRK-B every other month + alternate: NOVO-B.CO (DKK, healthcare) → SAP.DE (EUR, ERP) → OR.PA (EUR, staples). No USD-only exposure. No liquidation before 2030.</div>
     </div>
 
     <div style="margin-bottom:10px">

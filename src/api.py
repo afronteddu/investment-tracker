@@ -49,6 +49,8 @@ WATCHLIST_BASE = [
     "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL",
     # Indices & ETFs
     "SPY", "QQQ", "VWRL.AS", "ASML.AS",
+    # House savings growth satellite
+    "NU", "PYPL", "ABNB",
 ]
 
 DEPLOYMENTS = []
