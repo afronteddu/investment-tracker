@@ -592,6 +592,20 @@
         </div>
       </div>
 
+      <!-- 4b. Sequence of Returns Risk -->
+      <div class="strat-card" style="border-color:#a78bfa20">
+        <div class="strat-card-title" style="color:#a78bfa">4b. Sequence of Returns Risk (SoRR)</div>
+        <div class="strat-card-body">
+          <strong>What it is:</strong> a major market crash in the 5 years before or after FIRE permanently impairs your portfolio — you're forced to sell equities at lows to fund spending, leaving fewer shares to recover. Average returns mean nothing here; <em>timing</em> of returns matters.<br><br>
+          <strong style="color:#f87171">Danger zone:</strong> within 5yr of FIRE. Every new buy must survive a 40% drawdown without you needing to sell it. No new speculative entries. Build 2yr cash buffer.<br>
+          <strong style="color:#fbbf24">Transition zone:</strong> 5–10yr from FIRE. Begin glide path. Rotate TIMED-AI exits into LONG-RUN income stocks. No new HC-style bets unless timed to exit before FIRE date.<br>
+          <strong style="color:#4ade80">Accumulation phase:</strong> >10yr from FIRE. SoRR risk low. A crash is a buying opportunity. Maximise savings rate and compounding.<br><br>
+          <strong>Glide path (target allocations):</strong><br>
+          Now → 80% growth / 20% income · 5yr out → 60/40 · 3yr out → 40/60 · 1yr out → 25/75 · FIRE year → 20/80 income+cash<br><br>
+          <strong>IE-specific:</strong> each equity sale to fund spending triggers 33% CGT on gains. Never sell into a downturn — build a cash buffer equal to 2yr spending so you can ride out a bear market without touching equities. Bond tent in a PRSA/pension avoids deemed disposal.
+        </div>
+      </div>
+
       <!-- 5. Data Sources & Refresh Schedule -->
       <div class="strat-card">
         <div class="strat-card-title">5. Data Sources &amp; Refresh Schedule</div>
@@ -2380,6 +2394,21 @@ function renderStrategy(positions, lifetime) {
   // Signal 7: Irish tax legacy
   const taxHeavyPct2 = retVal > 0 ? taxHeavyVal/retVal*100 : 0;
 
+  // Signal 8: Sequence of returns risk — based on years-to-FIRE from FIRE calculator
+  // Recompute here independently so risk panel doesn't depend on FIRE section having run
+  const _riskFireSpend = +(localStorage.getItem('fireMonthlySpend') || 3500);
+  const _riskFireSave  = +(localStorage.getItem('fireMonthlySave')  || 1500);
+  const _riskFireAge   = +(localStorage.getItem('fireTargetAge')    || 50);
+  const _riskCurrAge   = +(localStorage.getItem('fireCurrentAge')   || 30);
+  const _riskFireTarget = _riskFireSpend * 320;
+  const _riskInvestable = positions.filter(p => p.bucket !== 'house_savings').reduce((s,p)=>s+(p.current_value_eur||0),0);
+  let _riskYTF = null;
+  for (let n = 0; n <= 65; n++) {
+    const fv = _riskInvestable * Math.pow(1.07, n) + (_riskFireSave*12) * (Math.pow(1.07,n)-1)/0.07;
+    if (fv >= _riskFireTarget) { _riskYTF = n; break; }
+  }
+  const _riskSorPhase = _riskYTF == null ? 'accumulate' : _riskYTF > 10 ? 'accumulate' : _riskYTF > 5 ? 'transition' : 'danger';
+
   const risks = [
     {
       icon: '💱',
@@ -2438,7 +2467,7 @@ function renderStrategy(positions, lifetime) {
       label: `House fund: €${Math.round(houseSaved).toLocaleString()} of €${(HOUSE_GOAL/1000).toFixed(0)}k target (${housePct.toFixed(0)}%) — need €${houseMonthlyNeeded.toLocaleString()}/mo to hit Jun 2029`,
       level: housePct < 20 ? 'warn' : 'ok',
       badge: housePct < 20 ? 'BUILDING' : housePct < 60 ? 'IN PROGRESS' : 'ON TRACK',
-      note: `Keep cash layer in Irish deposit accounts (AIB 7-day Notice ~3%, BOI Online Saver, or Revolut Savings Vault ~3.25% — all DIRT-taxed at 33%). House_savings bucket holds low-beta dividend stocks (T, KHC, BTI, VZ) — not pure cash, but low-volatility with dividend income while waiting. Liquidate before 2029 purchase. FHS bridges any remaining gap.`,
+      note: `60% cash in AIB 7-day Notice / Revolut ~3.25% (DIRT-taxed). 40% house_savings portfolio: CORE (UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC), SATELLITE (TTE.PA, GSK.L), GROWTH (PYPL, ABNB, ROG.SW — sell first H1 2028). ⚠ SoRR applies here too: GROWTH tier must be liquidated before any market downturn that could delay the 2029 purchase.`,
     },
     {
       icon: '🇮🇪',
@@ -2448,6 +2477,17 @@ function renderStrategy(positions, lifetime) {
       note: taxHeavyVal > 0
         ? `Hold — do not sell (41% exit tax crystallises immediately). All new purchases: individual stocks or ETCs only (33% CGT). No new UCITS ETFs ever. Annual CGT exemption: €1,270 — use it by harvesting small losses each December.`
         : 'No 41% ETF exposure. All positions at 33% CGT.',
+    },
+    {
+      icon: '📉',
+      label: `Sequence of returns risk: ${_riskSorPhase === 'danger' ? 'DANGER ZONE — within 5yr of FIRE' : _riskSorPhase === 'transition' ? 'TRANSITION ZONE — 5–10yr from FIRE, begin glide path' : 'Accumulation phase — ' + (_riskYTF != null ? _riskYTF + 'yr to FIRE' : '>10yr to FIRE') + ', SoRR low'}`,
+      level: _riskSorPhase === 'danger' ? 'danger' : _riskSorPhase === 'transition' ? 'warn' : 'ok',
+      badge: _riskSorPhase === 'danger' ? 'DANGER ZONE' : _riskSorPhase === 'transition' ? 'TRANSITION' : 'LOW',
+      note: _riskSorPhase === 'danger'
+        ? 'A 30% crash now could permanently impair your FIRE date if you sell to fund spending. Build a 2yr cash buffer. Rotate TIMED-AI into income stocks. No new speculative entries. See FIRE → Glide Path.'
+        : _riskSorPhase === 'transition'
+        ? 'Start rotating TIMED-AI positions toward long-run income compounders on each rebalance. Every new buy should ask: "will I want to sell this into a bear market to fund spending?" If yes — don\'t buy it now.'
+        : 'Keep accumulating. A crash during accumulation is a buying opportunity, not a loss. Focus on savings rate and long-run compounders. Revisit glide path when within 10yr of FIRE.',
     },
   ];
 
@@ -2557,12 +2597,50 @@ function renderStrategy(positions, lifetime) {
     // Monte Carlo confidence (simplified Bengen/Trinity outcomes for 33yr retirement)
     const _swr = _fireNum320 > 0 ? _annualWithdrawal / _fireNum320 : 0.04;
     let _mcConf = _swr <= 0.035 ? 99 : _swr <= 0.0375 ? 98 : _swr <= 0.04 ? 95 : 90;
-    if (aiConc > 40) _mcConf = Math.max(85, _mcConf - 4); // sequence risk penalty for high AI concentration
+    if (aiConc > 40) _mcConf = Math.max(85, _mcConf - 4); // AI concentration amplifies SoRR
 
     const _mcColor = _mcConf >= 97 ? 'var(--green)' : _mcConf >= 93 ? '#fbbf24' : 'var(--red)';
-    const _seqRiskNote = aiConc > 40
-      ? 'High AI/tech concentration (' + aiConc.toFixed(0) + '%) amplifies sequence risk. Diversify into low-beta income stocks 3-5yr before FIRE date.'
-      : 'Sequence risk moderate. Transition to EUR/CHF income stocks 3-5yr before FIRE to reduce volatility at withdrawal start.';
+
+    // Sequence of returns risk — live glide path based on years-to-FIRE
+    // Danger zone: first 5yr in retirement AND final 5yr before FIRE — a crash in this window
+    // can permanently impair the portfolio if you're forced to sell at lows to fund spending.
+    const _ytf = _yearsToFire;
+    const _sorPhase = _ytf == null ? 'accumulate'
+      : _ytf > 10 ? 'accumulate'
+      : _ytf > 5  ? 'transition'
+      : _ytf > 0  ? 'danger'
+      : 'fire';
+
+    const _sorGlideRows = [
+      { phase:'Now',       alloc:'80% growth / 20% low-beta income',  note:'Maximise compounding. Keep adding EUR/CHF income names.' },
+      { phase:'5yr out',   alloc:'60% growth / 40% income',           note:'Start rotating TIMED-AI positions into LONG-RUN compounders.' },
+      { phase:'3yr out',   alloc:'40% growth / 60% income',           note:'No new speculative entries. Build bond tent (VGOV or similar). Harvest CGT losses in Dec.' },
+      { phase:'1yr out',   alloc:'25% growth / 75% income+cash',      note:'Max cash buffer = 2yr spending in deposit. Stop adding growth equities.' },
+      { phase:'FIRE year', alloc:'20% growth / 80% income+cash',      note:'Withdraw from cash first. Never sell equities at a loss — bond tent absorbs spending.' },
+    ];
+    const _sorActivePh = _sorPhase === 'fire' ? 4 : _sorPhase === 'danger' ? 3 : _sorPhase === 'transition' ? 2 : 0;
+
+    const _sorTable = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:6px">'
+      + '<tr style="color:var(--muted)">'
+      + '<td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #ffffff10">Horizon</td>'
+      + '<td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #ffffff10">Target allocation</td>'
+      + '<td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #ffffff10">Action</td></tr>'
+      + _sorGlideRows.map((row, i) => {
+          const isActive = i === _sorActivePh;
+          const bg = isActive ? 'background:#a78bfa12;' : '';
+          const col = isActive ? 'color:var(--text);font-weight:600' : 'color:var(--muted)';
+          return '<tr style="' + bg + '">'
+            + '<td style="padding:3px 6px;' + col + (isActive?';border-left:2px solid #a78bfa':'') + '">' + row.phase + '</td>'
+            + '<td style="padding:3px 6px;' + col + '">' + row.alloc + '</td>'
+            + '<td style="padding:3px 6px;' + col + '">' + row.note + '</td></tr>';
+        }).join('')
+      + '</table>';
+
+    const _sorWarning = _sorPhase === 'danger'
+      ? '<strong style="color:#f87171">⚠ DANGER ZONE:</strong> within 5yr of FIRE. A 30% crash now could delay retirement by 3–5yr if you must sell to fund spending. Build 2yr cash buffer now. Rotate remaining TIMED-AI positions to income. Stop all speculative entries.'
+      : _sorPhase === 'transition'
+      ? '<strong style="color:#fbbf24">⚠ TRANSITION ZONE:</strong> 5–10yr from FIRE. Begin glide path now. Add EUR/CHF income stocks on every buy. No new TIMED-AI entries unless you\'ll sell before FIRE date.'
+      : '<strong style="color:#a78bfa">Accumulation phase:</strong> SoRR risk is low — you have time to recover from a crash. Stay growth-tilted but keep building low-beta income layer (NOVN.SW, ENEL.MI, IGLN.L).';
 
     // Build HTML — all interpolated values are computed numbers, not user strings
     const _fmtK = n => n >= 1000 ? (n/1000).toFixed(2).replace(/\.?0+$/, '') + 'M' : n + 'k';
@@ -2636,9 +2714,13 @@ function renderStrategy(positions, lifetime) {
       + '<div style="font-size:19px;font-weight:700;color:' + (_isCoastFIRE ? 'var(--green)' : '#a78bfa') + '">' + (_isCoastFIRE ? '✓ HIT' : '€' + _coastK) + '</div>'
       + '<div style="font-size:10px;color:var(--muted)">' + (_isCoastFIRE ? 'could coast to FIRE at ' + _fireTargetAge : 'to coast to FIRE at age ' + _fireTargetAge) + '</div></div></div>'
 
-      // --- Sequence risk note ---
+      // --- Sequence of returns risk — live glide path ---
       + '<div style="font-size:11px;padding:8px 10px;background:#a78bfa0a;border-radius:5px;border-left:2px solid #a78bfa;color:var(--muted);line-height:1.6;margin-bottom:10px">'
-      + '<strong style="color:#a78bfa">Sequence of returns risk:</strong> ' + _seqRiskNote + '</div>'
+      + '<div style="font-size:10px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Sequence of Returns Risk (SoRR) — Glide Path</div>'
+      + '<div style="font-size:11px;line-height:1.6;margin-bottom:6px">' + _sorWarning + '</div>'
+      + _sorTable
+      + '<div style="font-size:10px;color:var(--muted);margin-top:6px">⚡ IE-specific: each sale to fund spending triggers 33% CGT — size your cash buffer so you never sell equities into a downturn. Bond tent (VGOV/IEAG): UCITS but exempt from deemed disposal if held in a pension/PRSA — consider this route only.</div>'
+      + '</div>'
 
       // --- IE tax note ---
       + '<div style="font-size:10px;color:var(--muted);line-height:1.7;padding:0 2px">'
@@ -2729,6 +2811,25 @@ function renderStrategy(positions, lifetime) {
       const bl = bucketLabel(s.bucket);
       const pl = priorityLabels[s.priority] || { label: s.priority, color:'var(--muted)' };
       const bearHtml = s.bearCase ? `<div style="font-size:10px;color:#f87171;margin-top:3px;padding:3px 8px;background:#f8717110;border-radius:4px;border-left:2px solid #f87171">⚠ Bear: ${s.bearCase}</div>` : '';
+      // SoRR impact: does this suggestion help or hurt the glide path?
+      const _sorrBucket = s.bucket;
+      const _sorrTiming = s.priority;
+      let _sorrHtml = '';
+      if (_riskSorPhase === 'danger') {
+        if (['hc2027','energy'].includes(_sorrTiming) || _sorrBucket === 'growth') {
+          _sorrHtml = '<div style="font-size:10px;color:#f87171;margin-top:3px;padding:3px 8px;background:#f8717112;border-radius:4px;border-left:2px solid #f87171">📉 SoRR warning: you are within 5yr of FIRE. This is a growth/speculative entry — buying now increases volatility at the worst time. Only add if you can hold through a 40% drawdown without selling.</div>';
+        } else if (_sorrBucket === 'house_savings') {
+          _sorrHtml = '<div style="font-size:10px;color:#fbbf24;margin-top:3px;padding:3px 8px;background:#fbbf2412;border-radius:4px;border-left:2px solid #fbbf24">📉 SoRR note: house savings GROWTH tier must be liquidated before any market downturn — sell PYPL/ABNB/ROG.SW in H1 2028 regardless of price.</div>';
+        } else {
+          _sorrHtml = '<div style="font-size:10px;color:#4ade80;margin-top:3px;padding:3px 8px;background:#4ade8012;border-radius:4px;border-left:2px solid #4ade80">📉 SoRR fit: low-beta income — reduces portfolio volatility approaching FIRE. Consistent with glide path.</div>';
+        }
+      } else if (_riskSorPhase === 'transition') {
+        if (['hc2027'].includes(_sorrTiming)) {
+          _sorrHtml = '<div style="font-size:10px;color:#fbbf24;margin-top:3px;padding:3px 8px;background:#fbbf2412;border-radius:4px;border-left:2px solid #fbbf24">📉 SoRR note: HC bet is valid but size carefully — you are entering the transition zone. No entry larger than 5% of investable portfolio.</div>';
+        } else if (_sorrBucket === 'retirement' && ['brk_fix','em'].includes(_sorrTiming)) {
+          _sorrHtml = '<div style="font-size:10px;color:#4ade80;margin-top:3px;padding:3px 8px;background:#4ade8012;border-radius:4px;border-left:2px solid #4ade80">📉 SoRR fit: long-run compounder — correct direction for glide path. Prioritise over speculative names at this stage.</div>';
+        }
+      }
       const cachedResponse = _challengeCache[s.ticker];
       const challengeResponseHtml = cachedResponse === '__loading__'
         ? `<div id="challenge-resp-${s.ticker}" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:12px;height:12px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>Analysing…</div></div>`
@@ -2759,6 +2860,7 @@ function renderStrategy(positions, lifetime) {
               <span style="color:${bc};font-weight:700">Adds: </span>${s.diversifies}
             </div>
             ${bearHtml}
+            ${_sorrHtml}
             <!-- AI Challenge row — uses data-ticker + event delegation, no JS in attributes -->
             <div class="challenge-row" style="display:flex;gap:6px;margin-top:8px;align-items:center">
               <input class="challenge-input" data-ticker="${tid}"
