@@ -2565,10 +2565,11 @@ function renderStrategy(positions, lifetime) {
       : 'Sequence risk moderate. Transition to EUR/CHF income stocks 3-5yr before FIRE to reduce volatility at withdrawal start.';
 
     // Build HTML — all interpolated values are computed numbers, not user strings
-    const _f300k = Math.round(_fireNum300 / 1000);
-    const _f320k = Math.round(_fireNum320 / 1000);
-    const _f345k = Math.round(_fireNum345 / 1000);
-    const _coastK = Math.round(_coastNum / 1000);
+    const _fmtK = n => n >= 1000 ? (n/1000).toFixed(2).replace(/\.?0+$/, '') + 'M' : n + 'k';
+    const _f300k = _fmtK(Math.round(_fireNum300 / 1000));
+    const _f320k = _fmtK(Math.round(_fireNum320 / 1000));
+    const _f345k = _fmtK(Math.round(_fireNum345 / 1000));
+    const _coastK = _fmtK(Math.round(_coastNum / 1000));
     const _invK = Math.round(_investableVal).toLocaleString();
     const _yrsStr = _yearsToFire != null ? _yearsToFire + 'yr' : '> 60yr';
     const _yrSub = _fireYear ? _fireYear + ' · age ' + _fireAge : 'increase savings';
@@ -2599,21 +2600,21 @@ function renderStrategy(positions, lifetime) {
       + '<div style="height:100%;width:' + _firePct.toFixed(1) + '%;background:' + _fireBarColor + ';border-radius:4px;transition:width .3s"></div></div>'
       + '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:3px;color:var(--muted)">'
       + '<span>Investable: <strong style="color:var(--text)">€' + _invK + '</strong></span>'
-      + '<span>IE FIRE target: <strong style="color:var(--text)">€' + _f320k + 'k</strong></span></div></div>'
+      + '<span>IE FIRE target: <strong style="color:var(--text)">€' + _f320k + '</strong></span></div></div>'
 
       // --- Three FIRE numbers ---
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
       + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #60a5fa">'
       + '<div style="font-size:9px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Regola del 300</div>'
-      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f300k + 'k</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f300k + '</div>'
       + '<div style="font-size:10px;color:var(--muted)">4.0% SWR — base</div></div>'
       + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #a78bfa">'
       + '<div style="font-size:9px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">IE Rule of 320</div>'
-      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f320k + 'k</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f320k + '</div>'
       + '<div style="font-size:10px;color:var(--muted)">3.75% SWR — IE CGT-adj</div></div>'
       + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #fbbf24">'
       + '<div style="font-size:9px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Regola del 345</div>'
-      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f345k + 'k</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f345k + '</div>'
       + '<div style="font-size:10px;color:var(--muted)">3.48% SWR — max conservative</div></div></div>'
 
       // --- Key metrics ---
@@ -2632,7 +2633,7 @@ function renderStrategy(positions, lifetime) {
       + '<div style="font-size:10px;color:var(--muted)">success rate · 33yr retirement</div></div>'
       + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border:1px solid ' + (_isCoastFIRE ? 'var(--green)' : 'var(--border)') + '">'
       + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Coast FIRE</div>'
-      + '<div style="font-size:19px;font-weight:700;color:' + (_isCoastFIRE ? 'var(--green)' : '#a78bfa') + '">' + (_isCoastFIRE ? '✓ HIT' : '€' + _coastK + 'k') + '</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + (_isCoastFIRE ? 'var(--green)' : '#a78bfa') + '">' + (_isCoastFIRE ? '✓ HIT' : '€' + _coastK) + '</div>'
       + '<div style="font-size:10px;color:var(--muted)">' + (_isCoastFIRE ? 'could coast to FIRE at ' + _fireTargetAge : 'to coast to FIRE at age ' + _fireTargetAge) + '</div></div></div>'
 
       // --- Sequence risk note ---
