@@ -1391,6 +1391,8 @@ const TICKER_CCY = {
   'TSM':'USD','HDB':'USD','CEG':'USD','XOM':'USD','JNJ':'USD','WM':'USD',
   'GOOGL':'USD','MSFT':'USD',
   'UCG.MI':'EUR','ROG.SW':'CHF','ENEL.MI':'EUR','NOVN.SW':'CHF',
+  'AXA.PA':'EUR','IBE.MC':'EUR','TTE.PA':'EUR','GSK.L':'GBP',
+  'PYPL':'USD','ABNB':'USD',
 };
 
 // Sector/geography metadata for held tickers
@@ -1412,11 +1414,19 @@ const TICKER_META = {
   'NBIS':    { sector:'AI Infra / Cloud', geo:'Global', ccy:'USD', type:'stock (33% CGT)', desc:'Nebius — AI cloud infrastructure (ex-Yandex)' },
   'VRT':     { sector:'AI Infra / Power', geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Vertiv — power/thermal management for data centres' },
   'APLD':    { sector:'AI Infra / HPC',   geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Applied Digital — HPC hosting for AI workloads' },
-  // House savings
-  'UCG.MI':  { sector:'Financials / Banking',   geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'UniCredit — Italian bank, no USD risk, 7%+ dividend yield. ⚠ β0.9 — highest beta in CORE.' },
-  'ROG.SW':  { sector:'Healthcare / Pharma',    geo:'Europe (CH)', ccy:'CHF', type:'stock (33% CGT)', desc:'Roche — ⚠ CT-388 Phase 2 binary risk before 2027. Moved to RECOVERY. Use NOVN.SW for clean CHF defensive.' },
-  'ENEL.MI': { sector:'Utilities / Regulated',  geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'Enel — Italian regulated utility, 6.2% dividend, β0.5. Preferred EUR income anchor in CORE.' },
-  'NOVN.SW': { sector:'Healthcare / Pharma',    geo:'Europe (CH)', ccy:'CHF', type:'stock (33% CGT)', desc:'Novartis — CHF pharma, 3.9% dividend, β0.4. Post-Sandoz spinoff, no binary catalyst risk. Preferred CHF defensive over Roche.' },
+  // House savings — CORE
+  'UCG.MI':  { sector:'Financials / Banking',   geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'UniCredit — Italian bank, 7%+ div + buybacks, CET1>16%. ⚠ β0.9 — highest beta in CORE.' },
+  'ENEL.MI': { sector:'Utilities / Regulated',  geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'Enel — Italian regulated utility, 6.2% div, β0.5. Tariff-backed cash flows.' },
+  'NOVN.SW': { sector:'Healthcare / Pharma',    geo:'Europe (CH)', ccy:'CHF', type:'stock (33% CGT)', desc:'Novartis — CHF pharma, 3.9% div, β0.4. Post-Sandoz spinoff, no binary catalyst risk.' },
+  'AXA.PA':  { sector:'Financials / Insurance', geo:'Europe (FR)', ccy:'EUR', type:'stock (33% CGT)', desc:'AXA — French insurer, 5.5% div, β0.75. Capital-light float model, Solvency II >200%.' },
+  'IBE.MC':  { sector:'Utilities / Renewables', geo:'Europe (ES)', ccy:'EUR', type:'stock (33% CGT)', desc:'Iberdrola — Spanish renewables utility, 4.5% div, β0.5. Spain/UK/US/Brazil regulated revenues.' },
+  // House savings — SATELLITE
+  'TTE.PA':  { sector:'Integrated Energy / LNG', geo:'Europe (FR)', ccy:'EUR', type:'stock (33% CGT)', desc:'TotalEnergies — EUR LNG+solar+oil, 4% div, PE ~8-9×. Zero AI correlation.' },
+  'GSK.L':   { sector:'Healthcare / Pharma',    geo:'Europe (UK)', ccy:'GBP', type:'stock (33% CGT)', desc:'GSK — UK pharma post-Haleon spinoff, 4.5% div, β0.5. Clean vaccines+HIV+speciality focus.' },
+  // House savings — GROWTH (sell H1 2028)
+  'ROG.SW':  { sector:'Healthcare / Pharma',    geo:'Europe (CH)', ccy:'CHF', type:'stock (33% CGT)', desc:'Roche — ⚠ CT-388 binary event 2026-27. GROWTH tier: upside bet, sell before 2028 window.' },
+  'PYPL':    { sector:'Fintech / Payments',     geo:'US',           ccy:'USD', type:'stock (33% CGT)', desc:'PayPal — 60%+ below ATH, PE~15×, $5B buyback. Target $90-100 by H1 2028. Sell first.' },
+  'ABNB':    { sector:'Travel / Platform',      geo:'US',           ccy:'USD', type:'stock (33% CGT)', desc:'Airbnb — asset-light travel, $10B+ FCF, buybacks. Target ~$180 by 2028. Sell first.' },
 };
 
 // Suggested additions — grounded in actual portfolio gaps.
@@ -1856,35 +1866,47 @@ function renderStrategy(positions, lifetime) {
   const projectedHouseSaved = houseTotalFunded + houseAlloc * HOUSE_MONTHS_LEFT;
   const houseOnTrack = projectedHouseSaved >= HOUSE_GOAL;
 
-  // House savings bucket: curated low-price (<€50/share), liquid, cash-like tickers
-  // Three-tier house_savings structure (revised June 2026):
-  // CORE (40%) — low-beta income, hold regardless. Job: don't lose money.
-  // RECOVERY SATELLITE (25%) — dividend floor + beaten-down mega-cap catalysts.
-  // GROWTH SATELLITE (35%) — aggressive non-AI plays for higher 3yr upside.
+  // House savings bucket — rebuilt June 2026. Three tiers calibrated for 3yr horizon (exit H1 2029).
+  // CORE (50%) — EUR/CHF income anchors. Job: don't lose money. Hold until H1 2029.
+  // SATELLITE INCOME (25%) — secondary sector diversification + dividend floor.
+  // GROWTH SATELLITE (25%) — non-AI upside plays. SELL FIRST in H1 2028 deleverage.
+  //
+  // REMOVED: T, VZ (same USD telecom, better EUR options exist), KHC (dividend cut, brand erosion),
+  //          PFE (patent cliff 2025-30, Seagen thesis >3yr), CVS (Amazon/Walgreens disruption),
+  //          NU (β1.3 LatAm fintech — wrong risk profile for house capital).
+  // ROG.SW moved from RECOVERY to GROWTH — binary CT-388 outcome is upside bet, not stable income.
   const HOUSE_SAVINGS_TICKERS = [
-    // ── CORE: stable income, low volatility ───────────────────────────────────────
-    { tier:'CORE',    ticker:'T',       price:'~$22',   div:'5.5%', beta:'0.4', why:'AT&T — telecom utility. Dividend alone returns ~16% over 3 years. Debt paydown on track. 33% CGT.' },
-    { tier:'CORE',    ticker:'VZ',      price:'~$42',   div:'6.5%', beta:'0.4', why:'Verizon — same utility thesis, different debt mix. T+VZ together = diversified US telecom income. 33% CGT.' },
-    { tier:'CORE',    ticker:'KHC',     price:'~$30',   div:'5.5%', beta:'0.5', why:'Kraft Heinz — Berkshire-backed staple. Recession-proof brands (Heinz, Kraft, Oscar Mayer). 33% CGT.' },
-    { tier:'CORE',    ticker:'ENEL.MI', price:'~€7.5',  div:'6.2%', beta:'0.5', why:'Enel — Italian regulated utility, EUR-denominated. Regulated cash flows = bond-like capital preservation. Lowest-beta high-yield in CORE. Better risk-adj than UCG for pure deposit safety. 33% CGT.' },
-    { tier:'CORE',    ticker:'NOVN.SW', price:'~CHF100',div:'3.9%', beta:'0.4', why:'Novartis — Swiss pharma, CHF, ~4% dividend. Post-Sandoz spinoff: clean oncology/immunology/cardiovascular focus. No binary pipeline catalyst (unlike Roche CT-388). Preferred CHF defensive over ROG for a 3yr hold. 33% CGT.' },
-    { tier:'CORE',    ticker:'UCG.MI',  price:'~€44',   div:'7.2%', beta:'0.9', why:'UniCredit — highest total return in CORE (7%+ div + buybacks). ⚠ Highest beta (0.9): most exposed in a credit shock near the 2028–29 exit window. EUR-denominated, no USD FX risk. Prefer ENEL.MI if capital preservation is priority. 33% CGT.' },
-    // ── RECOVERY SATELLITE: dividend floor + clear 3yr catalyst ──────────────────
-    { tier:'RECOVERY', ticker:'ROG.SW', price:'~CHF260', div:'3.5%', beta:'0.5', why:'Roche — ⚠ CT-388 (weight-loss) Phase 2 readout due 2026–27: binary catalyst risk. A miss re-rates the stock down hard inside your 3yr window. Moved from CORE to RECOVERY. Use NOVN.SW instead for clean CHF defensive exposure. 33% CGT.' },
-    { tier:'RECOVERY', ticker:'PFE',    price:'~$25',   div:'6.2%', beta:'0.6', why:'Pfizer — 50%+ below ATH, Seagen oncology pipeline rebuilding. 6.2% div compensates while thesis plays. Target ~$35–40 by 2028–2029. 33% CGT.' },
-    { tier:'RECOVERY', ticker:'CVS',    price:'~$55',   div:'4.5%', beta:'0.6', why:'CVS Health — pharmacy + Aetna + MinuteClinics. 60%+ below ATH, strategic review/break-up catalyst. Target ~$80 if separation executes. 33% CGT.' },
-    // ── GROWTH SATELLITE: aggressive non-AI, uncorrelated to HC/growth bets ──────
-    { tier:'GROWTH',  ticker:'NU',   price:'~$11', div:'—', beta:'1.3', why:'Nubank — world\'s largest digital bank by customers (100M+). 40%+ revenue growth, now profitable. LatAm financial inclusion story. Easy to DCA at $11. Not AI. 33% CGT.' },
-    { tier:'GROWTH',  ticker:'PYPL', price:'~$65', div:'—', beta:'1.0', why:'PayPal — 60%+ below ATH, PE ~15×, $5B FCF, buybacks. New CEO executing Braintree recovery + Venmo monetisation + stablecoin. Target ~$90–100 by 2028. Not AI. 33% CGT.' },
-    { tier:'GROWTH',  ticker:'ABNB', price:'~$125', div:'—', beta:'1.1', why:'Airbnb — most capital-efficient travel platform. $10B+ FCF/yr, aggressive buybacks. Travel supercycle post-COVID. Long-term target ~$180–200 as earnings compound. Not AI. 33% CGT.' },
+    // ── CORE INCOME (50%): EUR/CHF anchored, low-beta, hold until H1 2029 ─────────
+    { tier:'CORE', ticker:'UCG.MI',  price:'~€44',    div:'7.2%', beta:'0.9',
+      why:'UniCredit — best-capitalised large European bank (CET1 >16%). Dividend + buyback programme = ~10%/yr total return even with zero price appreciation. Highest yield in CORE. ⚠ β0.9 = most volatile — pair with ENEL (β0.5) to balance. EUR, no USD risk. 33% CGT.' },
+    { tier:'CORE', ticker:'ENEL.MI', price:'~€7.5',   div:'6.2%', beta:'0.5',
+      why:'Enel — Italian regulated utility. Revenues are government-set tariffs: predictable to the decimal. 6.2% dividend from contractual cash flows, not earnings guesses. Lowest beta in CORE = best capital preservation per euro deployed. EUR. 33% CGT.' },
+    { tier:'CORE', ticker:'NOVN.SW', price:'~CHF100', div:'3.9%', beta:'0.4',
+      why:'Novartis — CHF denomination is a natural hedge if EUR weakens near your 2029 purchase window. β0.4 = safest beta in the entire portfolio. Post-Sandoz spinoff: clean oncology/immunology/cardiovascular pipeline. Zero binary catalyst risk (unlike Roche CT-388). 33% CGT.' },
+    { tier:'CORE', ticker:'AXA.PA',  price:'~€35',    div:'5.5%', beta:'0.75',
+      why:'AXA — French insurance giant. Capital-light model: earns from premiums + float regardless of economic cycle. 5.5% div, Solvency II ratio >200% (fortress balance sheet). Replaces T/VZ/KHC — superior EUR income with better sector diversification. Globally diversified (EU/Asia/US). EUR. 33% CGT.' },
+    { tier:'CORE', ticker:'IBE.MC',  price:'~€14',    div:'4.5%', beta:'0.5',
+      why:'Iberdrola — largest European renewables operator + Spanish regulated utility. Revenue from Spain/UK/US/Brazil/Mexico: geographically diversified, unlike Enel\'s Italian concentration. 4.5% div backed by regulated tariffs. EUR. Complements ENEL with different country/regulatory risk. 33% CGT.' },
+    // ── SATELLITE INCOME (25%): sector diversification + dividend floor ───────────
+    { tier:'SATELLITE', ticker:'TTE.PA', price:'~€55', div:'4.0%', beta:'0.65',
+      why:'TotalEnergies — EUR energy major. LNG + solar + oil = most diversified European energy company. PE ~8-9× (historically cheap). LNG is the 15yr bridge fuel for EU/Asia coal phase-out — structural demand regardless of AI cycle. 4% div. Zero tech/AI correlation. EUR. 33% CGT.' },
+    { tier:'SATELLITE', ticker:'GSK.L',  price:'~£17', div:'4.5%', beta:'0.5',
+      why:'GSK — UK pharma post-Haleon spinoff (consumer health separated 2022). Now a clean vaccines + speciality medicines + HIV company with a sharper focus. No binary weight-loss catalyst (unlike Roche CT-388). GBP denomination adds FX diversification vs EUR-heavy CORE. 4.5% div. 33% CGT.' },
+    // ── GROWTH SATELLITE (25%): non-AI upside, SELL FIRST in H1 2028 ─────────────
+    { tier:'GROWTH', ticker:'PYPL', price:'~$65',    div:'—',    beta:'1.0',
+      why:'PayPal — 60%+ below ATH, PE ~15×, $5B FCF/yr + $5B buyback running. New CEO executing Braintree margin recovery + Venmo monetisation + PYUSD stablecoin. Target $90–100 by H1 2028. Non-AI, non-EUR: uncorrelated return driver. SELL before H2 2028. 33% CGT.' },
+    { tier:'GROWTH', ticker:'ABNB',   price:'~$125',  div:'—',    beta:'1.1',
+      why:'Airbnb — most capital-efficient travel platform ($10B+ FCF/yr, no debt, aggressive buybacks). Asset-light: no hotels, no planes. Travel structural growth post-COVID. Target ~$180 by 2028. Non-AI, non-EUR. SELL before H2 2028. 33% CGT.' },
+    { tier:'GROWTH', ticker:'ROG.SW', price:'~CHF260', div:'3.5%', beta:'0.5',
+      why:'Roche — ⚠ CT-388 (weight-loss) Phase 2 readout 2026–27 = binary event. HIT: stock re-rates +40%+. MISS: -20–30%. Moved to GROWTH because this is an upside bet, not stable income. 3.5% div pays you to wait. CHF. SELL H1 2028 regardless of outcome — do not hold this through the house purchase window. 33% CGT.' },
   ];
 
   // Annual exit window — house savings liquidation phases
   const HS_PHASES = [
-    { label:'Accumulate', yr:'2026–2027', start:'2026-01-01', end:'2027-12-31', color:'#4ade80', action:'DCA into all three tiers monthly. Do not sell.' },
-    { label:'Deleverage', yr:'H1 2028',   start:'2028-01-01', end:'2028-06-30', color:'#fbbf24', action:'Stop DCA. Sell GROWTH satellite (NU, PYPL, ABNB) first.' },
-    { label:'Reduce',     yr:'H2 2028',   start:'2028-07-01', end:'2028-12-31', color:'#fb923c', action:'Sell RECOVERY positions (ROG, PFE, CVS). Park in cash deposit.' },
-    { label:'Full Exit',  yr:'H1 2029',   start:'2029-01-01', end:'2029-06-01', color:'#f87171', action:'Liquidate CORE (T, VZ, KHC, ENEL, NOVN, UCG). All cash before HTB purchase.' },
+    { label:'Accumulate', yr:'2026–2027', start:'2026-01-01', end:'2027-12-31', color:'#4ade80', action:'DCA into all tiers monthly. Priority: CORE first (UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC), then SATELLITE (TTE.PA, GSK.L), then GROWTH (PYPL, ABNB, ROG.SW). Do not sell.' },
+    { label:'Deleverage', yr:'H1 2028',   start:'2028-01-01', end:'2028-06-30', color:'#fbbf24', action:'Stop DCA. Sell GROWTH first: PYPL, ABNB, ROG.SW (regardless of CT-388 outcome). Park proceeds in AIB 7-day Notice or Revolut.' },
+    { label:'Reduce',     yr:'H2 2028',   start:'2028-07-01', end:'2028-12-31', color:'#fb923c', action:'Sell SATELLITE: TTE.PA, GSK.L. Remaining cash into deposit only — no new stock DCA.' },
+    { label:'Full Exit',  yr:'H1 2029',   start:'2029-01-01', end:'2029-06-01', color:'#f87171', action:'Liquidate CORE: UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC. All cash before HTB submission. Spread sells over 4–6 weeks to reduce slippage.' },
   ];
   const _hsTodayMs = Date.now();
   const _hsPhaseIdx = HS_PHASES.findIndex(p => _hsTodayMs >= new Date(p.start).getTime() && _hsTodayMs <= new Date(p.end).getTime());
@@ -1924,8 +1946,9 @@ function renderStrategy(positions, lifetime) {
     </div>
   </div>
   <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-    <strong style="color:var(--text)">Two layers:</strong> (1) Monthly cash → Irish high-yield deposit (AIB 7-day Notice ~3%, Bank of Ireland Online Saver, or Revolut Savings Vault ~3.25%). (2) House savings portfolio — low-beta dividend stocks, DCA monthly, liquidate 2028–2029 before purchase.<br>
-    <strong style="color:var(--text)">HTB:</strong> ~2029 after 4yr IE tax. New builds only, ≤€500k. <strong style="color:var(--text)">FHS:</strong> up to 30% gov equity tops up any shortfall.
+    <strong style="color:var(--text)">Strategy:</strong> 60% cash → AIB 7-day Notice / Revolut ~3.25% (emergency fund in Bunq kept separate, not tracked here). 40% stocks DCA monthly per tier below.<br>
+    <strong style="color:var(--text)">HTB:</strong> ~2029 (need 4yr IE tax residency). New builds only, ≤€500k. <strong style="color:var(--text)">FHS:</strong> gov tops up to 30% equity on any shortfall — use if needed. Max €30k from HTB + FHS combined.<br>
+    <strong style="color:var(--text)">Portfolio tilt:</strong> EUR/CHF anchored (you already have >70% USD elsewhere). Non-AI, non-tech: zero correlation to HC/growth bets. Income floor from dividends even if prices stagnate.
   </div>
   ${_hsExitWindowHtml}
   <div style="margin-bottom:10px">${hsSavRows}</div>
@@ -1933,7 +1956,7 @@ function renderStrategy(positions, lifetime) {
     <summary style="font-size:11px;color:#fb923c;cursor:pointer;font-weight:600">Ticker ideas for house_savings bucket ▾</summary>
     <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
       ${HOUSE_SAVINGS_TICKERS.map(t => {
-        const tierColor = t.tier === 'CORE' ? '#60a5fa' : t.tier === 'RECOVERY' ? '#fbbf24' : '#4ade80';
+        const tierColor = t.tier === 'CORE' ? '#60a5fa' : t.tier === 'SATELLITE' ? '#fbbf24' : '#4ade80';
         return `<div style="display:flex;gap:8px;font-size:11px;padding:5px 0;border-bottom:1px solid #ffffff08">
           <span style="width:8px;height:auto;background:${tierColor};border-radius:2px;flex-shrink:0"></span>
           <span style="width:46px;font-weight:700;color:#fb923c">${t.ticker}</span>
@@ -1944,9 +1967,9 @@ function renderStrategy(positions, lifetime) {
         </div>`;
       }).join('')}
       <div style="margin-top:6px;font-size:10px;color:var(--muted)">
-        <span style="color:#60a5fa">■</span> CORE 40% (T + VZ + KHC + ENEL.MI + NOVN.SW + UCG.MI⚠) — income floor, EUR/CHF mix, hold until H1 2029.
-        <span style="color:#fbbf24;margin-left:8px">■</span> RECOVERY 25% (ROG.SW⚠ + PFE + CVS) — binary catalyst risk, sell H2 2028.
-        <span style="color:#4ade80;margin-left:8px">■</span> GROWTH 35% (NU + PYPL + ABNB) — sell first in H1 2028 deleverage.
+        <span style="color:#60a5fa">■</span> CORE 50% (UCG.MI⚠β0.9 + ENEL.MI β0.5 + NOVN.SW β0.4 + AXA.PA β0.75 + IBE.MC β0.5) — EUR/CHF, income floor. Hold until H1 2029.
+        <span style="color:#fbbf24;margin-left:8px">■</span> SATELLITE 25% (TTE.PA + GSK.L) — energy + pharma sector diversification. Sell H2 2028.
+        <span style="color:#4ade80;margin-left:8px">■</span> GROWTH 25% (PYPL + ABNB + ROG.SW⚠binary) — non-AI upside. Sell first, H1 2028.
       </div>
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:6px">Add these in portfolio.yaml with bucket: house_savings. They appear in the portfolio table with the 🏠 badge.</div>
@@ -1978,7 +2001,7 @@ function renderStrategy(positions, lifetime) {
       </div>
       <input type="range" id="split-house-slider" min="10" max="80" step="5" value="${_houseSharePct}"
         oninput="_onSplitSlide()" style="width:100%;accent-color:#fb923c">
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% stocks: <span style="color:#60a5fa">CORE</span> T, VZ, KHC, ENEL.MI, NOVN.SW, UCG.MI (income + EUR/CHF) + <span style="color:#fbbf24">RECOVERY</span> ROG.SW, PFE, CVS + <span style="color:#4ade80">GROWTH</span> NU, PYPL, ABNB (sell 2028).</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% stocks: <span style="color:#60a5fa">CORE</span> UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC (EUR/CHF income) + <span style="color:#fbbf24">SATELLITE</span> TTE.PA, GSK.L + <span style="color:#4ade80">GROWTH</span> PYPL, ABNB, ROG.SW (sell H1 2028).</div>
     </div>
 
     <div style="margin-bottom:8px">

@@ -81,10 +81,20 @@ TICKER_NAMES = {
     "ARKK": "ARK Innovation ETF",
     "BOTZ": "Global X Robotics & AI ETF",
     "AIQ": "Global X AI & Technology ETF",
-    # House savings CORE + defence watch
+    # House savings CORE
     "UCG.MI": "UniCredit SpA",
     "NOVN.SW": "Novartis AG",
     "ENEL.MI": "Enel SpA",
+    "AXA.PA": "AXA SA",
+    "IBE.MC": "Iberdrola SA",
+    # House savings SATELLITE
+    "TTE.PA": "TotalEnergies SE",
+    "GSK.L": "GSK plc",
+    # House savings GROWTH
+    "ROG.SW": "Roche Holding AG",
+    "PYPL": "PayPal Holdings",
+    "ABNB": "Airbnb Inc",
+    # Defence / 2027 HC watch
     "LDO.MI": "Leonardo SpA",
     "RHM.DE": "Rheinmetall AG",
 }
