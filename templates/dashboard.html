@@ -618,7 +618,6 @@
           <strong style="color:#fbbf24">TIMED-AI (6–24mo):</strong> sell with AI capex cycle. Monitor for hyperscaler spend cuts.<br>
           <strong style="color:#fb923c">TIMED-HOUSE (sell 2028–29):</strong> house savings bucket — hard exit before HTB.<br>
           <strong style="color:#f472b6">TIMED-HC-2027 (May–Jun 2027):</strong> next high-conviction bet post-current HC exit.<br>
-          <strong style="color:#f87171">ETF-AVOID:</strong> UCITS ETF — 41% IE exit tax. Do not buy.<br>
           <strong style="color:#94a3b8">SPECULATIVE:</strong> no defined bucket. Small position only, size to zero.<br><br>
           <span class="hint">Yield est. is trailing dividend yield, estimated from most recent full-year data. All figures approximate — verify on company IR page before transacting.</span><br>
           <span class="hint">PE est. is forward P/E where known. Use as valuation context only, not a signal.</span>
@@ -1341,7 +1340,6 @@ function renderScanner(scanner) {
     if (t === 'TIMED-AI')      return '#fbbf24';
     if (t === 'TIMED-HOUSE')   return '#fb923c';
     if (t === 'TIMED-HC-2027') return '#f472b6';
-    if (t === 'ETF-AVOID')     return '#f87171';
     if (t === 'SPECULATIVE')   return '#94a3b8';
     return 'var(--muted)';
   };
@@ -1631,7 +1629,7 @@ const TICKER_META = {
 // Static per-ticker metadata for scanner enrichment.
 // yield_est: trailing annual dividend yield, approximate (label as "est." in UI).
 // bucket: suggested bucket assignment.
-// timing: LONG-RUN | TIMED-AI | TIMED-HOUSE | TIMED-HC-2027 | ETF-AVOID | SPECULATIVE
+// timing: LONG-RUN | TIMED-AI | TIMED-HOUSE | TIMED-HC-2027 | SPECULATIVE
 const SCANNER_META = {
   'NVDA':     { yield_est:'~0%',   bucket:'growth',         timing:'TIMED-AI',     note:'AI GPU monopoly. Sell with capex cycle.' },
   'AMD':      { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     note:'AI GPU challenger. Lagging NVDA cycle.' },
@@ -1650,11 +1648,7 @@ const SCANNER_META = {
   'AMZN':     { yield_est:'0%',    bucket:'growth',         timing:'LONG-RUN',     note:'AWS + retail. Long compounding thesis.' },
   'TSLA':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     note:'EV + energy storage + robotics. High-beta speculative.' },
   'AAPL':     { yield_est:'~0.5%', bucket:'retirement',     timing:'LONG-RUN',     note:'Services flywheel + hardware ecosystem. LONG-RUN.' },
-  'SPY':      { yield_est:'~1.3%', bucket:'AVOID',          timing:'ETF-AVOID',    note:'⚠ UCITS-equivalent US ETF — 41% IE exit tax. Do not buy.' },
-  'QQQ':      { yield_est:'~0.6%', bucket:'AVOID',          timing:'ETF-AVOID',    note:'⚠ UCITS-equivalent ETF — 41% IE exit tax. Do not buy.' },
-  'VWRL.AS':  { yield_est:'~1.8%', bucket:'AVOID',          timing:'ETF-AVOID',    note:'⚠ UCITS ETF — 41% IE exit tax + 8yr deemed disposal. AVOID.' },
   'ASML.AS':  { yield_est:'~1.0%', bucket:'growth',         timing:'LONG-RUN',     note:'EUV lithography monopoly. Hold through cycles.' },
-  'NU':       { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'LatAm fintech. SELL before H2 2028. Not AI.' },
   'PYPL':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'60% below ATH, $5B buyback. Target $90-100. Sell H1 2028.' },
   'ABNB':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'Asset-light travel. Target ~$180. Sell H1 2028.' },
   'UCG.MI':   { yield_est:'~7.2%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'CORE tier. 7%+ div + buybacks. ⚠ β0.9. Sell H1 2029.' },

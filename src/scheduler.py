@@ -248,18 +248,16 @@ class Scheduler:
             "META", "GOOGL", "MSFT", "AMZN", "TSLA", "AAPL",
             "VRT", "VST", "CEG", "NRG",
             "RXRX", "TMDX",
-            "ARKK", "BOTZ", "AIQ",
         ]
         WATCHLIST_BASE = [
             "NVDA", "AMD", "TSM", "ARM", "SMCI",
             "IONQ", "RGTI", "QUBT",
             "PLTR", "SOUN", "BBAI",
-            "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL",
-            "SPY", "QQQ", "VWRL.AS", "ASML.AS",
-            "NU", "PYPL", "ABNB",
+            "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL", "ASML.AS",
             "UCG.MI", "NOVN.SW", "ENEL.MI", "AXA.PA", "IBE.MC",
             "TTE.PA", "GSK.L",
-            "ROG.SW", "LDO.MI", "RHM.DE",
+            "PYPL", "ABNB", "ROG.SW",
+            "LDO.MI", "RHM.DE",
         ]
         try:
             quotes = fetch_quotes(HOT_PICKS_UNIVERSE)

@@ -46,11 +46,7 @@ WATCHLIST_BASE = [
     # AI software / data
     "PLTR", "SOUN", "BBAI",
     # Mag 7 / broad market
-    "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL",
-    # Indices & ETFs
-    "SPY", "QQQ", "VWRL.AS", "ASML.AS",
-    # House savings growth satellite
-    "NU", "PYPL", "ABNB",
+    "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL", "ASML.AS",
     # House savings CORE
     "UCG.MI", "NOVN.SW", "ENEL.MI", "AXA.PA", "IBE.MC",
     # House savings SATELLITE
@@ -146,8 +142,6 @@ _HOT_PICKS_UNIVERSE = [
     "VRT", "VST", "CEG", "NRG",
     # Biotech / speculative AI-adjacent
     "RXRX", "TMDX",
-    # ETFs
-    "ARKK", "BOTZ", "AIQ",
 ]
 
 
