@@ -198,6 +198,9 @@ class Scheduler:
                 "hot": ticker in hot_picks,
                 "rsi": sig.get("rsi"), "rsi_signal": sig.get("rsi_signal"),
                 "earnings_date": sig.get("earnings_date"), "news": sig.get("news", []),
+                "week_pct": q.get("week_pct"),
+                "high_52w": q.get("high_52w"),
+                "low_52w":  q.get("low_52w"),
             })
         scanner_rows.sort(key=lambda x: x["day_pct"] if x["day_pct"] is not None else 0, reverse=True)
         self.state["scanner_cache"] = scanner_rows
@@ -253,7 +256,10 @@ class Scheduler:
             "PLTR", "SOUN", "BBAI",
             "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL",
             "SPY", "QQQ", "VWRL.AS", "ASML.AS",
-            "NVO", "SAP", "SHEL", "RIO", "XOM", "JNJ", "CEG",
+            "NU", "PYPL", "ABNB",
+            "UCG.MI", "NOVN.SW", "ENEL.MI", "AXA.PA", "IBE.MC",
+            "TTE.PA", "GSK.L",
+            "ROG.SW", "LDO.MI", "RHM.DE",
         ]
         try:
             quotes = fetch_quotes(HOT_PICKS_UNIVERSE)

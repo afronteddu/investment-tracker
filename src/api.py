@@ -250,6 +250,9 @@ def _build_scanner_data() -> list[dict]:
             "rsi_signal": sig.get("rsi_signal"),
             "earnings_date": sig.get("earnings_date"),
             "news": sig.get("news", []),
+            "week_pct": q.get("week_pct"),
+            "high_52w": q.get("high_52w"),
+            "low_52w":  q.get("low_52w"),
         })
 
     rows.sort(key=lambda x: x["day_pct"] if x["day_pct"] is not None else 0, reverse=True)

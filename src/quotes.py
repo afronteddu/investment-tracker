@@ -95,6 +95,9 @@ def _yahoo_quote(ticker: str) -> dict:
                 "day_high": None, "day_low": None,
                 "currency": meta.get("currency", "?"),
                 "market_cap": None,
+                "high_52w": meta.get("fiftyTwoWeekHigh"),
+                "low_52w":  meta.get("fiftyTwoWeekLow"),
+                "week_pct": None,
             }
         return {
             "price": closes[-1],
@@ -103,6 +106,9 @@ def _yahoo_quote(ticker: str) -> dict:
             "day_low":  lows[-1]  if lows  else None,
             "currency": meta.get("currency", "?"),
             "market_cap": None,
+            "high_52w": meta.get("fiftyTwoWeekHigh"),
+            "low_52w":  meta.get("fiftyTwoWeekLow"),
+            "week_pct": round((closes[-1] - closes[0]) / closes[0] * 100, 2) if len(closes) >= 2 and closes[0] else None,
         }
     except Exception:
         return {}
@@ -128,7 +134,7 @@ def get_fx_rates() -> dict[str, float]:
     if now - _fx_cache_time < FX_TTL and _fx_cache:
         return dict(_fx_cache)
 
-    for pair, key, invert in [("EURUSD=X", "USD", True), ("GBPEUR=X", "GBP", False)]:
+    for pair, key, invert in [("EURUSD=X", "USD", True), ("GBPEUR=X", "GBP", False), ("CHFEUR=X", "CHF", False), ("DKKEUR=X", "DKK", False)]:
         q = _yahoo_quote(pair)
         price = q.get("price")
         if price:
@@ -136,6 +142,8 @@ def get_fx_rates() -> dict[str, float]:
 
     _fx_cache.setdefault("USD", 0.86)
     _fx_cache.setdefault("GBP", 1.15)
+    _fx_cache.setdefault("CHF", 1.05)
+    _fx_cache.setdefault("DKK", 0.134)
     _fx_cache["EUR"] = 1.0
     _fx_cache_time = now
     return dict(_fx_cache)
@@ -159,6 +167,7 @@ def fetch_quotes(tickers: list[str]) -> dict[str, dict]:
                 "price": None, "prev_close": None,
                 "day_high": None, "day_low": None,
                 "currency": "?", "market_cap": None,
+                "high_52w": None, "low_52w": None, "week_pct": None,
             }
             _cache_time[ticker] = now
 
