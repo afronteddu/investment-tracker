@@ -301,6 +301,8 @@
       .modal { padding: 18px; }
       .modal-ticker { font-size: 22px; }
     }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    #panel-studio { font-family: inherit; }
   </style>
 </head>
 <body>
@@ -426,6 +428,7 @@
     <button class="btn-ghost" id="nav-strategy" onclick="showDesktopPanel('strategy',this)">Strategy</button>
     <button class="btn-ghost" id="nav-briefing" onclick="showDesktopPanel('briefing',this)">Briefing</button>
     <button class="btn-ghost" id="nav-playbook" onclick="showDesktopPanel('playbook',this)">Playbook</button>
+    <button class="btn-ghost" id="nav-studio" onclick="showDesktopPanel('studio',this)">Studio</button>
   </div>
 
   <!-- Portfolio table -->
@@ -536,108 +539,71 @@
   <div class="section-panel" id="panel-playbook">
     <div class="section-header">
       <span class="section-title">Investment Playbook</span>
-      <span class="muted" style="font-size:11px">all rules that govern this dashboard</span>
+      <span class="muted" style="font-size:11px" id="playbook-subtitle">all rules · auto-updated from live portfolio</span>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">
+    <div id="playbook-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">
+      <div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Loading playbook…</div>
+    </div>
+  </div>
 
-      <!-- 1. Investment Rules -->
-      <div class="strat-card" style="border-color:#60a5fa20">
-        <div class="strat-card-title" style="color:#60a5fa">1. Investment Rules</div>
-        <div class="strat-card-body">
-          <strong>No UCITS ETFs ever.</strong> 41% exit tax + 8yr deemed disposal. IMAE.AS / VUSA.AS / AEME.PA / IEAG.AS are LEGACY — hold, never sell. All new buys: individual stocks or ETCs (IGLN.L, ISLN.L) only. 33% CGT.<br><br>
-          <strong>Annual CGT exemption: €1,270</strong> — use every December. Harvest gains/losses to reset cost basis. Re-buy after 4 weeks. File CG1 by 31 Oct following year.<br><br>
-          <strong>PRSA / occupational pension:</strong> maximise contributions first (40% marginal tax relief for higher earners) before investing in taxable accounts.<br><br>
-          <strong>No new ETF, no leveraged products, no derivatives.</strong><br><br>
-          <strong>DIRT (33%)</strong> applies to deposit interest — factor into cash layer planning.
+  <!-- Studio — Claude Code build log -->
+  <div class="section-panel" id="panel-studio">
+    <div class="section-header">
+      <span class="section-title">Studio</span>
+      <span class="muted" style="font-size:11px">built with Claude Code · no prior coding experience</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px">
+
+      <!-- Terminal card -->
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;overflow:hidden;font-family:'SF Mono',monospace">
+        <div style="background:#161b22;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #30363d">
+          <span style="width:12px;height:12px;border-radius:50%;background:#ff5f56;display:inline-block"></span>
+          <span style="width:12px;height:12px;border-radius:50%;background:#ffbd2e;display:inline-block"></span>
+          <span style="width:12px;height:12px;border-radius:50%;background:#27c93f;display:inline-block"></span>
+          <span style="font-size:11px;color:#8b949e;margin-left:6px">investment-tracker — claude code</span>
+        </div>
+        <div style="padding:14px 16px;font-size:12px;line-height:1.8;color:#e6edf3">
+          <div><span style="color:#7ee787">❯</span> <span style="color:#79c0ff">claude</span> <span style="color:#e6edf3">"build me an investment dashboard"</span></div>
+          <div style="color:#8b949e;margin-left:14px">✓ FastAPI backend scaffolded</div>
+          <div style="color:#8b949e;margin-left:14px">✓ yfinance + curl_cffi integration</div>
+          <div style="color:#8b949e;margin-left:14px">✓ WebSocket live updates</div>
+          <div style="color:#8b949e;margin-left:14px">✓ Railway auto-deploy wired</div>
+          <div style="margin-top:8px"><span style="color:#7ee787">❯</span> <span style="color:#79c0ff">claude</span> <span style="color:#e6edf3">"add FIRE calculator"</span></div>
+          <div style="color:#8b949e;margin-left:14px">✓ IE Rule of 320 implemented</div>
+          <div style="color:#8b949e;margin-left:14px">✓ SoRR glide path + danger zone</div>
+          <div style="color:#8b949e;margin-left:14px">✓ Monte Carlo confidence signal</div>
+          <div style="margin-top:8px"><span style="color:#7ee787">❯</span> <span style="color:#79c0ff">claude</span> <span style="color:#e6edf3">"house savings 3-tier strategy"</span></div>
+          <div style="color:#8b949e;margin-left:14px">✓ EUR/CHF tilt rationale built</div>
+          <div style="color:#8b949e;margin-left:14px">✓ Exit phases 2028→2029 wired</div>
+          <div style="margin-top:8px"><span style="color:#ffa657">❯</span> <span style="color:#79c0ff">_</span><span id="studio-cursor" style="display:inline-block;width:8px;height:14px;background:#ffa657;vertical-align:middle;animation:blink 1s step-end infinite"></span></div>
         </div>
       </div>
 
-      <!-- 2. Bucket Rules -->
-      <div class="strat-card">
-        <div class="strat-card-title">2. Bucket Rules</div>
-        <div class="strat-card-body">
-          <strong style="color:#22d3ee">Retirement (target 35%):</strong> DCA indefinitely. No exit planned. BRK-B target &lt;40% of bucket. Alternating buy rotation: BRK-B → NOVO-B.CO → SAP.DE → OR.PA. EUR/GBP/DKK preferred for new buys.<br><br>
-          <strong style="color:#fbbf24">Growth (target 30%):</strong> 6–12 month stock picks. Sell as thesis develops. Currently: NVDA, ASML.AS, SNDK.<br><br>
-          <strong style="color:#c084fc">High Conviction (target 25%):</strong> 3 names only (NBIS, VRT, APLD). No further additions. Exit window: Nov 2026 – May 2027 at €15,000–€20,000 target. After exit, next HC bet: European defence (LDO.MI / RHM.DE) — plan for May/Jun 2027.<br><br>
-          <strong style="color:#fb923c">House Savings (10%):</strong> liquidate entirely H1 2029. <span class="hint">CORE (50%): UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC — hold to H1 2029. SATELLITE (25%): TTE.PA, GSK.L — sell H2 2028. GROWTH (25%): PYPL, ABNB, ROG.SW — sell FIRST H1 2028.</span><br><br>
-          <strong>HTB eligibility:</strong> ~2029 (4yr IE tax residency). New builds only, ≤€500k. FHS: government tops up to 30% equity. Max HTB+FHS combined: €30k.
-        </div>
-      </div>
+      <!-- Stack + stats card -->
+      <div style="display:flex;flex-direction:column;gap:10px">
 
-      <!-- 3. Signal Interpretation -->
-      <div class="strat-card">
-        <div class="strat-card-title">3. Signal Interpretation Guide</div>
-        <div class="strat-card-body">
-          <strong style="color:#f87171">RSI &gt; 70:</strong> Overbought. Do not add. If also day move &gt;5%: likely momentum chasing — wait.<br>
-          <strong style="color:#4ade80">RSI &lt; 30:</strong> Oversold. BUY ZONE if thesis intact. Strong mean-reversion signal.<br>
-          <strong style="color:var(--muted)">RSI 30–70:</strong> Neutral. DCA as planned.<br><br>
-          <strong style="color:#f87171">Day move ≥ ±8%:</strong> EXTRAORDINARY. Investigate immediately. Either a real catalyst or news-driven noise — check news feed.<br>
-          <strong>Day move ±3–8%:</strong> Strong directional move. Normal range for volatile holdings.<br><br>
-          <strong>🔥 Hot badge:</strong> Top 8 movers by absolute % across universe. Refreshed twice daily.<br>
-          <strong>Earnings badge:</strong> Upcoming earnings within 14 days. Reduce position sizing around binary events.
+        <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:14px 16px;font-family:'SF Mono',monospace">
+          <div style="font-size:11px;font-weight:700;color:#7ee787;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Stack</div>
+          <div id="studio-stack" style="font-size:11px;line-height:2;color:#e6edf3">
+            <div><span style="color:#79c0ff">backend</span>  <span style="color:#8b949e">FastAPI · Python 3.11 · uvicorn</span></div>
+            <div><span style="color:#79c0ff">data    </span> <span style="color:#8b949e">yfinance · curl_cffi · openpyxl</span></div>
+            <div><span style="color:#79c0ff">prices  </span> <span style="color:#8b949e">Yahoo Finance v8 API · WebSocket push</span></div>
+            <div><span style="color:#79c0ff">ai      </span> <span style="color:#8b949e">Gemini 2.5-flash → GPT-4o-mini fallback</span></div>
+            <div><span style="color:#79c0ff">deploy  </span> <span style="color:#8b949e">Railway · GitHub auto-deploy</span></div>
+            <div><span style="color:#79c0ff">frontend</span> <span style="color:#8b949e">vanilla JS · Chart.js · SVG sparklines</span></div>
+            <div><span style="color:#79c0ff">built by</span> <span style="color:#ffa657">Claude Code (Sonnet 4.6) + Andrea</span></div>
+            <div><span style="color:#79c0ff">lines   </span> <span id="studio-loc" style="color:#8b949e">—</span></div>
+          </div>
         </div>
-      </div>
 
-      <!-- 4. FIRE Rules -->
-      <div class="strat-card" style="border-color:#a78bfa20">
-        <div class="strat-card-title" style="color:#a78bfa">4. FIRE Rules</div>
-        <div class="strat-card-body">
-          <strong>Regola del 300:</strong> monthly_spend × 300 = FIRE number (4.0% SWR, base case).<br>
-          <strong style="color:#a78bfa">IE Rule of 320:</strong> monthly_spend × 320 (3.75% SWR — accounts for 33% CGT drag on withdrawals). Recommended target for Irish residents.<br>
-          <strong>Regola del 345:</strong> monthly_spend × 345 (3.48% SWR — max conservative, Italian-framework equivalent for high-tax regimes).<br><br>
-          <strong>Coast FIRE:</strong> portfolio today that grows to IE FIRE target at age 50+ with 0 further savings. Assumes 4% real annual return (6% nominal − 2% inflation, conservative EUR equity).<br><br>
-          <strong>Years to FIRE:</strong> FV(PV=investable portfolio, PMT=annual savings, r=7% nominal) ≥ IE FIRE target. House_savings bucket excluded (earmarked capital).<br><br>
-          <strong>Monte Carlo confidence:</strong> based on Bengen/Trinity 33yr retirement outcomes. AI concentration &gt;40% reduces confidence by 4pp (sequence risk).<br><br>
-          <strong>Savings rate benchmarks (TheBull):</strong> 60%+ SR → ~12yr from zero; 50% → ~17yr; 40% → ~22yr; 30% → ~28yr.
+        <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:14px 16px;font-family:'SF Mono',monospace">
+          <div style="font-size:11px;font-weight:700;color:#ffa657;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Changelog</div>
+          <div id="studio-changelog" style="font-size:11px;line-height:1.8;color:#e6edf3">
+            <div style="color:#8b949e">loading…</div>
+          </div>
         </div>
-      </div>
 
-      <!-- 4b. Sequence of Returns Risk -->
-      <div class="strat-card" style="border-color:#a78bfa20">
-        <div class="strat-card-title" style="color:#a78bfa">4b. Sequence of Returns Risk (SoRR)</div>
-        <div class="strat-card-body">
-          <strong>What it is:</strong> a major market crash in the 5 years before or after FIRE permanently impairs your portfolio — you're forced to sell equities at lows to fund spending, leaving fewer shares to recover. Average returns mean nothing here; <em>timing</em> of returns matters.<br><br>
-          <strong style="color:#f87171">Danger zone:</strong> within 5yr of FIRE. Every new buy must survive a 40% drawdown without you needing to sell it. No new speculative entries. Build 2yr cash buffer.<br>
-          <strong style="color:#fbbf24">Transition zone:</strong> 5–10yr from FIRE. Begin glide path. Rotate TIMED-AI exits into LONG-RUN income stocks. No new HC-style bets unless timed to exit before FIRE date.<br>
-          <strong style="color:#4ade80">Accumulation phase:</strong> >10yr from FIRE. SoRR risk low. A crash is a buying opportunity. Maximise savings rate and compounding.<br><br>
-          <strong>Glide path (target allocations):</strong><br>
-          Now → 80% growth / 20% income · 5yr out → 60/40 · 3yr out → 40/60 · 1yr out → 25/75 · FIRE year → 20/80 income+cash<br><br>
-          <strong>IE-specific:</strong> each equity sale to fund spending triggers 33% CGT on gains. Never sell into a downturn — build a cash buffer equal to 2yr spending so you can ride out a bear market without touching equities. Bond tent in a PRSA/pension avoids deemed disposal.
-        </div>
       </div>
-
-      <!-- 5. Data Sources & Refresh Schedule -->
-      <div class="strat-card">
-        <div class="strat-card-title">5. Data Sources &amp; Refresh Schedule</div>
-        <div class="strat-card-body">
-          <strong>Prices:</strong> Yahoo Finance v8 API with cookie+crumb auth. Refresh every 60s (all market hours).<br>
-          <strong>RSI (14-day):</strong> yfinance 3mo daily history. Refresh every 30 min.<br>
-          <strong>Earnings dates:</strong> yfinance earnings_dates. Refresh every 6 hours.<br>
-          <strong>News:</strong> yfinance news feed (top 4 per ticker). Refresh every 30 min.<br>
-          <strong>History/charts:</strong> daily last 90d + weekly beyond that. Refresh every 6 hours.<br>
-          <strong>Hot picks universe:</strong> top 8 movers by absolute % from 35-ticker universe. Refreshed at midnight + 08:00 Dublin.<br>
-          <strong>FX rates:</strong> USD, GBP, CHF, DKK vs EUR. Refresh every 5 min.<br>
-          <strong>Alerts:</strong> portfolio holdings at ±5% (configurable). Watchlist at ±8%. Via Telegram.<br>
-          <strong>EOD briefing:</strong> AI (Gemini 2.5-flash → OpenAI gpt-4o-mini fallback) at 22:05 Dublin.<br>
-          <strong>Midnight:</strong> transaction files auto-reloaded from data/transactions/ (drop new DeGiro xlsx exports + commit).<br>
-          <strong>Health check:</strong> every 6 hours — prices, FX, history, signals, WebSocket payload. Notifies via Telegram.
-        </div>
-      </div>
-
-      <!-- 6. Scanner Fit Legend -->
-      <div class="strat-card" style="border-color:#fbbf2420">
-        <div class="strat-card-title" style="color:#fbbf24">6. Scanner Fit Legend</div>
-        <div class="strat-card-body">
-          <strong style="color:#60a5fa">LONG-RUN (10yr+):</strong> core compounders — hold through cycles, no planned exit.<br>
-          <strong style="color:#fbbf24">TIMED-AI (6–24mo):</strong> sell with AI capex cycle. Monitor for hyperscaler spend cuts.<br>
-          <strong style="color:#fb923c">TIMED-HOUSE (sell 2028–29):</strong> house savings bucket — hard exit before HTB.<br>
-          <strong style="color:#f472b6">TIMED-HC-2027 (May–Jun 2027):</strong> next high-conviction bet post-current HC exit.<br>
-          <strong style="color:#94a3b8">SPECULATIVE:</strong> no defined bucket. Small position only, size to zero.<br><br>
-          <span class="hint">Yield est. is trailing dividend yield, estimated from most recent full-year data. All figures approximate — verify on company IR page before transacting.</span><br>
-          <span class="hint">PE est. is forward P/E where known. Use as valuation context only, not a signal.</span>
-        </div>
-      </div>
-
     </div>
   </div>
 
@@ -1416,8 +1382,19 @@ function renderScanner(scanner) {
     if (sm) {
       const tc = _timingColor(sm.timing);
       const bc = _bucketColor(sm.bucket);
+      const betaNum = sm.beta ? parseFloat(sm.beta.replace('~','')) : null;
+      const betaColor = betaNum == null ? 'var(--muted)'
+        : betaNum <= 0.5 ? '#4ade80'
+        : betaNum <= 0.8 ? '#86efac'
+        : betaNum <= 1.0 ? '#94a3b8'
+        : betaNum <= 1.4 ? '#fbbf24'
+        : '#f87171';
+      const betaBadge = sm.beta
+        ? '<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:' + betaColor + '18;color:' + betaColor + ';border:1px solid ' + betaColor + '30">β' + sm.beta + '</span>'
+        : '';
       fitCell = '<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:' + tc + '18;color:' + tc + ';border:1px solid ' + tc + '30">' + sm.timing + '</span>'
         + '<br><span style="font-size:10px;color:var(--green)">' + sm.yield_est + ' div</span>'
+        + (betaBadge ? '<br>' + betaBadge : '')
         + '<br><span style="font-size:10px;padding:1px 5px;border-radius:3px;background:' + bc + '18;color:' + bc + '">' + sm.bucket + '</span>';
     }
 
@@ -1548,6 +1525,7 @@ function connect() {
     if (d.deployments) renderDeployments(d.deployments);
     if (d.lifetime) renderLifetime(d.lifetime);
     renderStrategy(d.portfolio || [], d.lifetime || {});
+    renderPlaybook(d.portfolio || [], d.lifetime || {});
     _drilldownCache = {};
     startCountdown();
   };
@@ -1566,9 +1544,38 @@ async function bootstrapDeployments() {
   if (d.fx_rates) renderSummary([], d.fx_rates);
   if (d.lifetime) renderLifetime(d.lifetime);
   if (d.positions) renderStrategy(d.positions, d.lifetime || {});
+  if (d.positions) renderPlaybook(d.positions, d.lifetime || {});
 }
 
 let _wsToken = '';
+
+async function populateStudio() {
+  // Fetch changelog from GitHub API (public repo)
+  try {
+    const r = await fetch('https://api.github.com/repos/afronteddu/investment-tracker/commits?per_page=10');
+    if (r.ok) {
+      const commits = await r.json();
+      const cl = E('studio-changelog');
+      if (cl && commits.length) {
+        cl.innerHTML = commits.map(c => {
+          const msg = c.commit.message.split('\n')[0].replace('Co-Authored-By:','').replace(/claude sonnet.*/i,'').trim().slice(0,60);
+          const d = c.commit.author.date.slice(0,10);
+          const h = c.sha.slice(0,7);
+          return '<div style="display:flex;gap:8px;align-items:baseline">'
+            + '<span style="color:#6e7681;font-size:10px;flex-shrink:0">' + d + '</span>'
+            + '<span style="color:#79c0ff;font-size:10px;flex-shrink:0">' + h + '</span>'
+            + '<span style="color:#e6edf3">' + msg + '</span></div>';
+        }).join('');
+      }
+    }
+  } catch(e) {
+    const cl = E('studio-changelog');
+    if (cl) cl.innerHTML = '<div style="color:#8b949e;font-size:11px">changelog requires network</div>';
+  }
+  // Approximate LOC from dashboard size
+  const loc = E('studio-loc');
+  if (loc) loc.textContent = '~' + (Math.round(document.documentElement.outerHTML.length / 50)).toLocaleString() + ' lines';
+}
 
 async function init() {
   try {
@@ -1578,6 +1585,7 @@ async function init() {
   loadBriefing();
   bootstrapDeployments();
   connect();
+  populateStudio();
 }
 
 // ── Strategy Advisor ─────────────────────────────────────────────
@@ -1645,43 +1653,43 @@ const TICKER_META = {
 // bucket: suggested bucket assignment.
 // timing: LONG-RUN | TIMED-AI | TIMED-HOUSE | TIMED-HC-2027 | SPECULATIVE
 const SCANNER_META = {
-  'NVDA':     { yield_est:'~0%',   bucket:'growth',         timing:'TIMED-AI',     note:'AI GPU monopoly. Sell with capex cycle.' },
-  'AMD':      { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     note:'AI GPU challenger. Lagging NVDA cycle.' },
-  'TSM':      { yield_est:'~1.8%', bucket:'retirement',     timing:'LONG-RUN',     note:'Only advanced chip fab (N3/N2). Geopolitical risk (Taiwan).' },
-  'ARM':      { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     note:'CPU IP royalty play on every AI device.' },
-  'SMCI':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     note:'AI server integrator. Accounting risk — small size only.' },
-  'IONQ':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  note:'Quantum computing — pre-revenue phase. Lottery ticket sizing.' },
-  'RGTI':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  note:'Quantum computing — pre-revenue. High dilution risk.' },
-  'QUBT':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  note:'Quantum computing — speculative. Small position max.' },
-  'PLTR':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     note:'AI/defence analytics. High PE (~100×) — momentum name.' },
-  'SOUN':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  note:'Voice AI — small cap. No defined bucket.' },
-  'BBAI':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  note:'Defence AI — micro cap. Speculative only.' },
-  'MSFT':     { yield_est:'~0.8%', bucket:'retirement',     timing:'LONG-RUN',     note:'Azure + Office365 recurring revenue. LONG-RUN compounder.' },
-  'GOOGL':    { yield_est:'~0.5%', bucket:'growth',         timing:'LONG-RUN',     note:'Search monopoly + Cloud + AI. 10yr hold thesis.' },
-  'META':     { yield_est:'~0.3%', bucket:'growth',         timing:'TIMED-AI',     note:'AI-driven ad rebound. Sell when AI capex cycle turns.' },
-  'AMZN':     { yield_est:'0%',    bucket:'growth',         timing:'LONG-RUN',     note:'AWS + retail. Long compounding thesis.' },
-  'TSLA':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     note:'EV + energy storage + robotics. High-beta speculative.' },
-  'AAPL':     { yield_est:'~0.5%', bucket:'retirement',     timing:'LONG-RUN',     note:'Services flywheel + hardware ecosystem. LONG-RUN.' },
-  'ASML.AS':  { yield_est:'~1.0%', bucket:'growth',         timing:'LONG-RUN',     note:'EUV lithography monopoly. Hold through cycles.' },
-  'PYPL':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'60% below ATH, $5B buyback. Target $90-100. Sell H1 2028.' },
-  'ABNB':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'Asset-light travel. Target ~$180. Sell H1 2028.' },
-  'UCG.MI':   { yield_est:'~7.2%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'CORE tier. 7%+ div + buybacks. ⚠ β0.9. Sell H1 2029.' },
-  'ENEL.MI':  { yield_est:'~6.2%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'CORE tier. Regulated tariff income. β0.5. Sell H1 2029.' },
-  'NOVN.SW':  { yield_est:'~3.9%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'CORE tier. CHF pharma. β0.4. No binary risk. Sell H1 2029.' },
-  'AXA.PA':   { yield_est:'~5.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'CORE tier. EUR insurance, Solvency II >200%. Sell H1 2029.' },
-  'IBE.MC':   { yield_est:'~4.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'CORE tier. Renewables utility ES/UK/US/BR. Sell H1 2029.' },
-  'TTE.PA':   { yield_est:'~4.0%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'SATELLITE tier. LNG + solar. PE ~8-9×. Sell H2 2028.' },
-  'GSK.L':    { yield_est:'~4.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'SATELLITE tier. UK pharma post-Haleon. GBP. Sell H2 2028.' },
-  'ROG.SW':   { yield_est:'~3.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  note:'GROWTH tier. CT-388 binary catalyst 2026-27. Sell H1 2028.' },
-  'LDO.MI':   { yield_est:'~2.0%', bucket:'high_conviction',timing:'TIMED-HC-2027',note:'2027 HC candidate. NATO spend cycle. Entry: €20-24. NOT YET.' },
-  'RHM.DE':   { yield_est:'~0.5%', bucket:'high_conviction',timing:'TIMED-HC-2027',note:'2027 HC. Wait for peace-talk dip to €900-1,000. NOT YET.' },
-  'NOVO-B.CO':{ yield_est:'~5.5%', bucket:'retirement',     timing:'LONG-RUN',     note:'GLP-1 compounder. 70% off ATH, 10× PE. DKK-denominated.' },
-  'SAP.DE':   { yield_est:'~1.5%', bucket:'retirement',     timing:'LONG-RUN',     note:'ERP cloud monopoly. Margin expansion 30%→40%+. EUR.' },
-  'OR.PA':    { yield_est:'~2.1%', bucket:'retirement',     timing:'LONG-RUN',     note:"L'Oréal. 115yr compounder. China recovery pending. EUR." },
-  'AIR.PA':   { yield_est:'~1.8%', bucket:'retirement',     timing:'LONG-RUN',     note:'Airbus. €1T backlog. Defence ramp adds upside. EUR.' },
-  'CEG':      { yield_est:'~0.7%', bucket:'growth',         timing:'TIMED-AI',     note:'Nuclear PPA play. MSFT/AMZN/META data centre power.' },
-  'SHEL.L':   { yield_est:'~3.5%', bucket:'retirement',     timing:'LONG-RUN',     note:'Shell. GBP denomination. LNG + renewables. FX diversifier.' },
-  'HDB':      { yield_est:'~1.2%', bucket:'retirement',     timing:'LONG-RUN',     note:'HDFC Bank ADR. India 6-7% GDP growth. PE ~15×.' },
+  'NVDA':     { yield_est:'~0%',   bucket:'growth',         timing:'TIMED-AI',     beta:'~1.6', note:'AI GPU monopoly. Sell with capex cycle.' },
+  'AMD':      { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.5', note:'AI GPU challenger. Lagging NVDA cycle.' },
+  'TSM':      { yield_est:'~1.8%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~1.1', note:'Only advanced chip fab (N3/N2). Geopolitical risk (Taiwan).' },
+  'ARM':      { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.4', note:'CPU IP royalty play on every AI device.' },
+  'SMCI':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.8', note:'AI server integrator. Accounting risk — small size only.' },
+  'IONQ':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~2.0', note:'Quantum computing — pre-revenue phase. Lottery ticket sizing.' },
+  'RGTI':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~2.2', note:'Quantum computing — pre-revenue. High dilution risk.' },
+  'QUBT':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~2.1', note:'Quantum computing — speculative. Small position max.' },
+  'PLTR':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.3', note:'AI/defence analytics. High PE (~100×) — momentum name.' },
+  'SOUN':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~1.9', note:'Voice AI — small cap. No defined bucket.' },
+  'BBAI':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~1.7', note:'Defence AI — micro cap. Speculative only.' },
+  'MSFT':     { yield_est:'~0.8%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.9', note:'Azure + Office365 recurring revenue. LONG-RUN compounder.' },
+  'GOOGL':    { yield_est:'~0.5%', bucket:'growth',         timing:'LONG-RUN',     beta:'~1.0', note:'Search monopoly + Cloud + AI. 10yr hold thesis.' },
+  'META':     { yield_est:'~0.3%', bucket:'growth',         timing:'TIMED-AI',     beta:'~1.1', note:'AI-driven ad rebound. Sell when AI capex cycle turns.' },
+  'AMZN':     { yield_est:'0%',    bucket:'growth',         timing:'LONG-RUN',     beta:'~1.1', note:'AWS + retail. Long compounding thesis.' },
+  'TSLA':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.7', note:'EV + energy storage + robotics. High-beta speculative.' },
+  'AAPL':     { yield_est:'~0.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~1.2', note:'Services flywheel + hardware ecosystem. LONG-RUN.' },
+  'ASML.AS':  { yield_est:'~1.0%', bucket:'growth',         timing:'LONG-RUN',     beta:'~1.2', note:'EUV lithography monopoly. Hold through cycles.' },
+  'PYPL':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~1.0', note:'60% below ATH, $5B buyback. Target $90-100. Sell H1 2028.' },
+  'ABNB':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~1.1', note:'Asset-light travel. Target ~$180. Sell H1 2028.' },
+  'UCG.MI':   { yield_est:'~7.2%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.9', note:'CORE tier. 7%+ div + buybacks. ⚠ β0.9. Sell H1 2029.' },
+  'ENEL.MI':  { yield_est:'~6.2%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'CORE tier. Regulated tariff income. β0.5. Sell H1 2029.' },
+  'NOVN.SW':  { yield_est:'~3.9%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.4', note:'CORE tier. CHF pharma. β0.4. No binary risk. Sell H1 2029.' },
+  'AXA.PA':   { yield_est:'~5.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.75',note:'CORE tier. EUR insurance, Solvency II >200%. Sell H1 2029.' },
+  'IBE.MC':   { yield_est:'~4.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'CORE tier. Renewables utility ES/UK/US/BR. Sell H1 2029.' },
+  'TTE.PA':   { yield_est:'~4.0%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.65',note:'SATELLITE tier. LNG + solar. PE ~8-9×. Sell H2 2028.' },
+  'GSK.L':    { yield_est:'~4.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'SATELLITE tier. UK pharma post-Haleon. GBP. Sell H2 2028.' },
+  'ROG.SW':   { yield_est:'~3.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'GROWTH tier. CT-388 binary catalyst 2026-27. Sell H1 2028.' },
+  'LDO.MI':   { yield_est:'~2.0%', bucket:'high_conviction',timing:'TIMED-HC-2027',beta:'~1.0', note:'2027 HC candidate. NATO spend cycle. Entry: €20-24. NOT YET.' },
+  'RHM.DE':   { yield_est:'~0.5%', bucket:'high_conviction',timing:'TIMED-HC-2027',beta:'~1.1', note:'2027 HC. Wait for peace-talk dip to €900-1,000. NOT YET.' },
+  'NOVO-B.CO':{ yield_est:'~5.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.5', note:'GLP-1 compounder. 70% off ATH, 10× PE. DKK-denominated.' },
+  'SAP.DE':   { yield_est:'~1.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.9', note:'ERP cloud monopoly. Margin expansion 30%→40%+. EUR.' },
+  'OR.PA':    { yield_est:'~2.1%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.7', note:"L'Oréal. 115yr compounder. China recovery pending. EUR." },
+  'AIR.PA':   { yield_est:'~1.8%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.9', note:'Airbus. €1T backlog. Defence ramp adds upside. EUR.' },
+  'CEG':      { yield_est:'~0.7%', bucket:'growth',         timing:'TIMED-AI',     beta:'~0.9', note:'Nuclear PPA play. MSFT/AMZN/META data centre power.' },
+  'SHEL.L':   { yield_est:'~3.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.6', note:'Shell. GBP denomination. LNG + renewables. FX diversifier.' },
+  'HDB':      { yield_est:'~1.2%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.7', note:'HDFC Bank ADR. India 6-7% GDP growth. PE ~15×.' },
 };
 
 // Suggested additions — grounded in actual portfolio gaps.
@@ -1817,6 +1825,137 @@ const SUGGESTION_POOL = [
     conviction:'HIGH — house savings CORE. Preferred CHF pharma over ROG.SW.',
   },
 ];
+
+function renderPlaybook(positions, lifetime) {
+  const pb = E('playbook-body');
+  if (!pb) return;
+
+  const totalValue = positions.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const bucketValues = {retirement:0,growth:0,high_conviction:0,house_savings:0};
+  positions.forEach(p=>{ const b=p.bucket||'growth'; bucketValues[b]=(bucketValues[b]||0)+(p.current_value_eur||0); });
+  const retPct   = totalValue>0 ? (bucketValues.retirement/totalValue*100).toFixed(0) : 0;
+  const groPct   = totalValue>0 ? (bucketValues.growth/totalValue*100).toFixed(0) : 0;
+  const hcPct2   = totalValue>0 ? (bucketValues.high_conviction/totalValue*100).toFixed(0) : 0;
+  const hsPct2   = totalValue>0 ? (bucketValues.house_savings/totalValue*100).toFixed(0) : 0;
+
+  const held = positions.map(p=>p.ticker);
+  const heldStr = held.length ? held.join(', ') : 'none';
+
+  const aiTickers = ['NVDA','ASML.AS','SNDK','NBIS','VRT','APLD'];
+  const aiVal = positions.filter(p=>aiTickers.includes(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const aiConc2 = totalValue>0 ? (aiVal/totalValue*100).toFixed(0) : 0;
+
+  const usdVal = positions.filter(p=>{ const ccy=(window._fxRates&&Object.keys(window._fxRates||{})); return p.currency==='USD'; }).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const usdConc2 = totalValue>0 ? (usdVal/totalValue*100).toFixed(0) : '—';
+
+  // SoRR phase from FIRE inputs
+  const _spd = +(localStorage.getItem('fireMonthlySpend')||3500);
+  const _sav = +(localStorage.getItem('fireMonthlySave')||1500);
+  const _tgt = +(localStorage.getItem('fireTargetAge')||50);
+  const _cur = +(localStorage.getItem('fireCurrentAge')||30);
+  const _inv = positions.filter(p=>p.bucket!=='house_savings').reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const _ftgt = _spd*320;
+  let _ytf2=null;
+  for(let n=0;n<=65;n++){const fv=_inv*Math.pow(1.07,n)+(_sav*12)*(Math.pow(1.07,n)-1)/0.07;if(fv>=_ftgt){_ytf2=n;break;}}
+  const sorPhaseLabel = _ytf2==null?'Accumulation (>60yr to FIRE)':_ytf2>10?'Accumulation ('+_ytf2+'yr to FIRE)':_ytf2>5?'⚠ Transition ('+_ytf2+'yr — begin glide path)':'🔴 DANGER ZONE ('+_ytf2+'yr — build cash buffer now)';
+  const sorPhaseColor = _ytf2!=null&&_ytf2<=5?'#f87171':_ytf2!=null&&_ytf2<=10?'#fbbf24':'#4ade80';
+
+  // Changelog — last 10 git commits injected server-side, fallback to static
+  const changelog = window._CHANGELOG || [
+    { hash:'09634d6', msg:'Embed SoRR into risk signals, FIRE glide path, suggestions, Playbook', date:'2026-06-05' },
+    { hash:'6aed4dc', msg:'Fix FIRE number formatting: show €1.05M not €1050k', date:'2026-06-05' },
+    { hash:'b539658', msg:'Remove ETFs and non-strategy tickers from scanner and hot picks', date:'2026-06-05' },
+    { hash:'fe73530', msg:'Enrich scanner (52W/1W/RSI action/Fit), add Playbook panel, fix CHF/DKK FX', date:'2026-06-04' },
+    { hash:'37d53b4', msg:'Add FIRE Calculator section to Strategy panel', date:'2026-06-04' },
+    { hash:'feb22ab', msg:'Rebuild house savings bucket: 3 tiers, EUR/CHF tilt', date:'2026-06-03' },
+    { hash:'9695624', msg:'Add Transactions 9+10, house savings suggestions, defence watchlist', date:'2026-06-02' },
+  ];
+
+  const card = (title, color, body) =>
+    '<div class="strat-card" style="border-color:' + (color||'#ffffff') + '20">'
+    + '<div class="strat-card-title" style="color:' + (color||'var(--text)') + '">' + title + '</div>'
+    + '<div class="strat-card-body">' + body + '</div></div>';
+
+  const row = (label, val, color) =>
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #ffffff08">'
+    + '<span style="color:var(--muted)">' + label + '</span>'
+    + '<span style="font-weight:700;color:' + (color||'var(--text)') + '">' + val + '</span></div>';
+
+  const section1 = card('1. Irish Tax Rules', '#60a5fa',
+    row('New buys', 'stocks + ETCs only (33% CGT)', '#4ade80')
+    + row('UCITS ETFs', '41% exit tax + 8yr deemed disposal — NEVER', '#f87171')
+    + row('Legacy ETFs', 'HOLD — do not sell (41% crystallises)', '#fbbf24')
+    + row('Annual CGT exemption', '€1,270 — harvest every December', '#4ade80')
+    + row('DIRT on deposits', '33% — factor into cash layer yield', 'var(--muted)')
+    + row('PRSA relief', '40% marginal rate — maximise before taxable accounts', '#4ade80')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">No leveraged products, no derivatives, no new ETFs — ever.</div>'
+  );
+
+  const section2 = card('2. Bucket Rules — Live', 'var(--text)',
+    row('Retirement', retPct + '% of portfolio (target 35%)', Math.abs(retPct-35)>10?'#fbbf24':'#4ade80')
+    + row('Growth', groPct + '% (target 30%)', Math.abs(groPct-30)>10?'#fbbf24':'#4ade80')
+    + row('High Conviction', hcPct2 + '% (target 25%)', Math.abs(hcPct2-25)>10?'#fbbf24':'#4ade80')
+    + row('House Savings', hsPct2 + '% (target 10%)', Math.abs(hsPct2-10)>10?'#fbbf24':'#4ade80')
+    + row('AI/data-centre cluster', aiConc2 + '% of portfolio', aiConc2>40?'#f87171':aiConc2>30?'#fbbf24':'#4ade80')
+    + row('Holdings', heldStr, 'var(--muted)')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">HC exit: Nov 2026 – May 2027. Next HC: European defence (LDO.MI/RHM.DE) May/Jun 2027. House savings full exit H1 2029.</div>'
+  );
+
+  const section3 = card('3. Signal Interpretation', 'var(--text)',
+    row('RSI > 75', 'Strongly overbought — DO NOT ADD', '#f87171')
+    + row('RSI > 70', 'Overbought — wait, no new buys', '#fb923c')
+    + row('RSI < 30', 'Oversold — BUY ZONE if thesis intact', '#4ade80')
+    + row('RSI < 25', 'Strongly oversold — strong mean-reversion', '#4ade80')
+    + row('Day ≥ ±8%', 'EXTRAORDINARY — investigate immediately', '#f87171')
+    + row('Day ±3–8%', 'Strong move — normal for volatile names', 'var(--muted)')
+    + row('🔥 Hot badge', 'Top 8 movers by abs% · refreshed midnight + 08:00', '#fbbf24')
+    + row('Earnings badge', 'Within 14 days — reduce sizing on binary events', '#fb923c')
+    + row('β ≤ 0.5', 'Low-beta · defensive · prioritise near FIRE', '#4ade80')
+    + row('β > 1.4', 'High-beta · amplifies drawdowns · size carefully', '#f87171')
+  );
+
+  const section4 = card('4. FIRE + SoRR Rules', '#a78bfa',
+    row('Regola del 300', '×300 = 4.0% SWR base case', 'var(--muted)')
+    + row('IE Rule of 320', '×320 = 3.75% SWR (33% CGT-adjusted) — USE THIS', '#a78bfa')
+    + row('Regola del 345', '×345 = 3.48% SWR — max conservative', 'var(--muted)')
+    + row('Current SoRR phase', sorPhaseLabel, sorPhaseColor)
+    + row('Glide path Now', '80% growth / 20% income', 'var(--muted)')
+    + row('Glide path 5yr out', '60% growth / 40% income', 'var(--muted)')
+    + row('Glide path 3yr out', '40% growth / 60% income — no new speculative', 'var(--muted)')
+    + row('Glide path 1yr out', '25% growth / 75% income+cash', 'var(--muted)')
+    + row('Cash buffer rule', '2yr spending in deposits — never sell equities into bear', '#4ade80')
+    + row('IE CGT on withdrawals', 'Each sale triggers 33% — withdraw from cash first', '#fbbf24')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Savings rate benchmarks: 60%+ → ~12yr · 50% → ~17yr · 40% → ~22yr · 30% → ~28yr (from zero).</div>'
+  );
+
+  const section5 = card('5. Data Sources', 'var(--text)',
+    row('Prices', 'Yahoo Finance v8 API · every 60s', 'var(--muted)')
+    + row('RSI (14-day)', 'yfinance 3mo daily · every 30 min', 'var(--muted)')
+    + row('Earnings', 'yfinance earnings_dates · every 6hr', 'var(--muted)')
+    + row('News', 'yfinance feed · every 30 min · top 4/ticker', 'var(--muted)')
+    + row('History/charts', 'daily 90d + weekly beyond · every 6hr', 'var(--muted)')
+    + row('FX rates', 'USD, GBP, CHF, DKK vs EUR · every 5 min', 'var(--muted)')
+    + row('AI briefing', 'Gemini 2.5-flash → GPT-4o-mini fallback · 22:05 Dublin', 'var(--muted)')
+    + row('Hot picks', 'Top 8 movers from 35-ticker universe · midnight + 08:00', 'var(--muted)')
+    + row('Alerts', 'Portfolio ±5% · Watchlist ±8% · via Telegram', 'var(--muted)')
+    + row('Health check', 'Prices + FX + signals + WS payload · every 6hr · Telegram', 'var(--muted)')
+    + row('Midnight reload', 'data/transactions/ auto-reloaded (drop new DeGiro xlsx + commit)', 'var(--muted)')
+  );
+
+  const section6 = card('6. Scanner Fit Legend', '#fbbf24',
+    row('LONG-RUN (10yr+)', 'core compounders — no planned exit', '#60a5fa')
+    + row('TIMED-AI (6–24mo)', 'sell with AI capex cycle reversal', '#fbbf24')
+    + row('TIMED-HOUSE (2028–29)', 'house savings — hard exit before HTB', '#fb923c')
+    + row('TIMED-HC-2027', 'next HC bet — do not deploy early', '#f472b6')
+    + row('SPECULATIVE', 'no defined bucket — small position only', '#94a3b8')
+    + row('β ≤ 0.5', 'low-beta · defensive · prioritise in glide path', '#4ade80')
+    + row('β 0.5–1.0', 'moderate beta · market-correlated · core range', '#94a3b8')
+    + row('β > 1.0', 'high-beta · amplifies drawdowns · SoRR caution', '#f87171')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Yield est. is trailing annual dividend yield. Approximate — verify on company IR page before transacting.</div>'
+  );
+
+  pb.innerHTML = section1 + section2 + section3 + section4 + section5 + section6;
+}
 
 function renderStrategy(positions, lifetime) {
   if (!positions || !positions.length) return;
