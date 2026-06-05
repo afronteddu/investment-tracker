@@ -562,6 +562,13 @@
     </div>
     <div id="strat-tax-calendar" style="margin-bottom:24px"></div>
 
+    <!-- FIRE Calculator -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">FIRE Calculator</span>
+      <span class="muted" style="font-size:11px">Regola del 300 · IE-adjusted · Coast FIRE</span>
+    </div>
+    <div id="strat-fire" style="margin-bottom:24px"></div>
+
     <!-- Suggested watchlist additions -->
     <div class="section-header" style="margin-top:0">
       <span class="section-title">Suggested Additions</span>
@@ -2256,7 +2263,164 @@ function renderStrategy(positions, lifetime) {
     </div>
   </div>`;
   const _taxCalEl = E('strat-tax-calendar');
-  if (_taxCalEl) _taxCalEl.innerHTML = _taxCalHtml;
+  if (_taxCalEl) _taxCalEl.innerHTML = _taxCalHtml; // safe: no user-supplied strings
+
+  // ── FIRE Calculator ───────────────────────────────────────────────
+  // Framework: TheBull "Regola del 300/345" podcast (ep.324) + Irish tax adjustments.
+  // All values interpolated below are numbers (computed or parsed from localStorage with +cast).
+  // No user-supplied string content is interpolated — XSS not applicable here.
+  const _fireEl = E('strat-fire');
+  if (_fireEl) {
+    // --- Inputs from localStorage (all cast to number, never strings) ---
+    const _fireMonthlySpend  = +(localStorage.getItem('fireMonthlySpend')  || 3500);
+    const _fireMonthlyIncome = +(localStorage.getItem('fireMonthlyIncome') || 5000);
+    const _fireMonthlySave   = +(localStorage.getItem('fireMonthlySave')   || 1500);
+    const _fireTargetAge     = +(localStorage.getItem('fireTargetAge')     || 50);
+    const _currentAge        = +(localStorage.getItem('fireCurrentAge')    || 30);
+
+    // Investable portfolio = all buckets except house_savings (that capital is earmarked)
+    const _investableVal = positions
+      .filter(p => p.bucket !== 'house_savings')
+      .reduce((s, p) => s + (p.current_value_eur || 0), 0);
+
+    // FIRE target numbers (all arithmetic, no string interpolation from user data)
+    const _fireNum300 = _fireMonthlySpend * 300;  // 4.0% SWR — base (Regola del 300)
+    const _fireNum320 = _fireMonthlySpend * 320;  // 3.75% SWR — IE CGT-adjusted
+    const _fireNum345 = _fireMonthlySpend * 345;  // 3.48% SWR — max conservative (Regola del 345)
+    const _annualWithdrawal = _fireMonthlySpend * 12;
+
+    // Coast FIRE: amount needed today to reach _fireNum320 at target age with zero further savings
+    // Using 4% real annual return (conservative EUR: 6% nominal − 2% inflation)
+    const _yearsToTarget = Math.max(0, _fireTargetAge - _currentAge);
+    const _coastNum = _yearsToTarget > 0
+      ? _fireNum320 / Math.pow(1.04, _yearsToTarget)
+      : _fireNum320;
+    const _isCoastFIRE = _investableVal >= _coastNum;
+
+    // Years to FIRE — numeric solve: FV(PV=_investableVal, PMT=annual savings, r=7%) >= _fireNum320
+    const _annualSavings = _fireMonthlySave * 12;
+    const _r = 0.07; // 7% nominal (conservative for EUR diversified equity)
+    let _yearsToFire = null;
+    for (let n = 0; n <= 65; n++) {
+      const fv = _investableVal * Math.pow(1 + _r, n)
+               + (_annualSavings > 0 ? _annualSavings * (Math.pow(1 + _r, n) - 1) / _r : 0);
+      if (fv >= _fireNum320) { _yearsToFire = n; break; }
+    }
+    const _fireYear = _yearsToFire != null ? new Date().getFullYear() + _yearsToFire : null;
+    const _fireAge  = _yearsToFire != null ? _currentAge + _yearsToFire : null;
+
+    // Savings rate
+    const _savingsRate = _fireMonthlyIncome > 0 ? _fireMonthlySave / _fireMonthlyIncome * 100 : 0;
+    const _srColor = _savingsRate >= 40 ? 'var(--green)' : _savingsRate >= 25 ? '#fbbf24' : 'var(--red)';
+    const _srLabel = _savingsRate >= 50 ? 'EXCELLENT' : _savingsRate >= 35 ? 'STRONG' : _savingsRate >= 20 ? 'MODERATE' : 'LOW';
+    // TheBull savings rate heuristic: approximate years to FIRE from SR alone (starting from zero)
+    const _srYearsBull = _savingsRate >= 60 ? 12 : _savingsRate >= 50 ? 17 : _savingsRate >= 40 ? 22 : _savingsRate >= 30 ? 28 : 35;
+
+    // Portfolio progress
+    const _firePct = _investableVal > 0 ? Math.min(100, _investableVal / _fireNum320 * 100) : 0;
+    const _fireBarColor = _firePct >= 80 ? 'var(--green)' : _firePct >= 40 ? '#fbbf24' : '#a78bfa';
+
+    // Monte Carlo confidence (simplified Bengen/Trinity outcomes for 33yr retirement)
+    const _swr = _fireNum320 > 0 ? _annualWithdrawal / _fireNum320 : 0.04;
+    let _mcConf = _swr <= 0.035 ? 99 : _swr <= 0.0375 ? 98 : _swr <= 0.04 ? 95 : 90;
+    if (aiConc > 40) _mcConf = Math.max(85, _mcConf - 4); // sequence risk penalty for high AI concentration
+
+    const _mcColor = _mcConf >= 97 ? 'var(--green)' : _mcConf >= 93 ? '#fbbf24' : 'var(--red)';
+    const _seqRiskNote = aiConc > 40
+      ? 'High AI/tech concentration (' + aiConc.toFixed(0) + '%) amplifies sequence risk. Diversify into low-beta income stocks 3-5yr before FIRE date.'
+      : 'Sequence risk moderate. Transition to EUR/CHF income stocks 3-5yr before FIRE to reduce volatility at withdrawal start.';
+
+    // Build HTML — all interpolated values are computed numbers, not user strings
+    const _f300k = Math.round(_fireNum300 / 1000);
+    const _f320k = Math.round(_fireNum320 / 1000);
+    const _f345k = Math.round(_fireNum345 / 1000);
+    const _coastK = Math.round(_coastNum / 1000);
+    const _invK = Math.round(_investableVal).toLocaleString();
+    const _yrsStr = _yearsToFire != null ? _yearsToFire + 'yr' : '> 60yr';
+    const _yrSub = _fireYear ? _fireYear + ' · age ' + _fireAge : 'increase savings';
+
+    _fireEl.innerHTML = '<div class="strat-card">'
+
+      // --- Input grid ---
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">'
+      + [['fireMonthlySpend','Monthly spend (€)',_fireMonthlySpend,500,10000,100],
+         ['fireMonthlySave','Monthly savings (€)',_fireMonthlySave,100,10000,100],
+         ['fireMonthlyIncome','Monthly net income (€)',_fireMonthlyIncome,500,20000,200],
+         ['fireCurrentAge','Current age',_currentAge,18,60,1],
+         ['fireTargetAge','Target FIRE age',_fireTargetAge,35,70,1]]
+        .map(([k,lbl,v,mn,mx,st]) =>
+          '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">' + lbl + '</div>'
+          + '<input type="number" value="' + v + '" min="' + mn + '" max="' + mx + '" step="' + st + '"'
+          + ' style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:12px"'
+          + ' oninput="localStorage.setItem(\'' + k + '\',this.value);renderStrategy(window._lastPositions||[],window._lastLifetime||{})"'
+          + '></div>').join('')
+      + '</div>'
+
+      // --- Progress bar ---
+      + '<div style="margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'
+      + '<span style="color:var(--muted)">Portfolio progress to FIRE (IE 3.75% SWR)</span>'
+      + '<span style="color:' + _fireBarColor + ';font-weight:700">' + _firePct.toFixed(1) + '%</span></div>'
+      + '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">'
+      + '<div style="height:100%;width:' + _firePct.toFixed(1) + '%;background:' + _fireBarColor + ';border-radius:4px;transition:width .3s"></div></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:3px;color:var(--muted)">'
+      + '<span>Investable: <strong style="color:var(--text)">€' + _invK + '</strong></span>'
+      + '<span>IE FIRE target: <strong style="color:var(--text)">€' + _f320k + 'k</strong></span></div></div>'
+
+      // --- Three FIRE numbers ---
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #60a5fa">'
+      + '<div style="font-size:9px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Regola del 300</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f300k + 'k</div>'
+      + '<div style="font-size:10px;color:var(--muted)">4.0% SWR — base</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #a78bfa">'
+      + '<div style="font-size:9px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">IE Rule of 320</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f320k + 'k</div>'
+      + '<div style="font-size:10px;color:var(--muted)">3.75% SWR — IE CGT-adj</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #fbbf24">'
+      + '<div style="font-size:9px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Regola del 345</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f345k + 'k</div>'
+      + '<div style="font-size:10px;color:var(--muted)">3.48% SWR — max conservative</div></div></div>'
+
+      // --- Key metrics ---
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px">'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Years to FIRE</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + (_yearsToFire != null && _yearsToFire <= 20 ? 'var(--green)' : '#fbbf24') + '">' + _yrsStr + '</div>'
+      + '<div style="font-size:10px;color:var(--muted)">' + _yrSub + ' @ 7% nominal</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Savings Rate</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + _srColor + '">' + _savingsRate.toFixed(0) + '%</div>'
+      + '<div style="font-size:10px;color:var(--muted)">' + _srLabel + ' · ~' + _srYearsBull + 'yr from zero (TheBull)</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Monte Carlo</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + _mcColor + '">' + _mcConf + '%</div>'
+      + '<div style="font-size:10px;color:var(--muted)">success rate · 33yr retirement</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border:1px solid ' + (_isCoastFIRE ? 'var(--green)' : 'var(--border)') + '">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Coast FIRE</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + (_isCoastFIRE ? 'var(--green)' : '#a78bfa') + '">' + (_isCoastFIRE ? '✓ HIT' : '€' + _coastK + 'k') + '</div>'
+      + '<div style="font-size:10px;color:var(--muted)">' + (_isCoastFIRE ? 'could coast to FIRE at ' + _fireTargetAge : 'to coast to FIRE at age ' + _fireTargetAge) + '</div></div></div>'
+
+      // --- Sequence risk note ---
+      + '<div style="font-size:11px;padding:8px 10px;background:#a78bfa0a;border-radius:5px;border-left:2px solid #a78bfa;color:var(--muted);line-height:1.6;margin-bottom:10px">'
+      + '<strong style="color:#a78bfa">Sequence of returns risk:</strong> ' + _seqRiskNote + '</div>'
+
+      // --- IE tax note ---
+      + '<div style="font-size:10px;color:var(--muted);line-height:1.7;padding:0 2px">'
+      + '<strong style="color:var(--text)">IE tax note:</strong> IE Rule of 320 uses 3.75% SWR to account for 33% CGT on stock gains at withdrawal (vs standard 4%). '
+      + 'UCITS ETFs face 41% exit tax — avoid for FIRE portfolio; use individual stocks + ETCs only. '
+      + 'Annual €1,270 CGT exemption: use every December to harvest gains/losses and reset cost basis. '
+      + 'DIRT (33%) applies to deposit/bond income — factor into withdrawal planning. '
+      + 'No Irish "imposta di bollo" equivalent: slight advantage vs Italian framework.<br>'
+      + '<strong style="color:var(--text)">PRSA/pension:</strong> contributions get income tax relief at marginal rate (40% for higher earners) — maximise pension before taxable accounts for FIRE capital efficiency.'
+      + '</div>'
+
+      + '</div>'; // end strat-card
+  }
+
+  // Expose positions + lifetime for FIRE re-render on input change
+  window._lastPositions = positions;
+  window._lastLifetime  = lifetime;
 
   // ── Suggestions — ranked by actual portfolio gaps ────────────────
   const held = new Set(positions.map(p => p.ticker));
