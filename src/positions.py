@@ -81,6 +81,12 @@ TICKER_NAMES = {
     "ARKK": "ARK Innovation ETF",
     "BOTZ": "Global X Robotics & AI ETF",
     "AIQ": "Global X AI & Technology ETF",
+    # House savings CORE + defence watch
+    "UCG.MI": "UniCredit SpA",
+    "NOVN.SW": "Novartis AG",
+    "ENEL.MI": "Enel SpA",
+    "LDO.MI": "Leonardo SpA",
+    "RHM.DE": "Rheinmetall AG",
 }
 
 BUCKET_MAP = {

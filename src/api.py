@@ -51,6 +51,10 @@ WATCHLIST_BASE = [
     "SPY", "QQQ", "VWRL.AS", "ASML.AS",
     # House savings growth satellite
     "NU", "PYPL", "ABNB",
+    # House savings CORE candidates
+    "UCG.MI", "NOVN.SW", "ENEL.MI",
+    # Defence / 2027 HC watch
+    "LDO.MI", "RHM.DE",
 ]
 
 DEPLOYMENTS = []

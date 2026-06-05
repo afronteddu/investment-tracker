@@ -1529,6 +1529,28 @@ const SUGGESTION_POOL = [
     bearCase:'Current 52-wk range $23–$40, trading at lows — governance issue needs resolution. Currency risk (USD ADR but INR underlying).',
     conviction:'MEDIUM — research governance issue first',
   },
+
+  // ── House savings CORE: EUR/CHF income floor ──────────────────
+  {
+    ticker:'UCG.MI', sector:'Financials / Banking', geo:'Europe (IT)', ccy:'EUR',
+    priority:'house', bucket:'house_savings',
+    exchange:'Borsa Italiana (UCG.MI)', degiro:'✓ Available',
+    buyGuide:'20–30 shares (~€880–1,320 at ~€44). DCA monthly — income floor from day 1.',
+    diversifies:'EUR-denominated bank income. Zero USD/GBP FX risk. 7%+ dividend yield + active buyback programme = highest total return in house savings CORE tier.',
+    why:'UniCredit — best-capitalised large European bank (CET1 >16%). Dividend + buybacks compound at ~10%/yr total return even with zero price appreciation. Italian exposure means direct EUR yield, no currency drag. ⚠ β0.9 — highest beta in CORE: most exposed in a 2028–29 credit shock. Pair with ENEL.MI (β0.5) to balance. Stock — 33% CGT.',
+    bearCase:'Italian sovereign spread widening. ECB rate cuts compress NIM faster than expected. Euro area recession re-prices financials.',
+    conviction:'HIGH — house savings CORE',
+  },
+  {
+    ticker:'NOVN.SW', sector:'Healthcare / Pharma', geo:'Europe (CH)', ccy:'CHF',
+    priority:'house', bucket:'house_savings',
+    exchange:'SIX Swiss Exchange (NOVN.SW)', degiro:'✓ Available',
+    buyGuide:'5–8 shares (~CHF500–800). CHF gives a natural FX cushion against EUR weakness.',
+    diversifies:'CHF-denominated defensive. Healthcare sector is negative-correlated to AI selloffs. Post-Sandoz spinoff = clean focus on high-margin drugs (oncology, immunology, cardiovascular). No binary catalyst risk.',
+    why:'Novartis — ~4% dividend yield in CHF, β0.4 (lowest-beta CHF name available). Post-Sandoz spinoff the remaining business has higher margins and a cleaner pipeline. Preferred over Roche (ROG.SW has binary CT-388 Phase 2 risk in 2026–27). A miss there re-rates ROG down hard inside the 3yr house savings window. NOVN avoids that. Stock — 33% CGT.',
+    bearCase:'CHF/EUR appreciation reduces EUR return on dividends. Biosimilar competition on blockbusters (Entresto, Cosentyx).',
+    conviction:'HIGH — house savings CORE. Preferred CHF pharma over ROG.SW.',
+  },
 ];
 
 function renderStrategy(positions, lifetime) {
@@ -2234,8 +2256,8 @@ function renderStrategy(positions, lifetime) {
       if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
     });
   }
-  // Always show 2027 HC candidates + EM
-  available.filter(s => ['hc2027','em'].includes(s.priority)).forEach(s => {
+  // Always show 2027 HC candidates + EM + house savings
+  available.filter(s => ['hc2027','em','house'].includes(s.priority)).forEach(s => {
     if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
   });
   // Fill any remaining from pool
@@ -2247,10 +2269,11 @@ function renderStrategy(positions, lifetime) {
     energy:  { label:'Energy / Power', color:'#fbbf24' },
     hc2027:  { label:'2027 HC Watch', color:'#f472b6' },
     em:      { label:'EM / India Growth', color:'#34d399' },
+    house:   { label:'House Savings CORE', color:'#fb923c' },
   };
 
-  const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : 'var(--cyan)';
-  const bucketLabel = b => b === 'high_conviction' ? 'HC Watch' : b === 'growth' ? 'Growth' : 'Retirement';
+  const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : b === 'house_savings' ? '#fb923c' : 'var(--cyan)';
+  const bucketLabel = b => b === 'high_conviction' ? 'HC Watch' : b === 'growth' ? 'Growth' : b === 'house_savings' ? 'House' : 'Retirement';
 
   const convictionBadge = c => {
     if (c && c.startsWith('HIGH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#4ade8022;color:#4ade80">HIGH</span>`;
