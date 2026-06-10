@@ -149,10 +149,18 @@ def get_fx_rates() -> dict[str, float]:
     return dict(_fx_cache)
 
 
+def currency_to_eur_rate(currency: str) -> float:
+    """Return the multiplier to convert 1 unit of currency → EUR.
+    Handles Yahoo's GBp (pence) quirk for LSE-listed securities."""
+    if not currency or currency == "EUR":
+        return 1.0
+    if currency == "GBp":
+        return get_fx_rates().get("GBP", 1.15) / 100
+    return get_fx_rates().get(currency, 1.0)
+
+
 def to_eur(amount: float, currency: str) -> float:
-    if currency == "EUR" or not currency:
-        return amount
-    return amount * get_fx_rates().get(currency, 1.0)
+    return amount * currency_to_eur_rate(currency)
 
 
 def fetch_quotes(tickers: list[str]) -> dict[str, dict]:

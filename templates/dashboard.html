@@ -1174,7 +1174,9 @@ function renderSummary(positions, fx) {
   const hcPnlPct = hcCost > 0 ? (hcVal - hcCost) / hcCost * 100 : 0;
   const hcProg = Math.min(100, hcVal / HC_TARGET * 100);
   const hcColor = hcVal >= HC_TARGET ? 'var(--green)' : hcVal >= hcCost * 1.5 ? '#fbbf24' : 'var(--purple)';
-  const daysToWindow = Math.max(0, Math.round((new Date('2026-11-11') - new Date()) / 86400000));
+  const hcFirstBuyDate = hcPositions.map(p=>p.first_buy_date).filter(Boolean).sort()[0];
+  const hcWindowStart = hcFirstBuyDate ? new Date(new Date(hcFirstBuyDate).setMonth(new Date(hcFirstBuyDate).getMonth()+6)) : new Date('2026-11-11');
+  const daysToWindow = Math.max(0, Math.round((hcWindowStart - new Date()) / 86400000));
 
   if (hcVal > 0) {
     E('s-hc-val').textContent = fmtEur(hcVal);
@@ -1589,7 +1591,7 @@ async function init() {
 }
 
 // ── Strategy Advisor ─────────────────────────────────────────────
-const BUCKET_TARGETS = { retirement: 35, growth: 30, high_conviction: 25, house_savings: 10 };
+const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25, house_savings: 0 };
 const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6', house_savings: '#fb923c' };
 const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction', house_savings: 'House Savings' };
 
@@ -1892,10 +1894,10 @@ function renderPlaybook(positions, lifetime) {
   );
 
   const section2 = card('2. Bucket Rules — Live', 'var(--text)',
-    row('Retirement', retPct + '% of portfolio (target 35%)', Math.abs(retPct-35)>10?'#fbbf24':'#4ade80')
-    + row('Growth', groPct + '% (target 30%)', Math.abs(groPct-30)>10?'#fbbf24':'#4ade80')
+    row('Retirement', retPct + '% of portfolio (target 40%)', Math.abs(retPct-40)>10?'#fbbf24':'#4ade80')
+    + row('Growth', groPct + '% (target 35%)', Math.abs(groPct-35)>10?'#fbbf24':'#4ade80')
     + row('High Conviction', hcPct2 + '% (target 25%)', Math.abs(hcPct2-25)>10?'#fbbf24':'#4ade80')
-    + row('House Savings', hsPct2 + '% (target 10%)', Math.abs(hsPct2-10)>10?'#fbbf24':'#4ade80')
+    + row('House Savings', hsPct2 + '% (tracked separately)', '#94a3b8')
     + row('AI/data-centre cluster', aiConc2 + '% of portfolio', aiConc2>40?'#f87171':aiConc2>30?'#fbbf24':'#4ade80')
     + row('Holdings', heldStr, 'var(--muted)')
     + '<div style="font-size:10px;color:var(--muted);margin-top:6px">HC exit: Nov 2026 – May 2027. Next HC: European defence (LDO.MI/RHM.DE) May/Jun 2027. House savings full exit H1 2029.</div>'
@@ -2186,8 +2188,9 @@ function renderStrategy(positions, lifetime) {
   const currentBarPct = Math.min(100, hcVal  / EXIT_HIGH * 100);
   const lowMarkerPct  = EXIT_LOW / EXIT_HIGH * 100; // = 75%
   const barColor = hcVal >= EXIT_LOW ? 'var(--green)' : hcVal >= hcCost * 1.5 ? '#fbbf24' : '#f472b6';
-  // Exit window: 6-12mo from first buy 2026-05-11
-  const firstBuy = new Date('2026-05-11');
+  // Exit window: 6-12mo from first HC buy (derived from positions data)
+  const hcFirstDates = hcPos.map(p => p.first_buy_date).filter(Boolean).sort();
+  const firstBuy = hcFirstDates.length ? new Date(hcFirstDates[0]) : new Date('2026-05-11');
   const exitStart = new Date(firstBuy); exitStart.setMonth(exitStart.getMonth() + 6);
   const exitEnd   = new Date(firstBuy); exitEnd.setMonth(exitEnd.getMonth() + 12);
   const today = new Date();

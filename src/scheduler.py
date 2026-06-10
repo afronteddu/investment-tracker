@@ -126,7 +126,7 @@ class Scheduler:
         import logging
         _log = logging.getLogger(__name__)
         _log.info("_refresh_quotes_sync starting")
-        from src.quotes import fetch_quotes, day_change_pct, get_fx_rates, is_market_open_us, is_market_open_eu
+        from src.quotes import fetch_quotes, day_change_pct, get_fx_rates, is_market_open_us, is_market_open_eu, currency_to_eur_rate
         from src.positions import TICKER_NAMES, compute_lifetime_stats  # noqa: F401 (used below)
 
         def _signal(pct):
@@ -169,7 +169,7 @@ class Scheduler:
             currency = q.get("currency", "EUR")
             pnl_eur = pnl_pct = current_value = None
             if price is not None:
-                price_eur = price * fx.get(currency, 1.0)
+                price_eur = price * currency_to_eur_rate(currency)
                 current_value = round(pos.shares * price_eur, 2)
                 pnl_eur = round(current_value - pos.total_cost_eur, 2)
                 if pos.total_cost_eur > 0:
@@ -337,7 +337,7 @@ class Scheduler:
 
     def _refresh_history_sync(self):
         from datetime import date, datetime, timedelta
-        from src.quotes import get_fx_rates
+        from src.quotes import get_fx_rates, currency_to_eur_rate
         from src.positions import TICKER_NAMES, compute_closed_positions
 
         positions = self.state.get("positions", {})
@@ -384,7 +384,7 @@ class Scheduler:
                     if row_date < buy_date:
                         continue
                     close = p["close"]
-                    close_eur = close * fx.get(currency, 1.0)
+                    close_eur = close * currency_to_eur_rate(currency)
                     # pct anchored to avg cost — never rebased on period filter
                     pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
                     val = pos.shares * close_eur
@@ -428,7 +428,7 @@ class Scheduler:
                     if row_date < buy_date or row_date > sell_date:
                         continue
                     close = p["close"]
-                    close_eur = close * fx.get(currency, 1.0)
+                    close_eur = close * currency_to_eur_rate(currency)
                     if first_close_eur is None:
                         first_close_eur = close_eur
                     # % anchored to first yahoo close in holding period — transaction
@@ -759,13 +759,13 @@ class Scheduler:
         # 7. Portfolio value sanity check
         quotes_cache = self.state.get("quotes_cache", {})
         total_value = 0.0
-        fx_rates = self.state.get("fx_cache", {})
         for ticker, pos in positions.items():
             q = quotes_cache.get(ticker, {})
             price = q.get("price")
             currency = q.get("currency", "EUR")
             if price:
-                total_value += pos.shares * price * fx_rates.get(currency, 1.0)
+                from src.quotes import currency_to_eur_rate as _cte
+                total_value += pos.shares * price * _cte(currency)
         if total_value > 0:
             ok.append(f"✅ Portfolio value: €{total_value:,.0f}")
         else:

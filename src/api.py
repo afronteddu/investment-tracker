@@ -34,7 +34,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.positions import compute_positions, compute_lifetime_stats, TICKER_NAMES
-from src.quotes import fetch_quotes, day_change_pct, is_market_open_us, is_market_open_eu, to_eur, get_fx_rates
+from src.quotes import fetch_quotes, day_change_pct, is_market_open_us, is_market_open_eu, to_eur, get_fx_rates, currency_to_eur_rate
 from src.scheduler import Scheduler
 
 # Base watchlist — always scanned
@@ -191,8 +191,7 @@ def _build_portfolio_data() -> list[dict]:
         current_value = None
         currency = q.get("currency", "EUR")
         if price is not None:
-            rate = fx.get(currency, 1.0)
-            price_eur = price * rate
+            price_eur = price * currency_to_eur_rate(currency)
             current_value = round(pos.shares * price_eur, 2)
             pnl_eur = round(current_value - pos.total_cost_eur, 2)
             if pos.total_cost_eur > 0:
