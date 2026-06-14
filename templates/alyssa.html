@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alyssa ISA Tracker</title>
+  <style>
+    :root {
+      --bg: #0a0c10; --surface: #13161d; --surface2: #1a1f2b; --border: #222736;
+      --text: #e2e8f0; --muted: #64748b;
+      --green: #4ade80; --red: #f87171; --yellow: #fbbf24;
+      --blue: #60a5fa; --purple: #c084fc; --cyan: #22d3ee; --orange: #fb923c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--purple); }
+    .header-right { display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--muted); }
+    .phase-badge { background: rgba(192,132,252,0.15); color: var(--purple); border: 1px solid rgba(192,132,252,0.3); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+    nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; overflow-x: auto; }
+    .tab { padding: 12px 18px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; white-space: nowrap; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .kpi-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .kpi-green { color: var(--green); } .kpi-yellow { color: var(--yellow); } .kpi-blue { color: var(--blue); } .kpi-orange { color: var(--orange); } .kpi-purple { color: var(--purple); } .kpi-red { color: var(--red); }
+    .section { margin-bottom: 28px; }
+    .section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+    .card h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--purple); }
+    .card h3.blue { color: var(--blue); } .card h3.green { color: var(--green); } .card h3.yellow { color: var(--yellow); } .card h3.orange { color: var(--orange); }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { font-size: 12px; color: var(--muted); }
+    .info-val { font-size: 13px; font-weight: 600; text-align: right; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .two-col, .three-col { grid-template-columns: 1fr; } }
+    .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; line-height: 1.5; }
+    .alert-purple { background: rgba(192,132,252,0.1); border: 1px solid rgba(192,132,252,0.3); color: var(--purple); }
+    .alert-yellow { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--yellow); }
+    .alert-green { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
+    .alert-red { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+    .alert-blue { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.3); color: var(--blue); }
+    .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .badge-purple { background: rgba(192,132,252,0.15); color: var(--purple); border: 1px solid rgba(192,132,252,0.3); }
+    .badge-green { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .badge-blue { background: rgba(96,165,250,0.15); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+    .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+    .badge-red { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+    .badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); border: 1px solid rgba(251,146,60,0.3); }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: left; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    .progress-bar { height: 8px; border-radius: 4px; background: var(--surface2); border: 1px solid var(--border); overflow: hidden; margin-top: 6px; }
+    .progress-fill { height: 100%; border-radius: 4px; background: var(--purple); transition: width 0.3s; }
+    .progress-fill-green { background: var(--green); }
+    .progress-fill-yellow { background: var(--yellow); }
+    .progress-fill-orange { background: var(--orange); }
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .tl-step { display: flex; gap: 14px; }
+    .tl-left { display: flex; flex-direction: column; align-items: center; }
+    .tl-dot { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+    .tl-dot-done { background: rgba(74,222,128,0.2); color: var(--green); border: 1px solid rgba(74,222,128,0.4); }
+    .tl-dot-active { background: rgba(192,132,252,0.2); color: var(--purple); border: 1px solid rgba(192,132,252,0.4); }
+    .tl-dot-todo { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .tl-line { width: 1px; flex: 1; background: var(--border); min-height: 16px; }
+    .tl-body { padding-bottom: 20px; flex: 1; }
+    .tl-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 28px; }
+    .tl-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .stock-row { display: grid; grid-template-columns: 60px 1fr auto auto auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .stock-row:last-child { border-bottom: none; }
+    .stock-ticker { font-size: 13px; font-weight: 700; }
+    .stock-name { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .stock-thesis { font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .stock-price { font-size: 13px; font-weight: 600; text-align: right; }
+    .stock-prob { font-size: 11px; color: var(--muted); text-align: right; }
+    .stock-alloc { font-size: 13px; font-weight: 700; color: var(--purple); text-align: right; }
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .btn { background: var(--purple); color: #000; border: none; border-radius: 6px; padding: 7px 16px; font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn-ghost { background: transparent; color: var(--purple); border: 1px solid rgba(192,132,252,0.3); }
+    .btn-ghost:hover { background: rgba(192,132,252,0.1); }
+    .pot-card { border-radius: 12px; padding: 20px; border: 1px solid; }
+    .pot-invest { background: rgba(96,165,250,0.05); border-color: rgba(96,165,250,0.25); }
+    .pot-speculative { background: rgba(192,132,252,0.05); border-color: rgba(192,132,252,0.25); }
+    .pot-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .pot-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+    .countdown-ring { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    .countdown-number { font-size: 48px; font-weight: 800; letter-spacing: -2px; color: var(--purple); }
+    .countdown-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Alyssa <span>ISA</span></div>
+  <div class="header-right">
+    <span class="phase-badge" id="phaseBadge">Active — 16 months to exit</span>
+    <span id="headerDate"></span>
+    <a href="/" style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px;transition:all .15s" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">📈 Portfolio</a>
+  </div>
+</header>
+
+<nav>
+  <div class="tab active" data-tab="overview">Overview</div>
+  <div class="tab" data-tab="strategy">Strategy</div>
+  <div class="tab" data-tab="positions">Positions</div>
+  <div class="tab" data-tab="gifts">Gift Plan</div>
+  <div class="tab" data-tab="tax">Tax Rules</div>
+  <div class="tab" data-tab="exit">Exit Plan</div>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 1 — OVERVIEW
+═══════════════════════════════════════════════════════ -->
+<div class="page active" id="tab-overview">
+
+  <div class="alert alert-purple">
+    Alyssa's UK Stocks &amp; Shares ISA — zero UK tax on all gains inside the wrapper. Hard exit October 2027 before Irish tax residency begins. <strong>Two-pot strategy:</strong> InvestEngine (ETFs, conservative) + Trading 212 (individual stocks, speculative).
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">ISA Contributed</div>
+      <div class="kpi-value kpi-purple" id="kpiContributed">£1,300</div>
+      <div class="kpi-sub" id="kpiContribSub">£250/mo DCA ongoing</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Days to Hard Exit</div>
+      <div class="kpi-value kpi-yellow" id="kpiDays">—</div>
+      <div class="kpi-sub">Liquidate by Oct 2027</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Projected Total In</div>
+      <div class="kpi-value kpi-blue" id="kpiProjected">—</div>
+      <div class="kpi-sub">DCA + Andrea gifts</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">ISA Annual Allowance</div>
+      <div class="kpi-value kpi-green">£20,000</div>
+      <div class="kpi-sub">2025-26 + 2026-27 tax year</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Andrea CAT Gift (2026)</div>
+      <div class="kpi-value kpi-orange">€3,000</div>
+      <div class="kpi-sub">Annual limit — no exceptions</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Speculative Pot Target</div>
+      <div class="kpi-value kpi-purple">4×</div>
+      <div class="kpi-sub">High conviction / high risk</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Contribution Progress</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:600;">Total projected into ISA by Oct 2027</span>
+        <span style="font-size:13px;font-weight:700;color:var(--purple)" id="progressLabel">—</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted);">
+        <span>Today: <span id="progressToday">—</span></span>
+        <span>Target by exit: <span id="progressTarget">—</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Two-Pot Summary</div>
+    <div class="two-col">
+      <div class="pot-card pot-invest">
+        <div class="pot-title" style="color:var(--blue)">Pot 1 — InvestEngine ETF</div>
+        <div class="pot-subtitle">Conservative · ETF-only platform</div>
+        <div class="info-row"><span class="info-key">Platform</span><span class="info-val">InvestEngine (zero platform fee)</span></div>
+        <div class="info-row"><span class="info-key">Strategy</span><span class="info-val">S2 Conservative (FWRG 40% / VHYL 25% / MINV 20% / IGLN 15%)</span></div>
+        <div class="info-row"><span class="info-key">Monthly DCA</span><span class="info-val" style="color:var(--blue)">£250/month → FWRG</span></div>
+        <div class="info-row"><span class="info-key">Lump sum (£4k)</span><span class="info-val">Split per S2 allocation</span></div>
+        <div class="info-row"><span class="info-key">Objective</span><span class="info-val">Capital preservation + moderate growth</span></div>
+        <div class="info-row"><span class="info-key">Bear case (Oct 2027)</span><span class="info-val" style="color:var(--yellow)">~£3,674 (saves £474 vs all-world)</span></div>
+        <div class="info-row"><span class="info-key">Base case</span><span class="info-val" style="color:var(--green)">~£4,384</span></div>
+      </div>
+      <div class="pot-card pot-speculative">
+        <div class="pot-title" style="color:var(--purple)">Pot 2 — Trading 212 Speculative</div>
+        <div class="pot-subtitle">High-risk · Individual US stocks</div>
+        <div class="info-row"><span class="info-key">Platform</span><span class="info-val">Trading 212 ISA (since Apr 2024: multiple ISAs/year allowed)</span></div>
+        <div class="info-row"><span class="info-key">Funded by</span><span class="info-val">Andrea €3k gift (2026) + €3k (Jan 2027)</span></div>
+        <div class="info-row"><span class="info-key">Deploy as</span><span class="info-val">Lump sum — time in market matters</span></div>
+        <div class="info-row"><span class="info-key">Picks</span><span class="info-val">SMCI · SERV · CRWV · SOUN</span></div>
+        <div class="info-row"><span class="info-key">Objective</span><span class="info-val">4× speculative return on AI/tech boom</span></div>
+        <div class="info-row"><span class="info-key">Bear case</span><span class="info-val" style="color:var(--red)">Could lose 50–70% — size accordingly</span></div>
+        <div class="info-row"><span class="info-key">Hard rule</span><span class="info-val" style="color:var(--yellow)">Exit all positions by Jul 2027 latest</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Key Dates</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Date</th><th>Event</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--green)">Jun 2026</td><td>Open Trading 212 ISA</td><td><span class="badge badge-purple">Do now</span></td></tr>
+          <tr><td style="color:var(--green)">Jun 2026</td><td>Andrea transfers €3,000 to Alyssa (direct bank transfer)</td><td><span class="badge badge-purple">Do now</span></td></tr>
+          <tr><td style="color:var(--green)">Jun 2026</td><td>Deploy speculative picks (Pot 2)</td><td><span class="badge badge-purple">Do now</span></td></tr>
+          <tr><td>Jan 2027</td><td>Andrea transfers second €3,000 (new tax year)</td><td><span class="badge badge-yellow">Planned</span></td></tr>
+          <tr><td>Jan 2027</td><td>Add to speculative positions or rebalance</td><td><span class="badge badge-yellow">Planned</span></td></tr>
+          <tr><td style="color:var(--yellow)">Jul 2027</td><td>Review + begin winding down speculative pot</td><td><span class="badge badge-orange">Critical</span></td></tr>
+          <tr><td style="color:var(--red)">Sep 2027</td><td>Liquidate ALL positions — InvestEngine + Trading 212</td><td><span class="badge badge-red">Hard deadline</span></td></tr>
+          <tr><td style="color:var(--red)">Oct 2027</td><td>Alyssa moves to Dublin. Cash arrives clean — no Irish tax.</td><td><span class="badge badge-green">Exit complete</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 2 — STRATEGY
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-strategy">
+
+  <div class="alert alert-yellow">
+    <strong>Critical platform constraint:</strong> InvestEngine is ETF-only — no individual stocks whatsoever. The speculative picks require a separate ISA on Trading 212. UK rules since April 2024 allow multiple ISAs of the same type per year, so Alyssa can hold both simultaneously.
+  </div>
+
+  <div class="section">
+    <div class="section-title">Pot 1 — InvestEngine Conservative (unchanged from v3 analysis)</div>
+    <div class="card-grid">
+      <div class="card">
+        <h3 class="blue">S2 Allocation — Lump Sum £4,000</h3>
+        <div class="info-row"><span class="info-key">FWRG (Invesco All-World)</span><span class="info-val" style="color:var(--blue)">40% — £1,600</span></div>
+        <div class="info-row"><span class="info-key">VHYL (Vanguard Hi-Div)</span><span class="info-val">25% — £1,000</span></div>
+        <div class="info-row"><span class="info-key">MINV (iShares Min Vol)</span><span class="info-val">20% — £800</span></div>
+        <div class="info-row"><span class="info-key">IGLN (Physical Gold)</span><span class="info-val">15% — £600</span></div>
+        <div class="divider"></div>
+        <div class="info-row"><span class="info-key">Bear case outcome</span><span class="info-val" style="color:var(--yellow)">£3,674 (−8.2%)</span></div>
+        <div class="info-row"><span class="info-key">Base case outcome</span><span class="info-val" style="color:var(--green)">£4,384 (+9.6%)</span></div>
+        <div class="info-row"><span class="info-key">Bull case outcome</span><span class="info-val" style="color:var(--green)">£4,806 (+20.2%)</span></div>
+        <div class="info-row"><span class="info-key">Insurance ratio</span><span class="info-val">8.5:1 vs all-in FWRG</span></div>
+      </div>
+      <div class="card">
+        <h3 class="blue">Monthly DCA — £250/month</h3>
+        <div class="info-row"><span class="info-key">Target</span><span class="info-val">100% FWRG (unchanged)</span></div>
+        <div class="info-row"><span class="info-key">Months remaining</span><span class="info-val" id="monthsRemaining">—</span></div>
+        <div class="info-row"><span class="info-key">DCA total remaining</span><span class="info-val" id="dcaRemaining">—</span></div>
+        <div class="info-row"><span class="info-key">Why not diversify DCA?</span><span class="info-val">Small amounts — fees on 4 ETFs not worth it</span></div>
+        <div class="divider"></div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">The DCA is pure market exposure — it rides the ups and downs and builds the position steadily. The lump sum S2 allocation provides the defensive cushion for the hard exit date.</p>
+      </div>
+      <div class="card">
+        <h3 class="blue">Key ETF Details</h3>
+        <div class="info-row"><span class="info-key">FWRG — IE000716YHJ7</span><span class="info-val">OCF 0.15%</span></div>
+        <div class="info-row"><span class="info-key">VHYL — IE00BK5BR626</span><span class="info-val">OCF 0.29% · dividends reinvested</span></div>
+        <div class="info-row"><span class="info-key">MINV — IE00B8FHGS14</span><span class="info-val">OCF 0.30% · min volatility factor</span></div>
+        <div class="info-row"><span class="info-key">IGLN — IE00B4ND3602</span><span class="info-val">OCF 0.12% · physical gold</span></div>
+        <div class="divider"></div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">All rebalancing trades inside the ISA are CGT-free. No Irish deemed disposal issues while Alyssa is UK-resident.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Pot 2 — Trading 212 Speculative AI/Tech Picks</div>
+
+    <div class="alert alert-purple" style="margin-bottom:16px;">
+      Funded entirely by Andrea's annual €3k CAT-exempt gifts (direct bank transfer to Alyssa). Deployed as lump sum — not DCA — because the thesis is binary (governance re-rate / product catalyst), not time-averaged.
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Allocation — £3,000 (2026 gift, ~£2,560 after GBP/EUR)</h3>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th><th>Name</th><th>Price (Jun 2026)</th><th>Allocation</th><th>4× Target</th><th>4× Prob</th><th>-50% Risk</th><th>Thesis</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong style="color:var(--blue)">SMCI</strong></td>
+              <td>Super Micro Computer</td>
+              <td>~$30.46</td>
+              <td style="color:var(--purple);font-weight:700;">£1,400 (47%)</td>
+              <td style="color:var(--green)">$122</td>
+              <td><span class="badge badge-green">~20%</span></td>
+              <td><span class="badge badge-yellow">~35%</span></td>
+              <td style="font-size:11px;color:var(--muted)">Governance discount resolves → re-rates to 0.8–1.0× sales on $51B FY27 revenue. Cheapest AI server stock on fundamentals.</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--purple)">SERV</strong></td>
+              <td>Serve Robotics</td>
+              <td>~$7.44</td>
+              <td style="color:var(--purple);font-weight:700;">£800 (27%)</td>
+              <td style="color:var(--green)">$30</td>
+              <td><span class="badge badge-yellow">~18%</span></td>
+              <td><span class="badge badge-red">~50%</span></td>
+              <td style="font-size:11px;color:var(--muted)">Autonomous delivery at scale. 2,000 robots in 20 cities. 93.7% gross margin model. $633M cap — small enough to move on contract wins.</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--cyan)">CRWV</strong></td>
+              <td>CoreWeave</td>
+              <td>~$100.55</td>
+              <td style="color:var(--purple);font-weight:700;">£500 (17%)</td>
+              <td style="color:var(--green)">$402</td>
+              <td><span class="badge badge-yellow">~15%</span></td>
+              <td><span class="badge badge-yellow">~35%</span></td>
+              <td style="font-size:11px;color:var(--muted)">AI cloud infra — first mover, $12.7B 2026 revenue at 147% growth. If AI capex supercycle continues, valuation re-rates. IPO insider selling is the risk.</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--orange)">SOUN</strong></td>
+              <td>SoundHound AI</td>
+              <td>~$6.90</td>
+              <td style="color:var(--purple);font-weight:700;">£300 (10%)</td>
+              <td style="color:var(--green)">$28</td>
+              <td><span class="badge badge-red">~12%</span></td>
+              <td><span class="badge badge-red">~45%</span></td>
+              <td style="font-size:11px;color:var(--muted)">Voice AI infrastructure for enterprise. Nvidia-backed. Analyst high target $20 (3×). Small position — lottery ticket on a major OEM win.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <h3>Lump Sum vs DCA — Why Lump Sum</h3>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7;">
+          For these specific picks, DCA over 16 months is the wrong tool. The thesis for each is binary — SMCI either gets a clean audit and re-rates, or it doesn't. Spreading your entry over 8 months either means:
+          <br><br>
+          (a) The thesis works and your later tranches are buying at the exit price, or
+          <br>(b) The thesis breaks and you're "catching a falling knife" averaging into a value trap.
+          <br><br>
+          <strong style="color:var(--text)">Rule:</strong> Deploy 70% immediately, hold 30% for 4–6 weeks to average in on any broad tech pullback. Do not DCA monthly.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Jan 2027 Second Tranche (£~2,560)</h3>
+        <div class="info-row"><span class="info-key">Source</span><span class="info-val">Andrea's 2027 CAT gift (€3k)</span></div>
+        <div class="info-row"><span class="info-key">Decision point</span><span class="info-val">January 2027 — reassess all positions</span></div>
+        <div class="info-row"><span class="info-key">If SMCI is up 50%+</span><span class="info-val">Add to SERV / SOUN only (don't chase SMCI)</span></div>
+        <div class="info-row"><span class="info-key">If SMCI is flat/down</span><span class="info-val">Add to SMCI if thesis intact</span></div>
+        <div class="info-row"><span class="info-key">Hard rule</span><span class="info-val" style="color:var(--yellow)">No new names — stick to the 4</span></div>
+        <div class="info-row"><span class="info-key">Exit trigger</span><span class="info-val">Sell if up 3×+ before Jul 2027</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Why Not These Names (Do Not Buy)</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Ticker</th><th>Price</th><th>Problem</th></tr></thead>
+        <tbody>
+          <tr><td><strong>PLTR</strong></td><td>~$128</td><td style="color:var(--muted);font-size:12px;">143× P/E, 40× sales. The 4× trade happened at $25–35. Wrong entry point. To 4× from here = $1.2T market cap in 16 months.</td></tr>
+          <tr><td><strong>ARM</strong></td><td>~$381</td><td style="color:var(--muted);font-size:12px;">172× forward P/E. Analyst average $257 — already below current price. 4× = $1.6T market cap. Not realistic.</td></tr>
+          <tr><td><strong>IONQ</strong></td><td>~$58</td><td style="color:var(--muted);font-size:12px;">80× forward sales on quantum hype. Revenue base too small. Analyst average target: $68 (+17%). Not a 4× setup.</td></tr>
+          <tr><td><strong>RGTI</strong></td><td>~$21</td><td style="color:var(--muted);font-size:12px;">Revenue actually declined 34% in 2025. Superconducting qubit technology harder to scale. Pass.</td></tr>
+          <tr><td><strong>RXRX</strong></td><td>~$3.15</td><td style="color:var(--muted);font-size:12px;">Revenue declining. 50%+ loss probability. Biotech binary risk with no near-term catalyst. Worst R/R on the list.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 3 — POSITIONS (manual tracker)
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-positions">
+
+  <div class="alert alert-blue">
+    Manual tracker — update positions here to monitor progress. All data stored locally in your browser.
+  </div>
+
+  <div class="section">
+    <div class="section-title">Pot 1 — InvestEngine Holdings</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>ETF</th><th>ISIN</th><th>Target %</th><th>Units</th><th>Avg Cost</th><th>Current Value</th><th>Notes</th></tr></thead>
+        <tbody id="iePositions">
+          <tr><td><strong style="color:var(--blue)">FWRG</strong></td><td style="font-size:11px;color:var(--muted)">IE000716YHJ7</td><td>40% lump + 100% DCA</td><td>—</td><td>—</td><td>—</td><td style="font-size:11px;color:var(--muted)">Invesco All-World Acc</td></tr>
+          <tr><td><strong style="color:var(--blue)">VHYL</strong></td><td style="font-size:11px;color:var(--muted)">IE00BK5BR626</td><td>25% lump</td><td>—</td><td>—</td><td>—</td><td style="font-size:11px;color:var(--muted)">Vanguard Hi-Div Yield</td></tr>
+          <tr><td><strong style="color:var(--blue)">MINV</strong></td><td style="font-size:11px;color:var(--muted)">IE00B8FHGS14</td><td>20% lump</td><td>—</td><td>—</td><td>—</td><td style="font-size:11px;color:var(--muted)">iShares MSCI Min Vol</td></tr>
+          <tr><td><strong style="color:var(--blue)">IGLN</strong></td><td style="font-size:11px;color:var(--muted)">IE00B4ND3602</td><td>15% lump</td><td>—</td><td>—</td><td>—</td><td style="font-size:11px;color:var(--muted)">iShares Physical Gold</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Pot 2 — Trading 212 Speculative Positions</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Stock</th><th>Exchange</th><th>Shares</th><th>Avg Cost (£)</th><th>Current Price</th><th>Value (£)</th><th>P&amp;L</th><th>Status</th></tr></thead>
+        <tbody id="t212Positions">
+          <tr><td><strong style="color:var(--purple)">SMCI</strong><div style="font-size:11px;color:var(--muted)">Super Micro Computer</div></td><td>NASDAQ</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-yellow">Not opened</span></td></tr>
+          <tr><td><strong style="color:var(--purple)">SERV</strong><div style="font-size:11px;color:var(--muted)">Serve Robotics</div></td><td>NASDAQ</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-yellow">Not opened</span></td></tr>
+          <tr><td><strong style="color:var(--purple)">CRWV</strong><div style="font-size:11px;color:var(--muted)">CoreWeave</div></td><td>NASDAQ</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-yellow">Not opened</span></td></tr>
+          <tr><td><strong style="color:var(--purple)">SOUN</strong><div style="font-size:11px;color:var(--muted)">SoundHound AI</div></td><td>NASDAQ</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-yellow">Not opened</span></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5;">Update this table manually after opening positions. Trading 212 ISA supports US-listed stocks including all NASDAQ names above.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 4 — GIFT PLAN
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-gifts">
+
+  <div class="alert alert-yellow">
+    Sarah's ruling (June 2026): Andrea can gift Alyssa a maximum of <strong>€3,000 per year</strong> under the small gift exemption (CAT). No further exceptions apply as they are not married. There is no "living means" uplift for unmarried couples.
+  </div>
+
+  <div class="section">
+    <div class="section-title">Gift Schedule</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Year</th><th>Amount</th><th>Method</th><th>Target</th><th>Notes</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--green)">2026</strong></td>
+            <td style="color:var(--purple);font-weight:700;">€3,000</td>
+            <td>Direct bank transfer<br><span style="font-size:11px;color:var(--muted)">(Andrea → Alyssa personal account)</span></td>
+            <td>Trading 212 ISA — speculative picks</td>
+            <td style="font-size:11px;color:var(--muted)">Do NOT route via N26 joint account — 50% would still be Andrea's per Sarah's advice. Direct transfer cleanest.</td>
+            <td><span class="badge badge-yellow">Pending</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--blue)">2027 (Jan)</strong></td>
+            <td style="color:var(--purple);font-weight:700;">€3,000</td>
+            <td>Direct bank transfer</td>
+            <td>Top up speculative pot / ISA</td>
+            <td style="font-size:11px;color:var(--muted)">New tax year — fresh €3k allowance resets Jan 1. Transfer early to deploy in January.</td>
+            <td><span class="badge badge-blue">Planned</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Lump Sum vs DCA — The Gift Decision</div>
+    <div class="two-col">
+      <div class="card">
+        <h3 class="green">Case for Lump Sum (Recommended)</h3>
+        <div class="info-row"><span class="info-key">Time in market</span><span class="info-val">Every month you delay = one less month at 4×</span></div>
+        <div class="info-row"><span class="info-key">Thesis nature</span><span class="info-val">Binary events (SMCI audit, SERV contracts) — not time-averaged</span></div>
+        <div class="info-row"><span class="info-key">Hard exit date</span><span class="info-val">16 months is short — DCA over 12 months leaves only 4 months to compound</span></div>
+        <div class="info-row"><span class="info-key">Vanguard research</span><span class="info-val">Lump sum beats DCA ~67% of time over 12 months (diversified portfolios)</span></div>
+        <div class="info-row"><span class="info-key">Verdict</span><span class="info-val" style="color:var(--green)">Deploy €3k immediately as lump sum</span></div>
+      </div>
+      <div class="card">
+        <h3 class="yellow">Pragmatic Mitigation</h3>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;">
+          If you're concerned about entering at a bad time, use a 2-tranche approach — not full monthly DCA:
+        </p>
+        <div class="info-row"><span class="info-key">Tranche 1 (now)</span><span class="info-val" style="color:var(--purple)">70% → £1,790</span></div>
+        <div class="info-row"><span class="info-key">SMCI allocation</span><span class="info-val">£980 (lump — thesis is clear)</span></div>
+        <div class="info-row"><span class="info-key">SERV / CRWV / SOUN</span><span class="info-val">£810 (70% of their allocation)</span></div>
+        <div class="info-row"><span class="info-key">Tranche 2 (4–6 weeks)</span><span class="info-val" style="color:var(--purple)">30% → £770</span></div>
+        <div class="info-row"><span class="info-key">Trigger</span><span class="info-val">Any 5%+ dip in NASDAQ or on position</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">N26 Joint Account — Sarah's Warning</div>
+    <div class="card">
+      <div class="alert alert-red" style="margin-bottom:0">
+        <strong>Do not use N26 to route the gift to the ISA.</strong> Sarah's ruling: if Andrea transfers €6,000 to the joint N26, technically €3,000 is still Andrea's. When that €3,000 flows from N26 to Alyssa's ISA, it constitutes a gift at that point — but it complicates the paper trail and could risk exceeding the €3k annual threshold in the same tax year. Clean route: Andrea → Alyssa's personal UK bank account (direct transfer) → Trading 212 ISA. Keep a short message/email record of the gift for each year.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 5 — TAX RULES
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-tax">
+
+  <div class="section">
+    <div class="section-title">Sarah Burdis — Tax Consultant Findings (June 2026)</div>
+    <div class="card-grid">
+
+      <div class="card">
+        <h3 class="orange">Q1: CAT Gift Limit</h3>
+        <div class="info-row"><span class="info-key">Question</span><span class="info-val" style="font-size:11px;text-align:right;max-width:60%">How much can Andrea transfer without Irish CAT?</span></div>
+        <div class="info-row"><span class="info-key">Answer</span><span class="info-val" style="color:var(--orange)">€3,000/year — no exceptions</span></div>
+        <div class="info-row"><span class="info-key">"Living means" uplift?</span><span class="info-val" style="color:var(--red)">No — not married, not applicable</span></div>
+        <div class="info-row"><span class="info-key">Shared N26 / relationship evidence</span><span class="info-val" style="color:var(--red)">Irrelevant for CAT gift purposes</span></div>
+        <div class="divider"></div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.5;">The €3k small gift exemption is the ceiling. There is no "genuine living together" or "long-term partner" exception in Irish CAT law for unmarried couples.</p>
+      </div>
+
+      <div class="card">
+        <h3 class="orange">Q2: N26 Joint Account</h3>
+        <div class="info-row"><span class="info-key">Question</span><span class="info-val" style="font-size:11px;text-align:right;max-width:60%">Is N26 the cleanest route?</span></div>
+        <div class="info-row"><span class="info-key">Answer</span><span class="info-val" style="color:var(--yellow)">No — use direct transfer</span></div>
+        <div class="info-row"><span class="info-key">N26 joint complication</span><span class="info-val">50% of transfer is still Andrea's</span></div>
+        <div class="info-row"><span class="info-key">Attribution risk</span><span class="info-val">Andrea's 50% → Alyssa ISA = gift at that point</span></div>
+        <div class="divider"></div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.5;">Direct transfer (Andrea's Irish account → Alyssa's UK account) is the cleanest route. Keep a written record: "Annual gift under €3,000 CAT exemption — [year]."</p>
+      </div>
+
+      <div class="card">
+        <h3 class="green">Q3: ISA Proceeds on Arrival in Ireland</h3>
+        <div class="info-row"><span class="info-key">Question</span><span class="info-val" style="font-size:11px;text-align:right;max-width:60%">Are ISA proceeds clean capital when Alyssa arrives?</span></div>
+        <div class="info-row"><span class="info-key">Answer</span><span class="info-val" style="color:var(--green)">Yes — no Irish tax</span></div>
+        <div class="info-row"><span class="info-key">Condition</span><span class="info-val">Liquidate WHILE UK resident</span></div>
+        <div class="info-row"><span class="info-key">Look-back risk?</span><span class="info-val" style="color:var(--green)">None — pre-residency capital</span></div>
+        <div class="info-row"><span class="info-key">Irish Revenue treatment</span><span class="info-val">Funds are pre-residency capital, not taxable</span></div>
+      </div>
+
+      <div class="card">
+        <h3 class="green">Q4: Liquidation Timing</h3>
+        <div class="info-row"><span class="info-key">Question</span><span class="info-val" style="font-size:11px;text-align:right;max-width:60%">Should she liquidate well before departure?</span></div>
+        <div class="info-row"><span class="info-val" style="color:var(--green);font-size:12px;padding:8px 0;">Sarah's exact words: "The ideal time to liquidate would be the year before Alyssa permanently moves to Ireland."</span></div>
+        <div class="info-row"><span class="info-key">Practical recommendation</span><span class="info-val">Liquidate Sep 2027 — 4-6 weeks before move</span></div>
+        <div class="info-row"><span class="info-key">Same calendar year OK?</span><span class="info-val" style="color:var(--yellow)">Technically yes, but earlier is cleaner</span></div>
+        <div class="info-row"><span class="info-key">Hard rule</span><span class="info-val" style="color:var(--red)">Do NOT hold any ISA positions after landing in Dublin</span></div>
+      </div>
+
+      <div class="card">
+        <h3>UK ISA Tax Treatment (Alyssa)</h3>
+        <div class="info-row"><span class="info-key">CGT inside ISA</span><span class="info-val" style="color:var(--green)">£0 — all gains tax-free</span></div>
+        <div class="info-row"><span class="info-key">Income tax on dividends</span><span class="info-val" style="color:var(--green)">£0 — all dividends tax-free</span></div>
+        <div class="info-row"><span class="info-key">Annual ISA allowance</span><span class="info-val">£20,000/year</span></div>
+        <div class="info-row"><span class="info-key">Multiple ISAs</span><span class="info-val" style="color:var(--green)">Allowed since Apr 2024</span></div>
+        <div class="info-row"><span class="info-key">ISA on death</span><span class="info-val">Transfers to spouse/partner's ISA (not relevant here)</span></div>
+        <div class="info-row"><span class="info-key">Irish ETF "deemed disposal"</span><span class="info-val" style="color:var(--green)">N/A — Alyssa is UK resident</span></div>
+      </div>
+
+      <div class="card">
+        <h3 class="yellow">Irish Tax Once Resident (Post Oct 2027)</h3>
+        <div class="info-row"><span class="info-key">Pre-residency capital</span><span class="info-val" style="color:var(--green)">Clean — no Irish tax</span></div>
+        <div class="info-row"><span class="info-key">New investments post-arrival</span><span class="info-val" style="color:var(--yellow)">Full Irish rules apply</span></div>
+        <div class="info-row"><span class="info-key">ETFs / ETCs</span><span class="info-val" style="color:var(--red)">41% exit tax + deemed disposal every 8 yrs</span></div>
+        <div class="info-row"><span class="info-key">Stocks (CGT)</span><span class="info-val">33% on gains — annual €1,270 exemption</span></div>
+        <div class="info-row"><span class="info-key">UK ISA after Irish residency</span><span class="info-val" style="color:var(--red)">Loses tax-free status — gains are taxable</span></div>
+        <div class="divider"></div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.5;">Once Alyssa is Irish-resident, any ISA she holds becomes taxable (Revenue does not recognise UK ISA wrapper). All ISA positions must be liquidated before arrival.</p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 6 — EXIT PLAN
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-exit">
+
+  <div class="section">
+    <div class="section-title">Exit Countdown</div>
+    <div class="two-col" style="align-items:start;">
+      <div class="card" style="text-align:center;">
+        <div class="countdown-ring">
+          <div class="countdown-number" id="exitDays">—</div>
+          <div class="countdown-label">days to hard exit</div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)">October 1, 2027</div>
+      </div>
+      <div class="card">
+        <h3>Exit Rules — Non-Negotiable</h3>
+        <div class="info-row"><span class="info-key" style="color:var(--red)">Hard deadline</span><span class="info-val" style="color:var(--red)">Liquidate 100% by Sep 30, 2027</span></div>
+        <div class="info-row"><span class="info-key">Speculative pot wind-down</span><span class="info-val">Begin selling Jul 2027 — don't wait for peak</span></div>
+        <div class="info-row"><span class="info-key">Early exit trigger</span><span class="info-val" style="color:var(--green)">If any position up 3×+ before May 2027 → sell</span></div>
+        <div class="info-row"><span class="info-key">Loss cut trigger</span><span class="info-val">If thesis broken (e.g. new SMCI scandal) → sell</span></div>
+        <div class="info-row"><span class="info-key">Conservative pot</span><span class="info-val">Sell all ETFs, let InvestEngine settle (T+2)</span></div>
+        <div class="info-row"><span class="info-key">Cash destination</span><span class="info-val">Alyssa's UK bank account → move with her</span></div>
+        <div class="info-row"><span class="info-key">Irish Revenue treatment</span><span class="info-val" style="color:var(--green)">Pre-residency capital — no Irish tax due</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Exit Checklist</div>
+    <div class="two-col">
+      <div class="card">
+        <h3>Speculative Pot (Trading 212)</h3>
+        <div class="checklist" id="checkSpecExit"></div>
+      </div>
+      <div class="card">
+        <h3>Conservative Pot (InvestEngine)</h3>
+        <div class="checklist" id="checkConExit"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Scenario Projections at Exit (Oct 2027)</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Scenario</th><th>InvestEngine Pot</th><th>Speculative Pot (£3k deployed)</th><th>Total</th><th>Andrea gifts returned</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-green">Bull — AI boom continues</span></td>
+            <td style="color:var(--green)">~£7,200</td>
+            <td style="color:var(--green)">~£12,000 (4×)</td>
+            <td style="color:var(--green);font-weight:700">~£19,200</td>
+            <td style="font-size:11px;color:var(--muted)">Gifts were £~5,120; pot returned £12k. Net benefit to Alyssa: ~£6,880</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-blue">Base — moderate growth</span></td>
+            <td style="color:var(--blue)">~£6,400</td>
+            <td style="color:var(--blue)">~£4,600 (+50%)</td>
+            <td style="color:var(--blue);font-weight:700">~£11,000</td>
+            <td style="font-size:11px;color:var(--muted)">Speculative pot doesn't 4× but beats market</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-yellow">Bear — market correction</span></td>
+            <td style="color:var(--yellow)">~£5,400</td>
+            <td style="color:var(--yellow)">~£1,500 (−50%)</td>
+            <td style="color:var(--yellow);font-weight:700">~£6,900</td>
+            <td style="font-size:11px;color:var(--muted)">Conservative pot S2 cushions the fall. Spec pot hurts but was sized at max loss of ~£3k</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Worst case — governance blow-up</span></td>
+            <td style="color:var(--red)">~£5,200</td>
+            <td style="color:var(--red)">~£600 (−80%)</td>
+            <td style="color:var(--red);font-weight:700">~£5,800</td>
+            <td style="font-size:11px;color:var(--muted)">SMCI scandal + market down. Spec pot nearly zeroed. ISA DCA contributions account for most of value.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:var(--muted);margin-top:12px;">InvestEngine pot assumes £4,000 lump sum S2 + £250/month DCA from Jun 2026. Total invested by Oct 2027 ≈ £8,300. Speculative pot = £3,000 (2026 gift only in this model).</p>
+    </div>
+  </div>
+
+</div>
+
+</main>
+
+<script>
+// ── Tab routing ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Date + countdown ─────────────────────────────────────────────────────────
+const today = new Date();
+document.getElementById('headerDate').textContent = today.toLocaleDateString('en-IE', { day:'numeric', month:'short', year:'numeric' });
+
+const EXIT_DATE = new Date('2027-10-01');
+const msPerDay = 86400000;
+const daysToExit = Math.ceil((EXIT_DATE - today) / msPerDay);
+const monthsToExit = Math.round(daysToExit / 30.44);
+
+document.getElementById('kpiDays').textContent = daysToExit.toLocaleString();
+document.getElementById('exitDays').textContent = daysToExit.toLocaleString();
+document.getElementById('phaseBadge').textContent = `Active — ${monthsToExit} months to exit`;
+
+// ── Contribution projections ──────────────────────────────────────────────────
+const CONTRIBUTED_TODAY = 1300; // £ contributed to date (Jun 2026)
+const MONTHLY_DCA = 250;
+const LUMP_SUM = 4000;          // planned lump sum into InvestEngine
+const ANDREA_GIFT_2026 = 2560;  // €3k ≈ £2,560 at current FX
+const ANDREA_GIFT_2027 = 2560;
+
+const projected = CONTRIBUTED_TODAY + (MONTHLY_DCA * monthsToExit) + LUMP_SUM + ANDREA_GIFT_2026 + ANDREA_GIFT_2027;
+const progressPct = Math.min(100, Math.round(CONTRIBUTED_TODAY / projected * 100));
+
+document.getElementById('kpiContributed').textContent = '£' + CONTRIBUTED_TODAY.toLocaleString();
+document.getElementById('kpiProjected').textContent = '£' + Math.round(projected).toLocaleString();
+document.getElementById('progressLabel').textContent = '£' + Math.round(projected).toLocaleString();
+document.getElementById('progressFill').style.width = progressPct + '%';
+document.getElementById('progressToday').textContent = '£' + CONTRIBUTED_TODAY.toLocaleString();
+document.getElementById('progressTarget').textContent = '£' + Math.round(projected).toLocaleString();
+
+const monthsLeft = Math.ceil(daysToExit / 30.44);
+document.getElementById('monthsRemaining').textContent = monthsLeft + ' months';
+document.getElementById('dcaRemaining').textContent = '£' + (MONTHLY_DCA * monthsLeft).toLocaleString();
+
+// ── Exit checklists ───────────────────────────────────────────────────────────
+const SPEC_EXIT = [
+  'Set price targets for all 4 positions (3× minimum, exit all by Jul 2027)',
+  'Review SMCI governance status (audit sign-off, S&P 500 eligibility)',
+  'Review SERV robot deployment milestones and contract announcements',
+  'If any position up 3×+ before May 2027 → sell immediately (don\'t get greedy)',
+  'Begin liquidating 50% of speculative holdings by July 1, 2027',
+  'Sell all remaining speculative positions by August 2027',
+  'Confirm Trading 212 ISA settlement in GBP (T+2 for US stocks)',
+  'Transfer proceeds to Alyssa\'s personal UK bank account',
+];
+
+const CON_EXIT = [
+  'By Jul 2027: Review market conditions — consider de-risking FWRG → XSTR',
+  'Set sell orders for all ETF positions in InvestEngine',
+  'Sell FWRG position (largest holding)',
+  'Sell VHYL, MINV, IGLN positions',
+  'Wait for T+2 settlement on all trades',
+  'Transfer all InvestEngine proceeds to UK bank account',
+  'Close InvestEngine account or leave open (no fees)',
+  'Confirm total cash in UK account before booking the move to Dublin',
+];
+
+let exitChecks = JSON.parse(localStorage.getItem('alyssaExitChecks') || '{}');
+
+function saveExitChecks() { localStorage.setItem('alyssaExitChecks', JSON.stringify(exitChecks)); }
+
+function renderExitChecklist(elId, items, prefix) {
+  const el = document.getElementById(elId);
+  el.innerHTML = items.map((text, i) => {
+    const key = prefix + '_' + i;
+    const checked = !!exitChecks[key];
+    return `
+      <div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);">
+        <div style="width:16px;height:16px;border-radius:3px;flex-shrink:0;margin-top:2px;border:1.5px solid ${checked ? 'var(--purple)' : 'var(--border)'};background:${checked ? 'var(--purple)' : 'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;"
+             onclick="toggleExitCheck('${key}', this, document.getElementById('et_${key}'))">
+          ${checked ? '<span style="color:#000;font-size:10px;font-weight:700;">✓</span>' : ''}
+        </div>
+        <div style="font-size:12px;line-height:1.5;color:${checked ? 'var(--muted)' : 'var(--text)'};${checked ? 'text-decoration:line-through;' : ''}" id="et_${key}">${text}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleExitCheck(key, boxEl, textEl) {
+  exitChecks[key] = !exitChecks[key];
+  saveExitChecks();
+  const checked = exitChecks[key];
+  boxEl.style.background = checked ? 'var(--purple)' : 'transparent';
+  boxEl.style.borderColor = checked ? 'var(--purple)' : 'var(--border)';
+  boxEl.innerHTML = checked ? '<span style="color:#000;font-size:10px;font-weight:700;">✓</span>' : '';
+  textEl.style.color = checked ? 'var(--muted)' : 'var(--text)';
+  textEl.style.textDecoration = checked ? 'line-through' : 'none';
+}
+
+renderExitChecklist('checkSpecExit', SPEC_EXIT, 'spec');
+renderExitChecklist('checkConExit', CON_EXIT, 'con');
+</script>
+</body>
+</html>

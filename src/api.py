@@ -280,6 +280,13 @@ async def property_tracker(request: Request):
     return templates.TemplateResponse("property.html", {"request": request})
 
 
+@app.get("/alyssa", response_class=HTMLResponse)
+async def alyssa_isa(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    return templates.TemplateResponse("alyssa.html", {"request": request})
+
+
 
 
 def _portfolio_payload() -> dict:
