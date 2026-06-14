@@ -819,13 +819,23 @@ renderExitChecklist('checkConExit', CON_EXIT, 'con');
 
 // ── CHARTS ───────────────────────────────────────────────────────────────────
 // Actual FWRG transactions from InvestEngine ISA (IP02765833)
+// Transaction data from InvestEngine — update when you export CSV from InvestEngine
+// Account IC01419477 / ISA IP02765833
+// Verified totals: £1,348.19 invested, 220.98 units, avg cost £6.1011
 const FWRG_TXS = [
   { date: '2025-11-28', units: 40.0449, price: 6.2430, amount: 250.00, type: 'DCA' },
   { date: '2025-12-30', units: 39.9808, price: 6.2530, amount: 250.00, type: 'DCA' },
   { date: '2026-01-30', units: 39.8343, price: 6.2760, amount: 250.00, type: 'DCA' },
   { date: '2026-02-27', units: 38.5267, price: 6.4890, amount: 250.00, type: 'DCA' },
   { date: '2026-03-27', units: 41.4869, price: 6.0260, amount: 250.00, type: 'DCA' },
+  { date: '2026-04-29', units: 38.2438, price: 6.5370, amount: 250.00, type: 'DCA' },
+  // Note: total above = £1,500 / 237.97 units. InvestEngine shows £1,348.19 invested.
+  // To reconcile: export CSV from InvestEngine Account → Transactions → Export
+  // and update this array with exact values.
 ];
+
+// OVERRIDE with verified totals from InvestEngine dashboard (Jun 2026)
+const FWRG_VERIFIED = { invested: 1348.19, gainPct: 13.21, units: 220.98, avgCost: 6.1011 };
 
 let cumUnits = 0, cumCost = 0;
 const txWithCumul = FWRG_TXS.map(tx => {
@@ -834,9 +844,10 @@ const txWithCumul = FWRG_TXS.map(tx => {
   return { ...tx, cumUnits: +cumUnits.toFixed(4), cumCost: +cumCost.toFixed(2), avgCost: +(cumCost / cumUnits).toFixed(4) };
 });
 
-const finalAvgCost = txWithCumul[txWithCumul.length - 1].avgCost;
-const totalUnits = txWithCumul[txWithCumul.length - 1].cumUnits;
-const totalInvested = txWithCumul[txWithCumul.length - 1].cumCost;
+// Use verified totals from InvestEngine dashboard — overrides computed tx sums
+const finalAvgCost = FWRG_VERIFIED.avgCost;
+const totalUnits = FWRG_VERIFIED.units;
+const totalInvested = FWRG_VERIFIED.invested;
 
 function renderChartKpis(currentPrice) {
   const currentValue = currentPrice ? totalUnits * currentPrice : null;
