@@ -287,6 +287,52 @@ async def alyssa_isa(request: Request):
     return templates.TemplateResponse("alyssa.html", {"request": request})
 
 
+@app.get("/api/fwrg-history")
+async def fwrg_history(request: Request):
+    """Proxy FWRG.AS price history from Yahoo — avoids browser CORS block."""
+    if (r := _auth_required(request)):
+        return r
+    import time as _time
+    from src.quotes import _session, _crumb, _ensure_session, _HEADERS
+    loop = asyncio.get_event_loop()
+
+    def _fetch():
+        _ensure_session()
+        from_ts = 1730000000  # Oct 2024 — well before first FWRG purchase
+        to_ts = int(_time.time()) + 86400
+        params = {"interval": "1d", "period1": from_ts, "period2": to_ts}
+        if _crumb:
+            params["crumb"] = _crumb
+        try:
+            r = _session.get(
+                "https://query2.finance.yahoo.com/v8/finance/chart/FWRG.AS",
+                headers=_HEADERS, params=params, timeout=15
+            )
+            if r.status_code in (401, 403):
+                _ensure_session()
+                params["crumb"] = _crumb
+                r = _session.get(
+                    "https://query2.finance.yahoo.com/v8/finance/chart/FWRG.AS",
+                    headers=_HEADERS, params=params, timeout=15
+                )
+            if r.status_code != 200:
+                return {"error": f"Yahoo returned {r.status_code}"}
+            data = r.json()
+            result = data["chart"]["result"][0]
+            timestamps = result.get("timestamp", [])
+            closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+            points = [
+                {"ts": ts, "close": round(c, 4)}
+                for ts, c in zip(timestamps, closes) if c is not None
+            ]
+            return {"points": points, "currency": result["meta"].get("currency", "GBp")}
+        except Exception as e:
+            return {"error": str(e)[:100]}
+
+    result = await loop.run_in_executor(None, _fetch)
+    return result
+
+
 
 
 def _portfolio_payload() -> dict:

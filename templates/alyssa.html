@@ -981,16 +981,12 @@ async function loadCharts() {
   } catch(e) {}
 
   try {
-    const from = Math.floor(new Date(FWRG_TXS[0].date).getTime() / 1000) - 86400;
-    const to = Math.floor(Date.now() / 1000) + 86400;
-    const r = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/FWRG.AS?interval=1d&period1=' + from + '&period2=' + to);
+    const r = await fetch('/api/fwrg-history', { headers: { 'Authorization': 'Basic ' + btoa('andrea:claude') } });
     const d = await r.json();
-    const result = d && d.chart && d.chart.result && d.chart.result[0];
-    if (!result) { drawContribChart(); return; }
-    const timestamps = result.timestamp || [];
-    const closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
-    const pricePoints = [];
-    timestamps.forEach((ts, i) => { if (closes[i] != null) pricePoints.push({ x: ts, y: closes[i] }); });
+    if (d.error || !d.points || !d.points.length) { drawContribChart(); return; }
+    // FWRG trades in GBp (pence) on LSE — convert to GBP
+    const divisor = (d.currency === 'GBp') ? 100 : 1;
+    const pricePoints = d.points.map(p => ({ x: p.ts, y: p.close / divisor }));
     if (!pricePoints.length) { drawContribChart(); return; }
 
     const lastPrice = pricePoints[pricePoints.length - 1].y;
