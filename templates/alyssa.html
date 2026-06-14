@@ -969,7 +969,7 @@ function drawLineChart(svgEl, series, opts) {
 
 async function loadCharts() {
   try {
-    const res = await fetch('/api/quotes?tickers=FWRG.AS', { headers: { 'Authorization': 'Basic ' + btoa('andrea:claude') } });
+    const res = await fetch('/api/quotes?tickers=FWRG.L', { headers: { 'Authorization': 'Basic ' + btoa('andrea:claude') } });
     const data = await res.json();
     const q = data['FWRG.AS'];
     if (q && q.price) {

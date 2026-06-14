@@ -305,14 +305,14 @@ async def fwrg_history(request: Request):
             params["crumb"] = _crumb
         try:
             r = _session.get(
-                "https://query2.finance.yahoo.com/v8/finance/chart/FWRG.AS",
+                "https://query2.finance.yahoo.com/v8/finance/chart/FWRG.L",
                 headers=_HEADERS, params=params, timeout=15
             )
             if r.status_code in (401, 403):
                 _ensure_session()
                 params["crumb"] = _crumb
                 r = _session.get(
-                    "https://query2.finance.yahoo.com/v8/finance/chart/FWRG.AS",
+                    "https://query2.finance.yahoo.com/v8/finance/chart/FWRG.L",
                     headers=_HEADERS, params=params, timeout=15
                 )
             if r.status_code != 200:
