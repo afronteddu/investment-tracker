@@ -118,6 +118,7 @@
 
 <nav>
   <div class="tab active" data-tab="overview">Overview</div>
+  <div class="tab" data-tab="charts">Charts</div>
   <div class="tab" data-tab="strategy">Strategy</div>
   <div class="tab" data-tab="positions">Positions</div>
   <div class="tab" data-tab="gifts">Gift Plan</div>
@@ -234,7 +235,65 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     TAB 2 — STRATEGY
+     TAB 2 — CHARTS
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-charts">
+
+  <div class="kpi-grid" id="chartKpis"></div>
+
+  <div class="section">
+    <div class="section-title">FWRG Price History — with your buy points</div>
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:12px;color:var(--muted)">Invesco FTSE All-World UCITS ETF (FWRG) · IE000716YHJ7 · InvestEngine ISA</span>
+        <span id="fwrgLive" style="font-size:13px;font-weight:700;color:var(--purple)">loading...</span>
+      </div>
+      <svg id="fwrgChart" width="100%" height="280" style="display:block;"></svg>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--muted);">
+        <span><span style="display:inline-block;width:12px;height:2px;background:var(--purple);vertical-align:middle;margin-right:4px;"></span>FWRG price</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:var(--green);border-radius:50%;vertical-align:middle;margin-right:4px;"></span>Your buy</span>
+        <span><span style="display:inline-block;width:12px;height:2px;background:var(--yellow);vertical-align:middle;margin-right:4px;border-top:1px dashed var(--yellow);"></span>Avg cost basis</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Portfolio value over time</div>
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:12px;color:var(--muted)">Market value of all FWRG units held · anchored to first purchase Nov 2025</span>
+        <span id="portLive" style="font-size:13px;font-weight:700;color:var(--blue)">loading...</span>
+      </div>
+      <svg id="portChart" width="100%" height="220" style="display:block;"></svg>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--muted);">
+        <span><span style="display:inline-block;width:12px;height:2px;background:var(--blue);vertical-align:middle;margin-right:4px;"></span>Portfolio value (£)</span>
+        <span><span style="display:inline-block;width:12px;height:2px;background:var(--muted);vertical-align:middle;margin-right:4px;border-top:1px dashed var(--muted);"></span>Total invested (£)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Contribution timeline</div>
+    <div class="card" style="padding:16px;">
+      <svg id="contribChart" width="100%" height="160" style="display:block;"></svg>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Cumulative £ invested in InvestEngine ISA over time. Green bars = actual contributions. Grey area = projected DCA to Oct 2027.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Your transactions (FWRG)</div>
+    <div class="card">
+      <table id="txTable">
+        <thead><tr><th>Date</th><th>Type</th><th>Units</th><th>Price (£)</th><th>Amount (£)</th><th>Cumul. units</th><th>Avg cost</th></tr></thead>
+        <tbody id="txBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 3 — STRATEGY
 ═══════════════════════════════════════════════════════ -->
 <div class="page" id="tab-strategy">
 
@@ -757,6 +816,289 @@ function toggleExitCheck(key, boxEl, textEl) {
 
 renderExitChecklist('checkSpecExit', SPEC_EXIT, 'spec');
 renderExitChecklist('checkConExit', CON_EXIT, 'con');
+
+// ── CHARTS ───────────────────────────────────────────────────────────────────
+// Actual FWRG transactions from InvestEngine ISA (IP02765833)
+const FWRG_TXS = [
+  { date: '2025-11-03', units: 4.4820, price: 6.693, amount: 25.00, type: 'DCA' },
+  { date: '2025-11-28', units: 4.3610, price: 6.879, amount: 250.00, type: 'DCA' },
+  { date: '2025-12-18', units: 44.9680, price: 6.671, amount: 300.00, type: 'Lump sum' },
+  { date: '2025-12-29', units: 4.1980, price: 6.956, amount: 250.00, type: 'DCA' },
+  { date: '2026-01-29', units: 4.0730, price: 6.854, amount: 250.00, type: 'DCA' },
+  { date: '2026-02-18', units: 4.3280, price: 6.944, amount: 250.00, type: 'DCA' },
+  { date: '2026-03-13', units: 4.1400, price: 6.039, amount: 250.00, type: 'DCA' },
+  { date: '2026-03-29', units: 4.3320, price: 6.273, amount: 250.00, type: 'DCA' },
+  { date: '2026-04-29', units: 3.9640, price: 6.551, amount: 250.00, type: 'DCA' },
+  { date: '2026-05-29', units: 3.8870, price: 6.432, amount: 250.00, type: 'DCA' },
+];
+
+let cumUnits = 0, cumCost = 0;
+const txWithCumul = FWRG_TXS.map(tx => {
+  cumUnits += tx.units;
+  cumCost += tx.amount;
+  return { ...tx, cumUnits: +cumUnits.toFixed(4), cumCost: +cumCost.toFixed(2), avgCost: +(cumCost / cumUnits).toFixed(4) };
+});
+
+const finalAvgCost = txWithCumul[txWithCumul.length - 1].avgCost;
+const totalUnits = txWithCumul[txWithCumul.length - 1].cumUnits;
+const totalInvested = txWithCumul[txWithCumul.length - 1].cumCost;
+
+function renderChartKpis(currentPrice) {
+  const currentValue = currentPrice ? totalUnits * currentPrice : null;
+  const pnl = currentValue ? currentValue - totalInvested : null;
+  const pnlPct = pnl !== null ? (pnl / totalInvested * 100) : null;
+  const el = document.getElementById('chartKpis');
+  if (!el) return;
+  const kpis = [
+    { label: 'Units held (FWRG)', value: totalUnits.toFixed(2), sub: 'InvestEngine ISA', cls: 'kpi-purple' },
+    { label: 'Avg cost / unit', value: '\u00a3' + finalAvgCost.toFixed(3), sub: 'All-in cost basis', cls: 'kpi-yellow' },
+    { label: 'Total invested', value: '\u00a3' + totalInvested.toFixed(2), sub: txWithCumul.length + ' transactions', cls: 'kpi-blue' },
+    { label: 'Current value', value: currentValue !== null ? '\u00a3' + currentValue.toFixed(2) : '\u2014', sub: pnl !== null ? (pnl >= 0 ? '+' : '') + '\u00a3' + pnl.toFixed(2) + ' (' + pnlPct.toFixed(1) + '%)' : 'loading...', cls: pnl !== null && pnl >= 0 ? 'kpi-green' : 'kpi-red' },
+    { label: 'Live price (FWRG)', value: currentPrice ? '\u00a3' + currentPrice.toFixed(3) : '\u2014', sub: 'Yahoo Finance', cls: 'kpi-purple' },
+    { label: 'Exit date', value: daysToExit + 'd', sub: 'Oct 1 2027', cls: 'kpi-orange' },
+  ];
+  kpis.forEach(k => {
+    const div = document.createElement('div');
+    div.className = 'kpi';
+    const lbl = document.createElement('div'); lbl.className = 'kpi-label'; lbl.textContent = k.label;
+    const val = document.createElement('div'); val.className = 'kpi-value ' + k.cls; val.textContent = k.value;
+    const sub = document.createElement('div'); sub.className = 'kpi-sub'; sub.textContent = k.sub;
+    div.appendChild(lbl); div.appendChild(val); div.appendChild(sub);
+    el.appendChild(div);
+  });
+}
+renderChartKpis(null);
+
+function renderTxTable() {
+  const tbody = document.getElementById('txBody');
+  if (!tbody) return;
+  txWithCumul.forEach(tx => {
+    const tr = document.createElement('tr');
+    const cells = [
+      tx.date,
+      tx.type,
+      tx.units.toFixed(4),
+      '\u00a3' + tx.price.toFixed(3),
+      '\u00a3' + tx.amount.toFixed(2),
+      tx.cumUnits.toFixed(4),
+      '\u00a3' + tx.avgCost.toFixed(3)
+    ];
+    cells.forEach((c, i) => {
+      const td = document.createElement('td');
+      if (i === 1) {
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + (tx.type === 'DCA' ? 'badge-blue' : 'badge-purple');
+        badge.textContent = c;
+        td.appendChild(badge);
+      } else {
+        td.textContent = c;
+        if (i === 6) td.style.color = 'var(--yellow)';
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+renderTxTable();
+
+function drawLineChart(svgEl, series, opts) {
+  const W = svgEl.clientWidth || svgEl.getBoundingClientRect().width || 800;
+  const H = +svgEl.getAttribute('height');
+  const padL = opts.padL || 52, padR = opts.padR || 20, padT = opts.padT || 16, padB = opts.padB || 32;
+  const W2 = W - padL - padR, H2 = H - padT - padB;
+  const allX = series.flatMap(s => s.points.map(p => p.x));
+  const allY = series.flatMap(s => s.points.map(p => p.y));
+  const minX = Math.min(...allX), maxX = Math.max(...allX);
+  const rawMinY = Math.min(...allY), rawMaxY = Math.max(...allY);
+  const pad = (rawMaxY - rawMinY) * 0.04;
+  const minY = rawMinY - pad, maxY = rawMaxY + pad;
+  const xS = maxX > minX ? W2 / (maxX - minX) : 1;
+  const yS = maxY > minY ? H2 / (maxY - minY) : 1;
+  const px = x => padL + (x - minX) * xS;
+  const py = y => padT + (maxY - y) * yS;
+  const ns = 'http://www.w3.org/2000/svg';
+  while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+
+  function el(tag, attrs) {
+    const e = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v));
+    return e;
+  }
+
+  for (let i = 0; i <= 4; i++) {
+    const y = minY + (maxY - minY) * i / 4;
+    const yy = py(y);
+    svgEl.appendChild(el('line', { x1: padL, y1: yy, x2: W - padR, y2: yy, stroke: '#222736', 'stroke-width': 1 }));
+    const t = el('text', { x: padL - 4, y: yy + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#64748b' });
+    t.textContent = opts.yFmt ? opts.yFmt(y) : y.toFixed(2);
+    svgEl.appendChild(t);
+  }
+
+  (opts.xLabels || []).forEach(lbl => {
+    const xp = px(lbl.x);
+    svgEl.appendChild(el('line', { x1: xp, y1: padT, x2: xp, y2: H - padB + 4, stroke: '#222736', 'stroke-width': 1, 'stroke-dasharray': '2,3' }));
+    const t = el('text', { x: xp, y: H - padB + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#64748b' });
+    t.textContent = lbl.label;
+    svgEl.appendChild(t);
+  });
+
+  series.forEach(s => {
+    if (s.fill && s.points.length > 1) {
+      const pts = s.points;
+      const d = pts.map((p, i) => (i === 0 ? 'M' : 'L') + px(p.x) + ',' + py(p.y)).join(' ') +
+        ' L' + px(pts[pts.length-1].x) + ',' + (H - padB) + ' L' + px(pts[0].x) + ',' + (H - padB) + ' Z';
+      svgEl.appendChild(el('path', { d, fill: s.fill, opacity: 0.12 }));
+    }
+    if (s.points.length > 1) {
+      const d = s.points.map((p, i) => (i === 0 ? 'M' : 'L') + px(p.x) + ',' + py(p.y)).join(' ');
+      const attrs = { d, fill: 'none', stroke: s.color, 'stroke-width': s.dashed ? 1.5 : 2 };
+      if (s.dashed) attrs['stroke-dasharray'] = '4,3';
+      svgEl.appendChild(el('path', attrs));
+    }
+  });
+
+  (opts.markers || []).forEach(m => {
+    svgEl.appendChild(el('circle', { cx: px(m.x), cy: py(m.y), r: 5, fill: '#4ade80', stroke: '#0a0c10', 'stroke-width': 1.5 }));
+    if (m.label) {
+      const t = el('text', { x: px(m.x), y: py(m.y) - 9, 'text-anchor': 'middle', 'font-size': 9, fill: '#4ade80' });
+      t.textContent = m.label;
+      svgEl.appendChild(t);
+    }
+  });
+}
+
+async function loadCharts() {
+  try {
+    const res = await fetch('/api/quotes?tickers=FWRG.AS', { headers: { 'Authorization': 'Basic ' + btoa('andrea:claude') } });
+    const data = await res.json();
+    const q = data['FWRG.AS'];
+    if (q && q.price) {
+      document.getElementById('fwrgLive').textContent = '\u00a3' + q.price.toFixed(3) + ' live';
+      document.getElementById('portLive').textContent = '\u00a3' + (q.price * totalUnits).toFixed(2) + ' current value';
+      document.getElementById('chartKpis').textContent = '';
+      renderChartKpis(q.price);
+    }
+  } catch(e) {}
+
+  try {
+    const from = Math.floor(new Date(FWRG_TXS[0].date).getTime() / 1000) - 86400;
+    const to = Math.floor(Date.now() / 1000) + 86400;
+    const r = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/FWRG.AS?interval=1d&period1=' + from + '&period2=' + to);
+    const d = await r.json();
+    const result = d && d.chart && d.chart.result && d.chart.result[0];
+    if (!result) { drawContribChart(); return; }
+    const timestamps = result.timestamp || [];
+    const closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
+    const pricePoints = [];
+    timestamps.forEach((ts, i) => { if (closes[i] != null) pricePoints.push({ x: ts, y: closes[i] }); });
+    if (!pricePoints.length) { drawContribChart(); return; }
+
+    const lastPrice = pricePoints[pricePoints.length - 1].y;
+    document.getElementById('fwrgLive').textContent = '\u00a3' + lastPrice.toFixed(3);
+    document.getElementById('portLive').textContent = '\u00a3' + (lastPrice * totalUnits).toFixed(2);
+    document.getElementById('chartKpis').textContent = '';
+    renderChartKpis(lastPrice);
+
+    const xLabels = [];
+    const seen = new Set();
+    pricePoints.forEach(p => {
+      const dt = new Date(p.x * 1000);
+      const key = dt.getFullYear() + '-' + dt.getMonth();
+      if (!seen.has(key)) { seen.add(key); xLabels.push({ x: p.x, label: dt.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) }); }
+    });
+
+    const txMarkers = txWithCumul.map(tx => {
+      const txTs = Math.floor(new Date(tx.date).getTime() / 1000);
+      const nearest = pricePoints.reduce((a, b) => Math.abs(b.x - txTs) < Math.abs(a.x - txTs) ? b : a);
+      return { x: nearest.x, y: nearest.y, label: '\u00a3' + tx.amount };
+    });
+
+    const avgCostLine = pricePoints.map(p => {
+      const txTs = Math.floor(new Date(FWRG_TXS[0].date).getTime() / 1000);
+      if (p.x < txTs) return null;
+      let cu = 0, cc = 0;
+      FWRG_TXS.forEach(tx => { const t = Math.floor(new Date(tx.date).getTime() / 1000); if (t <= p.x) { cu += tx.units; cc += tx.amount; } });
+      return cu > 0 ? { x: p.x, y: cc / cu } : null;
+    }).filter(Boolean);
+
+    drawLineChart(document.getElementById('fwrgChart'), [
+      { points: pricePoints, color: '#c084fc', fill: '#c084fc' },
+      { points: avgCostLine, color: '#fbbf24', dashed: true },
+    ], { xLabels, markers: txMarkers, yFmt: v => '\u00a3' + v.toFixed(2), padL: 56, padB: 36 });
+
+    const portPoints = pricePoints.map(p => {
+      let cu = 0;
+      FWRG_TXS.forEach(tx => { if (Math.floor(new Date(tx.date).getTime() / 1000) <= p.x) cu += tx.units; });
+      return cu > 0 ? { x: p.x, y: cu * p.y } : null;
+    }).filter(Boolean);
+
+    const costPoints = pricePoints.map(p => {
+      let cc = 0;
+      FWRG_TXS.forEach(tx => { if (Math.floor(new Date(tx.date).getTime() / 1000) <= p.x) cc += tx.amount; });
+      return cc > 0 ? { x: p.x, y: cc } : null;
+    }).filter(Boolean);
+
+    drawLineChart(document.getElementById('portChart'), [
+      { points: portPoints, color: '#60a5fa', fill: '#60a5fa' },
+      { points: costPoints, color: '#64748b', dashed: true },
+    ], { xLabels, yFmt: v => '\u00a3' + Math.round(v), padL: 56, padB: 36 });
+
+    drawContribChart();
+  } catch(e) { console.warn('chart load failed', e); drawContribChart(); }
+}
+
+function drawContribChart() {
+  const svg = document.getElementById('contribChart');
+  if (!svg) return;
+  const W = svg.clientWidth || 800;
+  const H = 160, padL = 56, padR = 20, padT = 10, padB = 32, W2 = W - padL - padR, H2 = H - padT - padB;
+  const ns = 'http://www.w3.org/2000/svg';
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  function el(tag, attrs) { const e = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v)); return e; }
+
+  const monthly = {};
+  txWithCumul.forEach(tx => { const m = tx.date.substring(0,7); monthly[m] = (monthly[m]||0) + tx.amount; });
+  const projected = {};
+  const last = new Date('2027-10-01');
+  let dt = new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+1);
+  while (dt <= last) { const key = dt.toISOString().substring(0,7); if (!monthly[key]) projected[key] = 250; dt.setMonth(dt.getMonth()+1); }
+
+  const allMonths = [...Object.keys(monthly), ...Object.keys(projected)].sort();
+  let run = 0;
+  const cumPoints = allMonths.map(m => { run += (monthly[m] || projected[m] || 0); return run; });
+  const maxCum = Math.max(...cumPoints) * 1.05;
+  const bw = Math.max(3, Math.floor(W2 / allMonths.length) - 1);
+
+  allMonths.forEach((m, i) => {
+    const x = padL + i * (W2 / allMonths.length);
+    const bh = (cumPoints[i] / maxCum) * H2;
+    const y = padT + H2 - bh;
+    const isActual = !!monthly[m];
+    svg.appendChild(el('rect', { x, y, width: bw, height: bh, fill: isActual ? '#4ade80' : '#334155', rx: 2, opacity: isActual ? 0.85 : 0.45 }));
+    if (i % 4 === 0) {
+      const t = el('text', { x: x + bw/2, y: H - padB + 16, 'text-anchor': 'middle', 'font-size': 9, fill: '#64748b' });
+      t.textContent = m.substring(2);
+      svg.appendChild(t);
+    }
+  });
+
+  for (let i = 0; i <= 3; i++) {
+    const v = (maxCum / 3) * i;
+    const y = padT + H2 - (v / maxCum) * H2;
+    svg.appendChild(el('line', { x1: padL, y1: y, x2: W - padR, y2: y, stroke: '#222736', 'stroke-width': 1 }));
+    const t = el('text', { x: padL - 4, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#64748b' });
+    t.textContent = '\u00a3' + Math.round(v);
+    svg.appendChild(t);
+  }
+}
+
+let chartsLoaded = false;
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    if (t.dataset.tab === 'charts' && !chartsLoaded) { chartsLoaded = true; loadCharts(); }
+  });
+});
+
 </script>
 </body>
 </html>
