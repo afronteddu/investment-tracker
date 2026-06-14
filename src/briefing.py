@@ -52,10 +52,23 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
     portfolio_lines = []
     for p in portfolio_snapshot:
         pnl = p.get("pnl_pct")
+        day = p.get("day_pct")
+        rsi = p.get("rsi")
+        rsi_sig = p.get("rsi_signal", "")
+        earn = p.get("earnings_date")
+        extras = []
+        if day is not None:
+            extras.append(f"{day:+.1f}% today")
+        if rsi is not None:
+            extras.append(f"RSI {rsi} ({rsi_sig})" if rsi_sig and rsi_sig != "neutral" else f"RSI {rsi}")
+        if earn:
+            extras.append(f"earnings {earn}")
+        extra_str = "  [" + ", ".join(extras) + "]" if extras else ""
         portfolio_lines.append(
             f"- {p['ticker']} ({p['bucket']}): {p['shares']:.1f} shares, "
             f"avg cost €{p['avg_cost_eur']:.2f}, "
             + (f"P&L {pnl:+.1f}%" if pnl is not None else "no price data")
+            + extra_str
         )
 
     scanner_lines = [

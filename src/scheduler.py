@@ -570,6 +570,7 @@ class Scheduler:
 
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
+        signals = self.state.get("signals_cache", {})
         all_tickers = list(positions.keys()) + watchlist
         quotes = fetch_quotes(all_tickers)
 
@@ -580,11 +581,15 @@ class Scheduler:
             pnl_pct = None
             if price and pos.avg_cost_eur:
                 pnl_pct = (price - pos.avg_cost_eur) / pos.avg_cost_eur * 100
+            sig = signals.get(ticker, {})
             portfolio_snapshot.append({
                 **pos.to_dict(),
                 "price": price,
                 "day_pct": day_change_pct(q),
                 "pnl_pct": pnl_pct,
+                "rsi": sig.get("rsi"),
+                "rsi_signal": sig.get("rsi_signal"),
+                "earnings_date": sig.get("earnings_date"),
             })
 
         scanner_snapshot = [
