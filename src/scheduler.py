@@ -640,6 +640,15 @@ class Scheduler:
             news = get_news(ticker, max_items=2)
             news_str = "\n".join(f"• {n['title']}" for n in news) if news else ""
 
+            # 52-week context
+            high_52w = q.get("high_52w")
+            low_52w = q.get("low_52w")
+            w52_str = ""
+            if price and high_52w and low_52w:
+                pct_off_high = (price - high_52w) / high_52w * 100
+                pct_off_low = (price - low_52w) / low_52w * 100
+                w52_str = f"52w: {low_52w:.2f}–{high_52w:.2f} {currency}  ({pct_off_high:+.0f}% vs high, {pct_off_low:+.0f}% vs low)"
+
             lines = []
             if value_eur:
                 lines.append(f"{name}")
@@ -648,6 +657,8 @@ class Scheduler:
                 lines.append(f"Total P&L: {pnl_sign}€{abs(pnl_eur):,.0f} vs €{pos.total_cost_eur:,.0f} cost")
             else:
                 lines.append(f"{name}\nPrice: {price} {currency}  ({pct:+.1f}% today)")
+            if w52_str:
+                lines.append(w52_str)
             if rsi_str:
                 lines.append(rsi_str)
             if earn_str:
@@ -680,11 +691,20 @@ class Scheduler:
             earn_str = f"⚠️ Earnings in {earn_days}d" if earn_days is not None and earn_days <= 7 else ""
             news = get_news(ticker, max_items=2)
             news_str = "\n".join(f"• {n['title']}" for n in news) if news else ""
+            high_52w = q.get("high_52w")
+            low_52w = q.get("low_52w")
+            w52_str = ""
+            if price and high_52w and low_52w:
+                pct_off_high = (price - high_52w) / high_52w * 100
+                pct_off_low = (price - low_52w) / low_52w * 100
+                w52_str = f"52w: {low_52w:.2f}–{high_52w:.2f} {currency}  ({pct_off_high:+.0f}% vs high, {pct_off_low:+.0f}% vs low)"
 
             lines = [
                 f"{name}",
                 f"Price: {price:.2f} {currency}  |  Extraordinary move {pct:+.1f}%",
             ]
+            if w52_str:
+                lines.append(w52_str)
             if rsi_str:
                 lines.append(rsi_str)
             if earn_str:
