@@ -565,7 +565,7 @@ class Scheduler:
         )
 
     async def _run_eod_briefing(self):
-        from src.quotes import fetch_quotes, day_change_pct
+        from src.quotes import fetch_quotes, day_change_pct, currency_to_eur_rate
         from src.briefing import generate_briefing
 
         positions = self.state.get("positions", {})
@@ -578,9 +578,11 @@ class Scheduler:
         for ticker, pos in positions.items():
             q = quotes.get(ticker, {})
             price = q.get("price")
+            currency = q.get("currency", "EUR")
             pnl_pct = None
             if price and pos.avg_cost_eur:
-                pnl_pct = (price - pos.avg_cost_eur) / pos.avg_cost_eur * 100
+                price_eur = price * currency_to_eur_rate(currency)
+                pnl_pct = (price_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100
             sig = signals.get(ticker, {})
             portfolio_snapshot.append({
                 **pos.to_dict(),
