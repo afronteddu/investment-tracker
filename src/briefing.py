@@ -93,18 +93,28 @@ Portfolio:
 Watchlist scan:
 {chr(10).join(scanner_lines)}
 
-Investment goals:
-1. Retirement DCA into diversified ETFs
-2. Medium-term stock picks, 6-12 month horizon
-3. High-conviction AI/tech bets (NBIS, VRT, APLD) — all 3 tranches fully deployed, targeting €15–20k exit in 6–12 months. Position locked, no further additions.
+Investment goals and bucket structure:
+1. RETIREMENT — DCA into diversified ETFs (IWDA, VUSA, IMAE, AEME, IEAG, BRK-B). Long-term hold, no active trading.
+2. GROWTH — Medium-term stock picks (NVDA, ASML, SNDK), 6-12 month horizon.
+3. HIGH CONVICTION — AI/tech bets (NBIS, VRT, APLD). All tranches fully deployed. Target €15–20k exit in 6–12 months. Position locked, no further additions.
+4. HOUSE SAVINGS — Dublin property purchase target ~2028 (First Home Scheme eligible, cap €500k).
+   - CORE (low-vol dividend): UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC
+   - SATELLITE (income): TTE.PA, GSK.L
+   - GROWTH (upside): PYPL, ABNB, ROG.SW
+   These positions must be liquid and capital-preserved by H1 2028. Advise if any show momentum to trim early.
 
-Give a concise briefing (max 250 words):
+Irish tax rules (CRITICAL — affects any add/trim advice):
+- Stocks: 33% CGT on gains. Trim signals matter here.
+- ETFs/ETCs: 41% exit tax + deemed disposal every 8 years. No new ETF positions.
+- No loss harvesting offset against ETF gains.
+
+Give a concise briefing (max 280 words):
 1. What's moving and why it matters to this portfolio
 2. Standout watchlist moves
-3. One actionable thought for the week (stay course / trim / add)
+3. One actionable thought for the week — specify bucket (stay course / trim / add), flag CGT if trimming
 4. Key risk to watch
 
-Be direct and specific. No generic disclaimers. Like a smart friend who knows markets."""
+Be direct and specific. No generic disclaimers. Like a smart friend who knows markets and Irish tax."""
 
     return _ask(prompt, max_tokens=400)
 
