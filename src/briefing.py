@@ -56,6 +56,10 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
         rsi = p.get("rsi")
         rsi_sig = p.get("rsi_signal", "")
         earn = p.get("earnings_date")
+        high_52w = p.get("high_52w")
+        low_52w = p.get("low_52w")
+        price = p.get("price")
+        currency = p.get("currency", "")
         extras = []
         if day is not None:
             extras.append(f"{day:+.1f}% today")
@@ -63,6 +67,10 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
             extras.append(f"RSI {rsi} ({rsi_sig})" if rsi_sig and rsi_sig != "neutral" else f"RSI {rsi}")
         if earn:
             extras.append(f"earnings {earn}")
+        if price and high_52w and low_52w:
+            pct_off_high = (price - high_52w) / high_52w * 100
+            pct_off_low = (price - low_52w) / low_52w * 100
+            extras.append(f"52w {low_52w:.2f}–{high_52w:.2f} {currency} ({pct_off_high:+.0f}% vs high / {pct_off_low:+.0f}% vs low)")
         extra_str = "  [" + ", ".join(extras) + "]" if extras else ""
         portfolio_lines.append(
             f"- {p['ticker']} ({p['bucket']}): {p['shares']:.1f} shares, "

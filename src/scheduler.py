@@ -587,8 +587,11 @@ class Scheduler:
             portfolio_snapshot.append({
                 **pos.to_dict(),
                 "price": price,
+                "currency": q.get("currency", "EUR"),
                 "day_pct": day_change_pct(q),
                 "pnl_pct": pnl_pct,
+                "high_52w": q.get("high_52w"),
+                "low_52w": q.get("low_52w"),
                 "rsi": sig.get("rsi"),
                 "rsi_signal": sig.get("rsi_signal"),
                 "earnings_date": sig.get("earnings_date"),
