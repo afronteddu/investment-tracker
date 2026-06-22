@@ -194,7 +194,7 @@ def is_market_open_us() -> bool:
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
         return False
-    return 14 <= now.hour < 21 or (now.hour == 14 and now.minute >= 30)
+    return (now.hour == 14 and now.minute >= 30) or (15 <= now.hour < 21)
 
 
 def is_market_open_eu() -> bool:
