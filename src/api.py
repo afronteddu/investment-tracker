@@ -205,6 +205,8 @@ def _build_portfolio_data() -> list[dict]:
             "day_pct": day_pct,
             "day_high": q.get("day_high"),
             "day_low": q.get("day_low"),
+            "high_52w": q.get("high_52w"),
+            "low_52w": q.get("low_52w"),
             "current_value_eur": current_value,
             "pnl_eur": pnl_eur,
             "pnl_pct": pnl_pct,
