@@ -449,13 +449,15 @@
             <th class="r">Price</th>
             <th class="r">Day</th>
             <th class="r">RSI</th>
+            <th>52W Range</th>
+            <th>Earnings</th>
             <th class="r">Value</th>
             <th class="r">P&amp;L</th>
             <th class="r">Return</th>
           </tr>
         </thead>
         <tbody id="portfolio-body">
-          <tr><td colspan="9" class="muted" style="text-align:center;padding:40px">Connecting...</td></tr>
+          <tr><td colspan="12" class="muted" style="text-align:center;padding:40px">Connecting...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1231,6 +1233,20 @@ function renderPortfolio(positions) {
       ? `<span style="font-size:10px;background:rgba(251,191,36,0.1);color:#fbbf24;border-radius:4px;padding:2px 6px">${p.earnings_date}</span>`
       : '<span class="muted" style="font-size:11px">—</span>';
 
+    let rangeCell52 = '<span class="muted" style="font-size:10px">—</span>';
+    if (p.high_52w != null && p.low_52w != null && p.price != null && p.high_52w > p.low_52w) {
+      const rangeSpan = p.high_52w - p.low_52w;
+      const clampedPct = Math.max(0, Math.min(100, (p.price - p.low_52w) / rangeSpan * 100));
+      const barColor52 = clampedPct >= 80 ? '#f87171' : clampedPct >= 50 ? '#fbbf24' : '#4ade80';
+      rangeCell52 = '<div style="display:inline-block;min-width:80px">'
+        + '<div style="position:relative;width:72px;height:6px;background:var(--surface2);border-radius:3px;border:1px solid var(--border)">'
+        + '<div style="position:absolute;left:0;top:0;height:100%;width:' + clampedPct.toFixed(1) + '%;background:' + barColor52 + ';border-radius:3px"></div>'
+        + '<div style="position:absolute;left:' + clampedPct.toFixed(1) + '%;top:-2px;width:2px;height:10px;background:#e2e8f0;border-radius:1px;transform:translateX(-1px)"></div>'
+        + '</div>'
+        + '<div style="font-size:9px;color:var(--muted);margin-top:1px;white-space:nowrap">' + fmt(p.low_52w) + '–' + fmt(p.high_52w) + '</div>'
+        + '</div>';
+    }
+
     return `<tr>
       <td>
         <button class="ticker-btn" onclick='openDrilldown("${p.ticker}", ${JSON.stringify(p)})'>${p.ticker}</button>
@@ -1242,6 +1258,8 @@ function renderPortfolio(positions) {
       <td class="r"><strong>${p.price != null ? fmt(p.price) : '—'}</strong> <span class="muted" style="font-size:10px">${p.currency||''}</span></td>
       <td class="r"><span class="${dayC} pct-big">${p.day_pct != null ? sign(p.day_pct)+fmt(p.day_pct)+'%' : '—'}</span></td>
       <td class="r"><span style="font-weight:700;color:${rsiCol}">${rsiVal}</span></td>
+      <td>${rangeCell52}</td>
+      <td>${earnCell}</td>
       <td class="r">${fmtK(p.current_value_eur)}</td>
       <td class="r ${pnlC}">${p.pnl_eur != null ? (p.pnl_eur>=0?'+':'')+fmtK(p.pnl_eur) : '—'}</td>
       <td class="r"><span class="${pnlC} pct-big">${p.pnl_pct != null ? sign(p.pnl_pct)+fmt(p.pnl_pct)+'%' : '—'}</span>${bar}</td>
@@ -1254,7 +1272,7 @@ function renderPortfolio(positions) {
     <td colspan="2"><strong>TOTAL</strong></td>
     <td></td>
     <td class="r muted">${fmtEur(totalCost)}</td>
-    <td></td><td></td><td></td>
+    <td></td><td></td><td></td><td></td><td></td>
     <td class="r"><strong>${fmtEur(totalValue)}</strong></td>
     <td class="r ${cc(totalPnl)}"><strong>${totalPnl>=0?'+':''}${fmtK(totalPnl)}</strong></td>
     <td class="r ${cc(totalPct)}"><strong>${sign(totalPct)}${fmt(totalPct)}%</strong></td>
