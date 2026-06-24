@@ -79,10 +79,28 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
             + extra_str
         )
 
-    scanner_lines = [
-        f"- {s['ticker']}: {s['day_pct']:+.2f}% today, price {s.get('price', '?')}"
-        for s in scanner_snapshot if s.get("day_pct") is not None
-    ]
+    scanner_lines = []
+    for s in scanner_snapshot:
+        if s.get("day_pct") is None:
+            continue
+        price = s.get("price")
+        currency = s.get("currency", "")
+        high_52w = s.get("high_52w")
+        low_52w = s.get("low_52w")
+        rsi = s.get("rsi")
+        rsi_sig = s.get("rsi_signal", "")
+        earn = s.get("earnings_date")
+        extras = []
+        if rsi is not None:
+            extras.append(f"RSI {rsi} ({rsi_sig})" if rsi_sig and rsi_sig != "neutral" else f"RSI {rsi}")
+        if earn:
+            extras.append(f"earnings {earn}")
+        if price and high_52w and low_52w:
+            pct_off_high = (price - high_52w) / high_52w * 100
+            pct_off_low = (price - low_52w) / low_52w * 100
+            extras.append(f"52w {low_52w:.2f}–{high_52w:.2f} {currency} ({pct_off_high:+.0f}% vs high / {pct_off_low:+.0f}% vs low)")
+        extra_str = "  [" + ", ".join(extras) + "]" if extras else ""
+        scanner_lines.append(f"- {s['ticker']}: {s['day_pct']:+.2f}% today, price {price}{extra_str}")
 
     prompt = f"""You are a personal investment advisor for a retail investor based in Dublin, Ireland.
 Today is {datetime.now().strftime('%A %d %B %Y')}.
