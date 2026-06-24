@@ -122,7 +122,7 @@ def _check_public_auth(request: Request) -> bool:
 
 
 def _auth_required(request: Request):
-    if not _check_auth(request):
+    if not _check_auth(request) and not _check_public_auth(request):
         return Response(
             "Unauthorized", status_code=401,
             headers={"WWW-Authenticate": 'Basic realm="Portfolio"'},
