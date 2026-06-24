@@ -304,7 +304,7 @@ async def dashboard(request: Request):
 async def public_dashboard(request: Request):
     if (r := _public_auth_required(request)):
         return r
-    return templates.TemplateResponse("public.html", {"request": request})
+    return templates.TemplateResponse("public.html", {"request": request, "ws_token": _make_ws_token()})
 
 
 @app.get("/property", response_class=HTMLResponse)
