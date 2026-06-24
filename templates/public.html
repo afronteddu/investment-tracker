@@ -1,0 +1,3185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlphaStack</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #13161d;
+      --surface2: #1a1f2b;
+      --border: #222736;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #4ade80;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --blue: #60a5fa;
+      --purple: #c084fc;
+      --cyan: #22d3ee;
+      --orange: #fb923c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      font-size: 14px; min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--blue); }
+    .market-pills { display: flex; gap: 6px; }
+    .pill {
+      font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+    .pill-open { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .pill-closed { background: rgba(100,116,139,0.1); color: var(--muted); border: 1px solid var(--border); }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .update-time { font-size: 11px; color: var(--muted); }
+    .btn {
+      background: var(--blue); color: #000; border: none; border-radius: 6px;
+      padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn-ghost {
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-ghost.active-period { border-color: var(--blue); color: var(--blue); background: rgba(96,165,250,0.1); }
+
+    /* ── Layout ── */
+    .page { max-width: 1440px; margin: 0 auto; padding: 20px; }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .card-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+    .card-value { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; }
+    .card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .muted { color: var(--muted); }
+
+    /* ── Lifetime grid ── */
+    .lifetime-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 900px) { .lifetime-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1300px) { .summary-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 900px)  { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ── Deployment strip ── */
+    .deploy-strip {
+      display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .deploy-item {
+      background: rgba(251,191,36,0.06);
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 8px; padding: 8px 14px;
+      font-size: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .deploy-label { color: var(--yellow); font-weight: 700; }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; margin-top: 24px;
+    }
+    .section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted);
+    }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--surface2); }
+    th {
+      text-align: left; font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 10px 14px; white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    th.r, td.r { text-align: right; }
+    td {
+      padding: 12px 14px; border-bottom: 1px solid rgba(34,39,54,0.6);
+      white-space: nowrap; background: var(--surface);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    .ticker-btn {
+      font-size: 15px; font-weight: 700;
+      color: var(--blue); cursor: pointer; text-decoration: none;
+      background: none; border: none; padding: 0;
+    }
+    .ticker-btn:hover { text-decoration: underline; }
+    .name { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .b-high { background: rgba(192,132,252,0.15); color: var(--purple); }
+    .b-growth { background: rgba(251,191,36,0.12); color: var(--yellow); }
+    .b-retirement { background: rgba(34,211,238,0.12); color: var(--cyan); }
+    .b-house { background: rgba(251,146,60,0.12); color: var(--orange); }
+
+    .pct-big { font-size: 15px; font-weight: 700; }
+    .bar-wrap { width: 60px; height: 4px; background: var(--border); border-radius: 2px; display: inline-block; vertical-align: middle; margin-left: 6px; }
+    .bar-fill { height: 100%; border-radius: 2px; }
+
+    .totals td { font-weight: 700; font-size: 15px; background: var(--surface2) !important; border-top: 1px solid var(--border); }
+
+    .sig { font-size: 11px; font-weight: 700; }
+    .sig-gain { color: var(--green); }
+    .sig-drop { color: var(--red); }
+    .sig-up { color: #86efac; }
+    .sig-down { color: #fca5a5; }
+    .sig-neutral { color: var(--muted); }
+
+    /* ── Strategy ── */
+    .strat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+    }
+    .strat-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; }
+    .strat-card-body { font-size: 13px; line-height: 1.7; color: var(--text); }
+    .strat-card-body strong { color: #f1f5f9; }
+    .strat-card-body .hint { color: var(--muted); font-size: 12px; }
+    .strat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .alloc-bar-wrap { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .alloc-bar-label { width:110px; font-size:12px; color:var(--muted); flex-shrink:0; }
+    .alloc-bar-track { flex:1; height:8px; background:var(--surface2); border-radius:4px; overflow:hidden; }
+    .alloc-bar-fill { height:100%; border-radius:4px; transition:width .4s; }
+    .alloc-bar-pct { width:42px; text-align:right; font-size:12px; font-weight:700; flex-shrink:0; }
+    .risk-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+    .risk-row:last-child { border-bottom:none; }
+    .risk-icon { font-size:16px; flex-shrink:0; }
+    .risk-label { font-size:13px; flex:1; }
+    .risk-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; }
+    .risk-ok { background:rgba(74,222,128,0.1); color:var(--green); }
+    .risk-warn { background:rgba(251,191,36,0.1); color:#fbbf24; }
+    .risk-danger { background:rgba(248,113,113,0.1); color:var(--red); }
+    .suggest-row { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+    .suggest-row:last-child { border-bottom:none; }
+    .suggest-ticker { font-weight:700; font-size:13px; width:70px; flex-shrink:0; }
+    .suggest-why { font-size:12px; color:var(--muted); line-height:1.5; }
+
+    /* ── Briefing ── */
+    .briefing-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px; margin-top: 24px;
+    }
+    .briefing-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    #briefing-text {
+      line-height: 1.75; color: #94a3b8; white-space: pre-wrap; font-size: 13px;
+    }
+    #briefing-text.loaded { color: var(--text); }
+
+    /* ── Drilldown Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 200;
+      align-items: flex-start; justify-content: center;
+      padding: 40px 20px; overflow-y: auto;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; width: 100%; max-width: 780px;
+      padding: 28px; position: relative;
+      animation: slideUp .2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px;
+      width: 28px; height: 28px; cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { color: var(--text); border-color: var(--muted); }
+    .modal-ticker { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+    .modal-meta { font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 20px; }
+    .modal-loading {
+      color: var(--muted); font-size: 13px; padding: 40px 0;
+      text-align: center;
+    }
+    .modal-loading .spinner {
+      width: 24px; height: 24px; border: 2px solid var(--border);
+      border-top-color: var(--blue); border-radius: 50%;
+      animation: spin 0.7s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Markdown content styles */
+    .md-content { line-height: 1.75; font-size: 13.5px; color: #cbd5e1; }
+    .md-content h2 {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--blue);
+      margin: 22px 0 8px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md-content h2:first-child { margin-top: 0; }
+    .md-content p { margin-bottom: 10px; color: #94a3b8; }
+    .md-content strong { color: var(--text); font-weight: 600; }
+    .md-content ul { padding-left: 18px; margin-bottom: 10px; }
+    .md-content li { margin-bottom: 4px; color: #94a3b8; }
+    .md-content li strong { color: var(--text); }
+
+    /* Position snapshot inside modal */
+    .position-snap {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px; margin-bottom: 20px;
+    }
+    .snap-item {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .snap-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .snap-value { font-size: 16px; font-weight: 700; }
+
+    /* ── Nav ── */
+    .desktop-nav { flex-wrap: wrap; }
+
+    /* ── Tabs (mobile fallback, hidden — nav replaces it) ── */
+    .tabs { display: none; }
+    .tab {
+      flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600;
+      border-radius: 8px; cursor: pointer; border: 1px solid var(--border);
+      color: var(--muted); background: var(--surface);
+    }
+    .tab.active { background: var(--blue); color: #000; border-color: var(--blue); }
+
+    /* ── Panel show/hide (applies at all breakpoints) ── */
+    .section-panel { display: none; }
+    .section-panel.active { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .page { padding: 12px; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .card-value { font-size: 20px; }
+      header { padding: 0 12px; }
+      .logo-text { display: none; }
+      .modal { padding: 18px; }
+      .modal-ticker { font-size: 22px; }
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    #panel-studio { font-family: inherit; }
+  </style>
+</head>
+<body>
+
+<!-- Drilldown Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-ticker" id="modal-ticker">—</div>
+    <div class="modal-meta" id="modal-meta"></div>
+    <div id="modal-position"></div>
+    <div id="modal-body">
+      <div class="modal-loading">
+        <div class="spinner"></div>
+        Asking GPT-4o for a Buffett-style analysis…
+      </div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-left">
+    <div class="logo">Alpha<span>Stack</span></div>
+    <div class="market-pills" id="market-pills"></div>
+  </div>
+  <div class="header-right">
+    <span class="update-time" id="update-time">connecting...</span>
+    <button class="btn btn-sm" id="briefing-btn" onclick="generateBriefing()">AI Briefing</button>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- Summary -->
+  <div class="summary-grid">
+    <div class="card">
+      <div class="card-label">Total Invested</div>
+      <div class="card-value" id="s-cost">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Current Value</div>
+      <div class="card-value" id="s-value">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Total P&amp;L</div>
+      <div class="card-value" id="s-pnl">—</div>
+      <div class="card-sub" id="s-pnl-sub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">FX Rate</div>
+      <div class="card-value" id="s-fx" style="font-size:18px">—</div>
+      <div class="card-sub" id="s-fx-sub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Today's Move</div>
+      <div class="card-value" id="s-today">—</div>
+      <div class="card-sub" id="s-today-sub"></div>
+    </div>
+    <div class="card" id="s-hc-card" style="border-color:var(--purple)22">
+      <div class="card-label">HC Exit Pulse</div>
+      <div class="card-value" id="s-hc-val">—</div>
+      <div class="card-sub" id="s-hc-sub"></div>
+    </div>
+  </div>
+
+  <!-- Lifetime ROI -->
+  <div class="lifetime-grid" id="lifetime-grid" style="display:none">
+    <div class="card">
+      <div class="card-label">Total Ever Deployed</div>
+      <div class="card-value" id="l-deployed">—</div>
+      <div class="card-sub" id="l-returned"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Realized P&amp;L (banked)</div>
+      <div class="card-value" id="l-realized">—</div>
+      <div class="card-sub muted">from closed positions</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Unrealized P&amp;L (paper)</div>
+      <div class="card-value" id="l-unrealized">—</div>
+      <div class="card-sub muted">current holdings</div>
+    </div>
+    <div class="card" style="border-color: var(--blue)">
+      <div class="card-label">All-Time Total Return</div>
+      <div class="card-value" id="l-total">—</div>
+      <div class="card-sub" id="l-total-pct"></div>
+    </div>
+  </div>
+
+  <!-- Monthly flow chart -->
+  <div id="flow-chart-wrap" style="display:none; margin-bottom:20px">
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Monthly Cash Flow</span>
+      <span class="muted" style="font-size:11px">green = deployed, red = withdrawn via sales</span>
+    </div>
+    <div id="flow-chart" style="display:flex; align-items:stretch; gap:3px; padding:0 4px; overflow-x:auto"></div>
+    <div id="flow-labels" style="display:flex; gap:3px; padding:4px 4px 0; overflow-x:auto"></div>
+  </div>
+
+  <!-- Deployments -->
+  <div class="deploy-strip" id="deploy-strip"></div>
+
+  <!-- Mobile tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('portfolio',event)">Portfolio</div>
+    <div class="tab" onclick="switchTab('performance',event)">Charts</div>
+    <div class="tab" onclick="switchTab('scanner',event)">Scanner</div>
+    <div class="tab" onclick="switchTab('strategy',event)">Strategy</div>
+    <div class="tab" onclick="switchTab('briefing',event)">Briefing</div>
+  </div>
+
+  <!-- Section nav -->
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap" class="desktop-nav">
+    <button class="btn-ghost active-period" id="nav-portfolio" onclick="showDesktopPanel('portfolio',this)">Portfolio</button>
+    <button class="btn-ghost" id="nav-performance" onclick="showDesktopPanel('performance',this)">Charts</button>
+    <button class="btn-ghost" id="nav-scanner" onclick="showDesktopPanel('scanner',this)">Scanner</button>
+    <button class="btn-ghost" id="nav-strategy" onclick="showDesktopPanel('strategy',this)">Strategy</button>
+    <button class="btn-ghost" id="nav-briefing" onclick="showDesktopPanel('briefing',this)">Briefing</button>
+    <button class="btn-ghost" id="nav-playbook" onclick="showDesktopPanel('playbook',this)">Playbook</button>
+    <button class="btn-ghost" id="nav-studio" onclick="showDesktopPanel('studio',this)">Studio</button>
+  </div>
+
+  <!-- Portfolio table -->
+  <div class="section-panel active" id="panel-portfolio">
+    <div class="section-header">
+      <span class="section-title">Holdings</span>
+      <span class="muted" style="font-size:11px" id="portfolio-count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Bucket</th>
+            <th class="r">Shares</th>
+            <th class="r">Avg Cost</th>
+            <th class="r">Price</th>
+            <th class="r">Day</th>
+            <th class="r">RSI</th>
+            <th>52W Range</th>
+            <th>Earnings</th>
+            <th class="r">Value</th>
+            <th class="r">P&amp;L</th>
+            <th class="r">Return</th>
+          </tr>
+        </thead>
+        <tbody id="portfolio-body">
+          <tr><td colspan="12" class="muted" style="text-align:center;padding:40px">Connecting...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Performance charts -->
+  <div class="section-panel" id="panel-performance">
+    <div class="section-header">
+      <span class="section-title">Performance Charts</span>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('1w',this)">1W</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('1mo',this)">1M</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('3mo',this)">3M</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('6mo',this)">6M</button>
+        <button class="btn-ghost btn-sm active-period" id="btn-all" onclick="setChartPeriod('all',this)">All</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('1y',this)">1Y</button>
+        <button class="btn-ghost btn-sm" onclick="setChartPeriod('2y',this)">2Y</button>
+      </div>
+    </div>
+
+    <!-- Chart 1: Portfolio total value -->
+    <div class="card" style="margin-bottom:16px;padding:20px">
+      <div class="card-label" style="margin-bottom:4px">Total Portfolio Value (EUR)</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">all holdings combined — weekly</div>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-portfolio"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 2: % return from purchase date, each starting at 0 -->
+    <div class="card" style="margin-bottom:16px;padding:20px">
+      <div class="card-label" style="margin-bottom:4px">Return per Holding from Purchase Date (%)</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">each line starts at 0% on your actual buy date</div>
+      <div style="position:relative;height:260px">
+        <canvas id="chart-combined"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 3: Absolute EUR value per holding -->
+    <div class="card" style="margin-bottom:16px;padding:20px">
+      <div class="card-label" style="margin-bottom:4px">Holding Value in EUR</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">how much each position is worth over time</div>
+      <div style="position:relative;height:240px">
+        <canvas id="chart-values"></canvas>
+      </div>
+    </div>
+
+    <!-- Individual sparkline cards -->
+    <div id="sparkline-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
+  </div>
+
+  <!-- Scanner table -->
+  <div class="section-panel" id="panel-scanner">
+    <div class="section-header">
+      <span class="section-title">Watchlist Scanner</span>
+      <span class="muted" style="font-size:11px">sorted by day move — click ticker for analysis</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Name</th>
+            <th class="r">Price</th>
+            <th class="r">Day%</th>
+            <th class="r">1W%</th>
+            <th class="r">RSI</th>
+            <th>52W Range</th>
+            <th>Signal · Action</th>
+            <th>Fit</th>
+          </tr>
+        </thead>
+        <tbody id="scanner-body">
+          <tr><td colspan="9" class="muted" style="text-align:center;padding:40px">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="news-feed" style="margin-top:16px"></div>
+  </div>
+
+  <!-- Playbook -->
+  <div class="section-panel" id="panel-playbook">
+    <div class="section-header">
+      <span class="section-title">Investment Playbook</span>
+      <span class="muted" style="font-size:11px" id="playbook-subtitle">all rules · auto-updated from live portfolio</span>
+    </div>
+    <div id="playbook-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">
+      <div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Loading playbook…</div>
+    </div>
+  </div>
+
+  <!-- Studio — Claude Code build log -->
+  <div class="section-panel" id="panel-studio">
+    <div class="section-header">
+      <span class="section-title">Studio</span>
+      <span class="muted" style="font-size:11px">built with Claude Code · no prior coding experience</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px">
+
+      <!-- Terminal card -->
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;overflow:hidden;font-family:'SF Mono',monospace">
+        <div style="background:#161b22;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #30363d">
+          <span style="width:12px;height:12px;border-radius:50%;background:#ff5f56;display:inline-block"></span>
+          <span style="width:12px;height:12px;border-radius:50%;background:#ffbd2e;display:inline-block"></span>
+          <span style="width:12px;height:12px;border-radius:50%;background:#27c93f;display:inline-block"></span>
+          <span style="font-size:11px;color:#8b949e;margin-left:6px">investment-tracker — claude code</span>
+        </div>
+        <div style="padding:14px 16px;font-size:12px;line-height:1.8;color:#e6edf3">
+          <div><span style="color:#7ee787">❯</span> <span style="color:#79c0ff">claude</span> <span style="color:#e6edf3">"build me a live portfolio tracker"</span></div>
+          <div style="color:#8b949e;margin-left:14px">✓ FastAPI backend scaffolded</div>
+          <div style="color:#8b949e;margin-left:14px">✓ yfinance + curl_cffi integration</div>
+          <div style="color:#8b949e;margin-left:14px">✓ WebSocket live updates wired</div>
+          <div style="color:#8b949e;margin-left:14px">✓ Railway auto-deploy set up</div>
+          <div style="margin-top:8px"><span style="color:#7ee787">❯</span> <span style="color:#79c0ff">claude</span> <span style="color:#e6edf3">"add FIRE calculator"</span></div>
+          <div style="color:#8b949e;margin-left:14px">✓ Rule of 320 (CGT-adjusted) built</div>
+          <div style="color:#8b949e;margin-left:14px">✓ SoRR glide path + danger zone</div>
+          <div style="color:#8b949e;margin-left:14px">✓ Monte Carlo confidence signal</div>
+          <div style="margin-top:8px"><span style="color:#7ee787">❯</span> <span style="color:#79c0ff">claude</span> <span style="color:#e6edf3">"income bucket 3-tier strategy"</span></div>
+          <div style="color:#8b949e;margin-left:14px">✓ EUR/CHF tilt rationale built</div>
+          <div style="color:#8b949e;margin-left:14px">✓ Timed exit phases 2028→2029</div>
+          <div style="margin-top:8px"><span style="color:#ffa657">❯</span> <span style="color:#79c0ff">_</span><span id="studio-cursor" style="display:inline-block;width:8px;height:14px;background:#ffa657;vertical-align:middle;animation:blink 1s step-end infinite"></span></div>
+        </div>
+      </div>
+
+      <!-- Stack + stats card -->
+      <div style="display:flex;flex-direction:column;gap:10px">
+
+        <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:14px 16px;font-family:'SF Mono',monospace">
+          <div style="font-size:11px;font-weight:700;color:#7ee787;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Stack</div>
+          <div id="studio-stack" style="font-size:11px;line-height:2;color:#e6edf3">
+            <div><span style="color:#79c0ff">backend</span>  <span style="color:#8b949e">FastAPI · Python 3.11 · uvicorn</span></div>
+            <div><span style="color:#79c0ff">data    </span> <span style="color:#8b949e">yfinance · curl_cffi · openpyxl</span></div>
+            <div><span style="color:#79c0ff">prices  </span> <span style="color:#8b949e">Yahoo Finance v8 API · WebSocket push</span></div>
+            <div><span style="color:#79c0ff">ai      </span> <span style="color:#8b949e">Gemini 2.5-flash → GPT-4o-mini fallback</span></div>
+            <div><span style="color:#79c0ff">deploy  </span> <span style="color:#8b949e">Railway · GitHub auto-deploy</span></div>
+            <div><span style="color:#79c0ff">frontend</span> <span style="color:#8b949e">vanilla JS · Chart.js · SVG sparklines</span></div>
+            <div><span style="color:#79c0ff">built by</span> <span style="color:#ffa657">Claude Code (Sonnet 4.6) · started Dec 2025</span></div>
+            <div><span style="color:#79c0ff">lines   </span> <span id="studio-loc" style="color:#8b949e">—</span></div>
+          </div>
+        </div>
+
+        <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:14px 16px;font-family:'SF Mono',monospace">
+          <div style="font-size:11px;font-weight:700;color:#ffa657;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Changelog</div>
+          <div id="studio-changelog" style="font-size:11px;line-height:1.8;color:#e6edf3">
+            <div style="color:#8b949e">loading…</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Strategy -->
+  <div class="section-panel" id="panel-strategy">
+    <div class="section-header">
+      <span class="section-title">Strategy Advisor</span>
+      <span class="muted" style="font-size:11px">live · updates with portfolio</span>
+    </div>
+
+    <!-- Bucket allocation bars -->
+    <div id="strat-alloc" style="margin-bottom:24px"></div>
+
+    <!-- Three bucket cards -->
+    <div id="strat-buckets" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:24px"></div>
+
+    <!-- Diversification breakdown -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Diversification</span>
+    </div>
+    <div id="strat-diversification" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:24px"></div>
+
+    <!-- Risk dashboard -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Risk Signals</span>
+    </div>
+    <div id="strat-risk" style="margin-bottom:24px"></div>
+
+    <!-- December CGT exemption reminder -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Tax Calendar</span>
+      <span class="muted" style="font-size:11px">annual action — do not skip</span>
+    </div>
+    <div id="strat-tax-calendar" style="margin-bottom:24px"></div>
+
+    <!-- FIRE Calculator -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">FIRE Calculator</span>
+      <span class="muted" style="font-size:11px">Regola del 300 · IE-adjusted · Coast FIRE</span>
+    </div>
+    <div id="strat-fire" style="margin-bottom:24px"></div>
+
+    <!-- Suggested watchlist additions -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Suggested Additions</span>
+      <span class="muted" style="font-size:11px">to improve diversification</span>
+      <span id="ai-health-badge" style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:#ffffff10;color:var(--muted)">AI ···</span>
+    </div>
+    <div id="strat-suggestions"></div>
+  </div>
+
+  <!-- Briefing -->
+  <div class="briefing-card section-panel" id="panel-briefing">
+    <div class="briefing-header">
+      <span class="section-title">AI Daily Briefing</span>
+      <button class="btn btn-sm" onclick="generateBriefing()">Generate</button>
+    </div>
+    <div id="briefing-text">No briefing yet — click Generate or wait for market close (22:05 Dublin). Requires OPENAI_API_KEY in .env.</div>
+  </div>
+
+</div>
+
+<script>
+const E = id => document.getElementById(id);
+const fmt = (n, d=2) => n != null ? n.toFixed(d) : '—';
+const fmtK = n => {
+  if (n == null) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1000) return sign + '€' + (abs/1000).toFixed(1) + 'k';
+  return sign + '€' + abs.toFixed(0);
+};
+const fmtEur = n => n != null ? '€' + Math.abs(n).toLocaleString('en-IE', {minimumFractionDigits:0, maximumFractionDigits:0}) : '—';
+const sign = n => n != null && n >= 0 ? '+' : '';
+const cc = n => n == null ? '' : n >= 0 ? 'green' : 'red';
+
+// ── Performance charts ───────────────────────────────────────────
+const BUCKET_COLORS = {
+  high_conviction: ['#c084fc','#a855f7','#7c3aed','#6d28d9'],
+  growth:          ['#fbbf24','#f59e0b','#d97706'],
+  retirement:      ['#22d3ee','#06b6d4','#0891b2','#0e7490','#155e75'],
+};
+const _bucketIdx = {};
+
+function _tickerColor(ticker, bucket) {
+  if (!_bucketIdx[bucket]) _bucketIdx[bucket] = 0;
+  const palette = BUCKET_COLORS[bucket] || ['#60a5fa'];
+  const col = palette[_bucketIdx[bucket] % palette.length];
+  _bucketIdx[bucket]++;
+  return col;
+}
+
+let _combinedChart = null;
+let _portfolioChart = null;
+let _valuesChart = null;
+let _historyCache = null;
+let _currentPeriod = 'all';
+
+// SVG sparkline — zero dependency, instant render
+function _svgSparkline(points, col, w, h) {
+  if (!points.length) return '';
+  const vals = points.map(p => p.pct);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const range = mx - mn || 1;
+  const pad = 4;
+  const coords = vals.map((v, i) => {
+    const x = pad + (i / (vals.length - 1 || 1)) * (w - pad * 2);
+    const y = h - pad - ((v - mn) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const zeroY = h - pad - ((0 - mn) / range) * (h - pad * 2);
+  const fillPts = `${pad},${h} ` + coords + ` ${w - pad},${h}`;
+  const colFill = col + '25';
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">
+    <polygon points="${fillPts}" fill="${colFill}"/>
+    <line x1="${pad}" y1="${zeroY.toFixed(1)}" x2="${w-pad}" y2="${zeroY.toFixed(1)}" stroke="rgba(100,116,139,0.3)" stroke-width="1" stroke-dasharray="3,3"/>
+    <polyline points="${coords}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function _buildSparkCard(s, col) {
+  const pts = s.points;
+  const lastPct = pts.length ? pts[pts.length - 1].pct : 0;
+  const minPct = Math.min(...pts.map(p => p.pct));
+  const maxPct = Math.max(...pts.map(p => p.pct));
+  const pctSign = lastPct >= 0 ? '+' : '';
+  const pctCol = lastPct >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = 'padding:12px 14px;cursor:pointer';
+  card.onclick = () => openDrilldown(s.ticker, null);
+
+  const svg = _svgSparkline(pts, col, 260, 56);
+
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--blue)">${s.ticker}</div>
+        <div style="font-size:10px;color:var(--muted)">${s.name || ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:15px;font-weight:700;color:${pctCol}">${pctSign}${lastPct.toFixed(1)}%</div>
+        <div style="font-size:10px;color:var(--muted)">vs avg cost</div>
+      </div>
+    </div>
+    ${svg}
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)">
+      <span>Low ${minPct.toFixed(1)}%</span>
+      <span>€${s.avg_cost_eur} avg</span>
+      <span>High +${maxPct.toFixed(1)}%</span>
+    </div>`;
+  return card;
+}
+
+function _cutoffDate(period) {
+  const now = new Date();
+  if (period === 'all') return null;
+  const d = new Date(now);
+  if (period === '1w')  d.setDate(d.getDate() - 7);
+  if (period === '1mo') d.setMonth(d.getMonth() - 1);
+  if (period === '3mo') d.setMonth(d.getMonth() - 3);
+  if (period === '6mo') d.setMonth(d.getMonth() - 6);
+  if (period === '1y')  d.setFullYear(d.getFullYear() - 1);
+  if (period === '2y')  d.setFullYear(d.getFullYear() - 2);
+  return d.toISOString().split('T')[0];
+}
+
+function _filterPoints(points, cutoff) {
+  if (!cutoff) return points;
+  return points.filter(p => p.date >= cutoff);
+}
+
+function setChartPeriod(period, btn) {
+  _currentPeriod = period;
+  document.querySelectorAll('#panel-performance .btn-ghost').forEach(b => b.classList.remove('active-period'));
+  btn.classList.add('active-period');
+  if (_historyCache) _renderCharts(_historyCache);
+}
+
+const _chartOpts = (yFmt, tooltipFmt) => ({
+  responsive: true, maintainAspectRatio: false,
+  interaction: { mode: 'index', intersect: false },
+  plugins: {
+    legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 },
+      filter: (item, chart) => !chart.datasets[item.datasetIndex]?.legendHide
+    }},
+    tooltip: {
+      backgroundColor: '#1a1f2b', borderColor: '#222736', borderWidth: 1,
+      titleColor: '#e2e8f0', bodyColor: '#94a3b8',
+      callbacks: { label: tooltipFmt }
+    }
+  },
+  scales: {
+    x: { ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#1e2333' } },
+    y: { ticks: { color: '#64748b', callback: yFmt, font: { size: 10 } }, grid: { color: '#1e2333' } }
+  }
+});
+
+async function loadCharts() {
+  if (_historyCache) { _renderCharts(_historyCache); return; }
+
+  E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Loading charts… (ready in ~30s after first deploy)</div>';
+
+  const tryFetch = async () => {
+    const r = await fetch('/api/history');
+    const d = await r.json();
+    if (d.loading) {
+      setTimeout(tryFetch, 5000); // retry in 5s while background is building
+      return;
+    }
+    _historyCache = d;
+    _renderCharts(d);
+  };
+  tryFetch();
+}
+
+function _renderCharts(d) {
+  const series = d.series || [];
+  const portfolio = d.portfolio || [];
+  const portfolioHistoric = d.portfolio_historic || [];
+  const cutoff = _cutoffDate(_currentPeriod);
+
+  const openSeries   = series.filter(s => !s.closed);
+  const closedSeries = series.filter(s =>  s.closed);
+
+  ['chart-portfolio','chart-combined','chart-values'].forEach(id => {
+    const el = E(id); if (el) el.parentElement.style.opacity = '1';
+  });
+
+  // ── Chart 1: Portfolio total value — grey historic line + blue current ──
+  const portFiltered = _filterPoints(portfolio, cutoff);
+  const histFiltered = _filterPoints(portfolioHistoric, cutoff);
+  if (portFiltered.length || histFiltered.length) {
+    if (_portfolioChart) _portfolioChart.destroy();
+    // Merge all dates for shared x-axis
+    const allPortDates = [...new Set([...histFiltered.map(p => p.date), ...portFiltered.map(p => p.date)])].sort();
+    const histByDate = Object.fromEntries(histFiltered.map(p => [p.date, p.value_eur]));
+    const portByDate = Object.fromEntries(portFiltered.map(p => [p.date, p.value_eur]));
+    const port1datasets = [];
+    if (histFiltered.length) {
+      port1datasets.push({
+        label: 'All-time (incl. exited)',
+        data: allPortDates.map(d => histByDate[d] ?? null),
+        borderColor: 'rgba(148,163,184,0.45)', backgroundColor: 'transparent',
+        borderWidth: 1.5, borderDash: [5,4],
+        pointRadius: 0, pointHoverRadius: 3, tension: 0.3, fill: false, spanGaps: true,
+      });
+    }
+    port1datasets.push({
+      label: 'Current portfolio',
+      data: allPortDates.map(d => portByDate[d] ?? null),
+      borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: true, spanGaps: true,
+    });
+    _portfolioChart = new Chart(E('chart-portfolio'), {
+      type: 'line',
+      data: { labels: allPortDates, datasets: port1datasets },
+      options: _chartOpts(
+        v => '€' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0)),
+        ctx => ' €' + ctx.parsed.y.toLocaleString('en-IE', {maximumFractionDigits: 0})
+      )
+    });
+  }
+
+  if (!series.length) return;
+  Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
+
+  // ── Chart 2: % return — open in colour, closed in grey dashed ───
+  // pct values are already anchored to avg cost (0% = buy price) — never rebase on period filter
+  const allDates2 = [...new Set(series.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date)))].sort();
+
+  const pctDatasets = [];
+  // Open positions — coloured by bucket
+  openSeries.forEach(s => {
+    const col = _tickerColor(s.ticker, s.bucket);
+    const pts = _filterPoints(s.points, cutoff);
+    const byDate = Object.fromEntries(pts.map(p => [p.date, p.pct]));
+    pctDatasets.push({
+      label: s.ticker, data: allDates2.map(d => byDate[d] ?? null),
+      borderColor: col, backgroundColor: col + '15',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true,
+    });
+  });
+  // Closed positions — grey dashed, labelled "(exited)"
+  closedSeries.forEach(s => {
+    const pts = _filterPoints(s.points, cutoff);
+    if (!pts.length) return;
+    const byDate = Object.fromEntries(pts.map(p => [p.date, p.pct]));
+    pctDatasets.push({
+      label: s.ticker + ' ✕', data: allDates2.map(d => byDate[d] ?? null),
+      borderColor: 'rgba(148,163,184,0.55)', backgroundColor: 'transparent',
+      borderWidth: 1.5, borderDash: [5, 4],
+      pointRadius: 0, pointHoverRadius: 3, tension: 0.3, fill: false, spanGaps: true,
+    });
+  });
+  // Zero baseline — hidden from legend
+  pctDatasets.unshift({ label: '0%', data: allDates2.map(() => 0), borderColor: 'rgba(100,116,139,0.3)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, hidden: false, legendHide: true });
+
+  if (_combinedChart) _combinedChart.destroy();
+  _combinedChart = new Chart(E('chart-combined'), {
+    type: 'line', data: { labels: allDates2, datasets: pctDatasets },
+    options: _chartOpts(
+      v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%',
+      ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(1) + '%'
+    )
+  });
+
+  // ── Chart 3: Absolute EUR value per holding (open only) ──────────
+  Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
+  const allDates3 = [...new Set(openSeries.flatMap(s => _filterPoints(s.points, cutoff).map(p => p.date)))].sort();
+  const valDatasets = openSeries.map(s => {
+    const col = _tickerColor(s.ticker, s.bucket);
+    const pts = _filterPoints(s.points, cutoff);
+    const byDate = Object.fromEntries(pts.map(p => [p.date, p.value_eur]));
+    return {
+      label: s.ticker, data: allDates3.map(d => byDate[d] ?? null),
+      borderColor: col, backgroundColor: col + '10',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false, spanGaps: true,
+    };
+  });
+
+  if (_valuesChart) _valuesChart.destroy();
+  _valuesChart = new Chart(E('chart-values'), {
+    type: 'line', data: { labels: allDates3, datasets: valDatasets },
+    options: _chartOpts(
+      v => '€' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0)),
+      ctx => ' ' + ctx.dataset.label + ': €' + (ctx.parsed.y ?? 0).toLocaleString('en-IE', {maximumFractionDigits: 0})
+    )
+  });
+
+  // ── Sparkline cards ───────────────────────────────────────────────
+  Object.keys(_bucketIdx).forEach(k => delete _bucketIdx[k]);
+  const grid = E('sparkline-grid');
+  grid.innerHTML = '';
+  openSeries.forEach(s => {
+    const col = _tickerColor(s.ticker, s.bucket);
+    const filtered = { ...s, points: _filterPoints(s.points, cutoff) };
+    if (filtered.points.length) grid.appendChild(_buildSparkCard(filtered, col));
+  });
+}
+
+// ── Drilldown modal ──────────────────────────────────────────────
+let _drilldownCache = {};
+
+function openDrilldown(ticker, positionData) {
+  const overlay = E('modal-overlay');
+  E('modal-ticker').textContent = ticker;
+
+  // Position snapshot
+  const posEl = E('modal-position');
+  if (positionData) {
+    const pnlC = cc(positionData.pnl_pct);
+    const dayC = cc(positionData.day_pct);
+    posEl.innerHTML = `<div class="position-snap">
+      <div class="snap-item">
+        <div class="snap-label">Shares</div>
+        <div class="snap-value">${positionData.shares}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Avg Cost</div>
+        <div class="snap-value">€${fmt(positionData.avg_cost_eur)}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Price</div>
+        <div class="snap-value">${positionData.price != null ? fmt(positionData.price) : '—'} <span style="font-size:11px;color:var(--muted)">${positionData.currency||''}</span></div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Today</div>
+        <div class="snap-value ${dayC}">${positionData.day_pct != null ? sign(positionData.day_pct)+fmt(positionData.day_pct)+'%' : '—'}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Value</div>
+        <div class="snap-value">${fmtEur(positionData.current_value_eur)}</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-label">Total P&L</div>
+        <div class="snap-value ${pnlC}">${positionData.pnl_pct != null ? sign(positionData.pnl_pct)+fmt(positionData.pnl_pct)+'%' : '—'}</div>
+      </div>
+    </div>`;
+    E('modal-meta').textContent = positionData.name || ticker;
+  } else {
+    posEl.innerHTML = '';
+    E('modal-meta').textContent = 'Watchlist';
+  }
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Use cache if we have it
+  if (_drilldownCache[ticker]) {
+    renderAnalysis(_drilldownCache[ticker]);
+    return;
+  }
+
+  E('modal-body').innerHTML = `<div class="modal-loading"><div class="spinner"></div>Asking GPT-4o for a Buffett-style analysis…</div>`;
+
+  fetch(`/api/drilldown/${ticker}`)
+    .then(r => r.json())
+    .then(d => {
+      _drilldownCache[ticker] = d.analysis;
+      renderAnalysis(d.analysis);
+    })
+    .catch(() => {
+      E('modal-body').innerHTML = '<p style="color:var(--red)">Error loading analysis. Check OPENAI_API_KEY in .env.</p>';
+    });
+}
+
+function renderAnalysis(text) {
+  // Simple markdown → HTML: ## headers, **bold**, bullet lists, paragraphs
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>(\n|$))+/gs, m => '<ul>' + m + '</ul>')
+    .replace(/\n\n+/g, '\n\n')
+    .split('\n\n')
+    .map(block => {
+      block = block.trim();
+      if (!block) return '';
+      if (block.startsWith('<h2>') || block.startsWith('<ul>')) return block;
+      return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+    })
+    .join('\n');
+
+  E('modal-body').innerHTML = `<div class="md-content">${html}</div>`;
+}
+
+function closeModal() {
+  E('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Lifetime ROI ─────────────────────────────────────────────────
+function renderLifetime(lt) {
+  if (!lt) return;
+  E('lifetime-grid').style.display = 'grid';
+  E('flow-chart-wrap').style.display = 'block';
+
+  E('l-deployed').textContent = fmtEur(lt.total_deployed);
+  E('l-returned').textContent = `${fmtEur(lt.total_returned)} returned via sales`;
+
+  E('l-realized').textContent = (lt.realized_pnl >= 0 ? '+' : '') + fmtEur(lt.realized_pnl);
+  E('l-realized').className = 'card-value ' + cc(lt.realized_pnl);
+
+  E('l-unrealized').textContent = (lt.unrealized_pnl >= 0 ? '+' : '') + fmtEur(lt.unrealized_pnl);
+  E('l-unrealized').className = 'card-value ' + cc(lt.unrealized_pnl);
+
+  E('l-total').textContent = (lt.total_pnl >= 0 ? '+' : '') + fmtEur(lt.total_pnl);
+  E('l-total').className = 'card-value ' + cc(lt.total_pnl);
+  E('l-total-pct').textContent = (lt.total_pnl_pct >= 0 ? '+' : '') + fmt(lt.total_pnl_pct) + '% on all capital deployed';
+  E('l-total-pct').className = 'card-sub ' + cc(lt.total_pnl_pct);
+
+  // Flow chart
+  const flows = lt.monthly_flows || [];
+  if (!flows.length) return;
+  const maxVal = Math.max(...flows.map(f => f.net), 0);
+  const minVal = Math.min(...flows.map(f => f.net), 0);
+  const maxAbs = Math.max(Math.abs(maxVal), Math.abs(minVal), 1);
+  const chartH = 60; // height of positive zone and negative zone each
+  const hasMixed = minVal < 0 && maxVal > 0;
+
+  const fmtAxis = v => v >= 1000 || v <= -1000 ? `€${(v/1000).toFixed(1)}k` : `€${v}`;
+
+  // Y-axis labels
+  const yAxis = `<div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-right:4px;min-width:36px;font-size:9px;color:var(--muted);height:${hasMixed ? chartH*2 : chartH}px">
+    <span>${fmtAxis(Math.round(maxAbs))}</span>
+    ${hasMixed ? `<span style="color:var(--border)">0</span>` : ''}
+    <span>${hasMixed ? fmtAxis(-Math.round(maxAbs)) : '0'}</span>
+  </div>`;
+
+  const fmtBar = v => Math.abs(v) >= 1000 ? `€${(v/1000).toFixed(1)}k` : `€${Math.abs(v)}`;
+  const bars = flows.map(f => {
+    const posH = f.net > 0 ? Math.max(2, Math.round(f.net / maxAbs * chartH)) : 0;
+    const negH = f.net < 0 ? Math.max(2, Math.round(Math.abs(f.net) / maxAbs * chartH)) : 0;
+    const col = f.net >= 0 ? 'rgba(74,222,128,0.75)' : 'rgba(248,113,113,0.75)';
+    const labelCol = f.net >= 0 ? '#4ade80' : '#f87171';
+    const valLabel = `<div style="font-size:8px;color:${labelCol};text-align:center;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;line-height:1;padding:1px 0">${fmtBar(f.net)}</div>`;
+    if (hasMixed) {
+      return `<div title="${f.month}: ${fmtBar(f.net)}" style="flex:1;min-width:14px;display:flex;flex-direction:column;justify-content:center;gap:0;cursor:default">
+        <div style="height:${chartH - posH}px;display:flex;align-items:flex-end;justify-content:center">${f.net > 0 ? valLabel : ''}</div>
+        <div style="height:${posH}px;background:${f.net>=0?col:'transparent'};border-radius:2px 2px 0 0"></div>
+        <div style="height:1px;background:var(--border)"></div>
+        <div style="height:${negH}px;background:${f.net<0?col:'transparent'};border-radius:0 0 2px 2px"></div>
+        <div style="height:${chartH - negH}px;display:flex;align-items:flex-start;justify-content:center">${f.net < 0 ? valLabel : ''}</div>
+      </div>`;
+    }
+    return `<div title="${f.month}: ${fmtBar(f.net)}" style="flex:1;min-width:14px;display:flex;flex-direction:column;justify-content:flex-end;cursor:default">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        ${valLabel}
+        <div style="width:100%;height:${posH}px;background:${col};border-radius:2px 2px 0 0"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const labels = flows.map(f => {
+    const short = f.month.slice(2).replace('-', '/');
+    return `<div style="flex:1;min-width:8px;font-size:8px;color:var(--muted);text-align:center;overflow:hidden">${short}</div>`;
+  }).join('');
+
+  E('flow-chart').style.alignItems = 'stretch';
+  E('flow-chart').style.height = `${hasMixed ? chartH*2+1 : chartH}px`;
+  E('flow-chart').innerHTML = yAxis + `<div style="flex:1;display:flex;align-items:stretch;gap:3px">${bars}</div>`;
+  E('flow-labels').innerHTML = `<div style="min-width:40px"></div><div style="flex:1;display:flex;gap:3px">${labels}</div>`;
+}
+
+// ── Summary ──────────────────────────────────────────────────────
+function renderSummary(positions, fx) {
+  let cost = 0, value = 0;
+  positions.forEach(p => {
+    cost += p.total_cost_eur || 0;
+    value += p.current_value_eur || 0;
+  });
+  const pnl = value - cost;
+  const pct = cost > 0 ? pnl/cost*100 : 0;
+
+  E('s-cost').textContent = fmtEur(cost);
+  E('s-value').textContent = fmtEur(value);
+  E('s-pnl').textContent = (pnl >= 0 ? '+' : '') + fmtEur(pnl);
+  E('s-pnl').className = 'card-value ' + cc(pnl);
+  E('s-pnl-sub').textContent = sign(pct) + fmt(pct) + '%';
+  E('s-pnl-sub').className = 'card-sub ' + cc(pct);
+
+  if (fx && fx.USD) {
+    E('s-fx').textContent = '1.00 EUR';
+    E('s-fx-sub').textContent = `= ${(1/fx.USD).toFixed(4)} USD`;
+  }
+  if (positions.length) E('portfolio-count').textContent = `${positions.length} positions`;
+
+  // ── Today's Move ────────────────────────────────────────────────
+  // Weighted portfolio day change: sum(value * day_pct) / sum(value with day data)
+  let dayNumer = 0, dayDenom = 0;
+  let bestMover = null, bestAbs = 0;
+  positions.forEach(p => {
+    const val = p.current_value_eur || 0;
+    if (p.day_pct != null && val > 0) {
+      dayNumer += val * p.day_pct;
+      dayDenom += val;
+      if (Math.abs(p.day_pct) > bestAbs) {
+        bestAbs = Math.abs(p.day_pct);
+        bestMover = p;
+      }
+    }
+  });
+  if (dayDenom > 0) {
+    const dayPct  = dayNumer / dayDenom;
+    const dayEur  = value > 0 ? value * dayPct / 100 : 0;
+    E('s-today').textContent = (dayPct >= 0 ? '+' : '') + fmt(dayPct) + '%';
+    E('s-today').className = 'card-value ' + cc(dayPct);
+    const subParts = [(dayPct >= 0 ? '+' : '') + fmtEur(dayEur) + ' today'];
+    if (bestMover) subParts.push(`top: ${bestMover.ticker} ${sign(bestMover.day_pct)}${fmt(bestMover.day_pct)}%`);
+    E('s-today-sub').textContent = subParts.join(' · ');
+    E('s-today-sub').className = 'card-sub ' + cc(dayPct);
+  } else {
+    E('s-today').textContent = '—';
+    E('s-today-sub').textContent = 'market closed';
+    E('s-today-sub').className = 'card-sub muted';
+  }
+
+  // ── HC Exit Pulse ────────────────────────────────────────────────
+  const HC_TARGET = 17500;
+  const hcPositions = positions.filter(p => p.bucket === 'high_conviction');
+  const hcVal  = hcPositions.reduce((s, p) => s + (p.current_value_eur || 0), 0);
+  const hcCost = hcPositions.reduce((s, p) => s + (p.total_cost_eur || 0), 0);
+  const hcPnlPct = hcCost > 0 ? (hcVal - hcCost) / hcCost * 100 : 0;
+  const hcProg = Math.min(100, hcVal / HC_TARGET * 100);
+  const hcColor = hcVal >= HC_TARGET ? 'var(--green)' : hcVal >= hcCost * 1.5 ? '#fbbf24' : 'var(--purple)';
+  const hcFirstBuyDate = hcPositions.map(p=>p.first_buy_date).filter(Boolean).sort()[0];
+  const hcWindowStart = hcFirstBuyDate ? new Date(new Date(hcFirstBuyDate).setMonth(new Date(hcFirstBuyDate).getMonth()+6)) : new Date('2026-11-11');
+  const daysToWindow = Math.max(0, Math.round((hcWindowStart - new Date()) / 86400000));
+
+  if (hcVal > 0) {
+    E('s-hc-val').textContent = fmtEur(hcVal);
+    E('s-hc-val').className = 'card-value';
+    E('s-hc-val').style.color = hcColor;
+    const windowStr = daysToWindow > 0 ? `window in ${daysToWindow}d` : 'exit window open';
+    E('s-hc-sub').innerHTML =
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">` +
+        `<div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">` +
+          `<div style="width:${hcProg.toFixed(1)}%;height:100%;background:${hcColor};border-radius:2px;transition:width 0.6s"></div>` +
+        `</div>` +
+        `<span style="font-size:10px;color:${hcColor};font-weight:700;white-space:nowrap">${hcProg.toFixed(0)}%</span>` +
+      `</div>` +
+      `<span style="font-size:11px;color:var(--muted)">${(hcPnlPct>=0?'+':'')+hcPnlPct.toFixed(1)}% · €${Math.round(HC_TARGET/1000*10)/10}k target · ${windowStr}</span>`;
+    E('s-hc-card').style.borderColor = hcColor + '44';
+  } else {
+    E('s-hc-val').textContent = '—';
+    E('s-hc-sub').textContent = 'no HC positions';
+  }
+}
+
+// ── Portfolio table ───────────────────────────────────────────────
+let _latestPortfolio = [];
+
+function renderPortfolio(positions) {
+  _latestPortfolio = positions;
+  const tbody = E('portfolio-body');
+  if (!positions.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center;padding:40px">No positions</td></tr>';
+    return;
+  }
+
+  let totalCost = 0, totalValue = 0;
+  const rows = positions.map(p => {
+    totalCost += p.total_cost_eur || 0;
+    totalValue += p.current_value_eur || 0;
+
+    const dayC = p.day_pct == null ? 'muted' : p.day_pct >= 0 ? 'green' : 'red';
+    const pnlC = cc(p.pnl_pct);
+    const bClass = p.bucket === 'high_conviction' ? 'b-high' : p.bucket === 'growth' ? 'b-growth' : p.bucket === 'house_savings' ? 'b-house' : 'b-retirement';
+    const bLabel = p.bucket === 'high_conviction' ? 'High Conv.' : p.bucket === 'growth' ? 'Growth' : p.bucket === 'house_savings' ? 'Income' : 'Retirement';
+
+    const barPct = p.pnl_pct != null ? Math.min(Math.abs(p.pnl_pct), 100) : 0;
+    const barColor = p.pnl_pct >= 0 ? 'var(--green)' : 'var(--red)';
+    const bar = `<span class="bar-wrap"><span class="bar-fill" style="width:${barPct}%;background:${barColor}"></span></span>`;
+    const idx = JSON.stringify(p).replace(/"/g, '&quot;');
+
+    const rsiVal = p.rsi != null ? p.rsi.toFixed(0) : '—';
+    const rsiCol = rsiColor(p.rsi_signal);
+    const earnCell = p.earnings_date
+      ? `<span style="font-size:10px;background:rgba(251,191,36,0.1);color:#fbbf24;border-radius:4px;padding:2px 6px">${p.earnings_date}</span>`
+      : '<span class="muted" style="font-size:11px">—</span>';
+
+    let rangeCell52 = '<span class="muted" style="font-size:10px">—</span>';
+    if (p.high_52w != null && p.low_52w != null && p.price != null && p.high_52w > p.low_52w) {
+      const rangeSpan = p.high_52w - p.low_52w;
+      const clampedPct = Math.max(0, Math.min(100, (p.price - p.low_52w) / rangeSpan * 100));
+      const barColor52 = clampedPct >= 80 ? '#f87171' : clampedPct >= 50 ? '#fbbf24' : '#4ade80';
+      rangeCell52 = '<div style="display:inline-block;min-width:80px">'
+        + '<div style="position:relative;width:72px;height:6px;background:var(--surface2);border-radius:3px;border:1px solid var(--border)">'
+        + '<div style="position:absolute;left:0;top:0;height:100%;width:' + clampedPct.toFixed(1) + '%;background:' + barColor52 + ';border-radius:3px"></div>'
+        + '<div style="position:absolute;left:' + clampedPct.toFixed(1) + '%;top:-2px;width:2px;height:10px;background:#e2e8f0;border-radius:1px;transform:translateX(-1px)"></div>'
+        + '</div>'
+        + '<div style="font-size:9px;color:var(--muted);margin-top:1px;white-space:nowrap">' + fmt(p.low_52w) + '–' + fmt(p.high_52w) + '</div>'
+        + '</div>';
+    }
+
+    return `<tr>
+      <td>
+        <button class="ticker-btn" onclick='openDrilldown("${p.ticker}", ${JSON.stringify(p)})'>${p.ticker}</button>
+        <div class="name">${p.name || ''}</div>
+      </td>
+      <td><span class="badge ${bClass}">${bLabel}</span></td>
+      <td class="r">${fmt(p.shares, p.shares % 1 === 0 ? 0 : 2)}</td>
+      <td class="r muted">€${fmt(p.avg_cost_eur)}</td>
+      <td class="r"><strong>${p.price != null ? fmt(p.price) : '—'}</strong> <span class="muted" style="font-size:10px">${p.currency||''}</span></td>
+      <td class="r"><span class="${dayC} pct-big">${p.day_pct != null ? sign(p.day_pct)+fmt(p.day_pct)+'%' : '—'}</span></td>
+      <td class="r"><span style="font-weight:700;color:${rsiCol}">${rsiVal}</span></td>
+      <td>${rangeCell52}</td>
+      <td>${earnCell}</td>
+      <td class="r">${fmtK(p.current_value_eur)}</td>
+      <td class="r ${pnlC}">${p.pnl_eur != null ? (p.pnl_eur>=0?'+':'')+fmtK(p.pnl_eur) : '—'}</td>
+      <td class="r"><span class="${pnlC} pct-big">${p.pnl_pct != null ? sign(p.pnl_pct)+fmt(p.pnl_pct)+'%' : '—'}</span>${bar}</td>
+    </tr>`;
+  });
+
+  const totalPnl = totalValue - totalCost;
+  const totalPct = totalCost > 0 ? totalPnl/totalCost*100 : 0;
+  rows.push(`<tr class="totals">
+    <td colspan="2"><strong>TOTAL</strong></td>
+    <td></td>
+    <td class="r muted">${fmtEur(totalCost)}</td>
+    <td></td><td></td><td></td><td></td><td></td>
+    <td class="r"><strong>${fmtEur(totalValue)}</strong></td>
+    <td class="r ${cc(totalPnl)}"><strong>${totalPnl>=0?'+':''}${fmtK(totalPnl)}</strong></td>
+    <td class="r ${cc(totalPct)}"><strong>${sign(totalPct)}${fmt(totalPct)}%</strong></td>
+  </tr>`);
+
+  tbody.innerHTML = rows.join('');
+}
+
+// ── RSI badge helper ──────────────────────────────────────────────
+function rsiColor(sig) {
+  if (!sig) return 'var(--muted)';
+  if (sig.includes('strongly overbought')) return '#f87171';
+  if (sig.includes('overbought')) return '#fb923c';
+  if (sig.includes('strongly oversold')) return '#4ade80';
+  if (sig.includes('oversold')) return '#86efac';
+  return 'var(--muted)';
+}
+
+// ── Scanner table ─────────────────────────────────────────────────
+let _scannerData = [];
+
+function _scanSignal(s) {
+  const pct = s.day_pct;
+  const rsi = s.rsi;
+  let cls = 'sig-neutral', text = '—', subtext = '', action = 'DCA as planned', earnStr = '';
+
+  if (pct != null) {
+    if (pct >= 8)       { cls = 'sig-gain'; text = '▲ EXTRAORDINARY'; }
+    else if (pct <= -8) { cls = 'sig-drop'; text = '▼ EXTRAORDINARY'; }
+    else if (pct >= 3)  { cls = 'sig-up';   text = '↑ Strong up'; }
+    else if (pct <= -3) { cls = 'sig-down'; text = '↓ Strong down'; }
+    else                { cls = 'sig-neutral'; text = 'Neutral'; }
+  }
+
+  if (rsi != null) {
+    if (rsi >= 75)      subtext = 'RSI ' + rsi.toFixed(0) + ' — strongly overbought ▲';
+    else if (rsi >= 70) subtext = 'RSI ' + rsi.toFixed(0) + ' — overbought';
+    else if (rsi <= 25) subtext = 'RSI ' + rsi.toFixed(0) + ' — strongly oversold ▼';
+    else if (rsi <= 30) subtext = 'RSI ' + rsi.toFixed(0) + ' — oversold';
+  }
+
+  // Action logic
+  if (rsi != null && rsi >= 75 && pct != null && pct > 0)   action = 'DO NOT CHASE — extended';
+  else if (rsi != null && rsi >= 70 && pct != null && pct > 0) action = 'WAIT — overbought';
+  else if (rsi != null && rsi <= 25)                          action = 'BUY ZONE — strong oversold';
+  else if (rsi != null && rsi <= 30)                          action = 'ADD — oversold';
+  else if (pct != null && pct <= -8)                          action = 'INVESTIGATE — extraordinary drop';
+  else if (pct != null && pct >= 8)                           action = 'WAIT — extraordinary spike';
+  else if (pct != null && pct <= -5)                          action = 'REVIEW — check thesis';
+  else if (pct != null && pct >= 5)                           action = 'MOMENTUM — wait for entry';
+
+  if (s.earnings_date) {
+    earnStr = '<span style="font-size:10px;background:rgba(251,191,36,0.1);color:#fbbf24;border-radius:4px;padding:2px 5px;margin-left:4px">' + s.earnings_date + '</span>';
+  }
+
+  return { cls, text, subtext, action, earnStr };
+}
+
+function renderScanner(scanner) {
+  _scannerData = scanner;
+  const tbody = E('scanner-body');
+  if (!scanner.length) { tbody.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center;padding:20px">No data</td></tr>'; return; }
+
+  const _timingColor = t => {
+    if (t === 'LONG-RUN')      return '#60a5fa';
+    if (t === 'TIMED-AI')      return '#fbbf24';
+    if (t === 'TIMED-HOUSE')   return '#fb923c';
+    if (t === 'TIMED-HC-2027') return '#f472b6';
+    if (t === 'SPECULATIVE')   return '#94a3b8';
+    return 'var(--muted)';
+  };
+
+  const _bucketColor = b => {
+    if (b === 'retirement')     return '#22d3ee';
+    if (b === 'growth')         return '#fbbf24';
+    if (b === 'high_conviction')return '#c084fc';
+    if (b === 'house_savings')  return '#fb923c';
+    if (b === 'AVOID')          return '#f87171';
+    return 'var(--muted)';
+  };
+
+  const rows = scanner.map(s => {
+    const pct = s.day_pct;
+    const pC = pct == null ? 'muted' : pct >= 0 ? 'green' : 'red';
+    const hotBadge = s.hot ? ' <span style="font-size:10px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);border-radius:4px;padding:1px 5px;font-weight:700;">🔥 HOT</span>' : '';
+    const rsiVal = s.rsi != null ? s.rsi.toFixed(0) : '—';
+    const rsiCol = rsiColor(s.rsi_signal);
+
+    const sig = _scanSignal(s);
+
+    // 1W% column
+    const wC = s.week_pct == null ? 'muted' : s.week_pct >= 0 ? 'green' : 'red';
+    const wStr = s.week_pct != null ? sign(s.week_pct) + fmt(s.week_pct) + '%' : '—';
+
+    // 52W Range bar
+    let rangeCell = '<span class="muted" style="font-size:10px">—</span>';
+    if (s.high_52w != null && s.low_52w != null && s.price != null && s.high_52w > s.low_52w) {
+      const rangeSpan = s.high_52w - s.low_52w;
+      const rawPct = (s.price - s.low_52w) / rangeSpan * 100;
+      const clampedPct = Math.max(0, Math.min(100, rawPct));
+      const barColor = clampedPct >= 80 ? '#f87171' : clampedPct >= 50 ? '#fbbf24' : '#4ade80';
+      rangeCell = '<div style="display:inline-block;min-width:90px">'
+        + '<div style="position:relative;width:80px;height:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">'
+        + '<div style="position:absolute;left:0;top:0;height:100%;width:' + clampedPct.toFixed(1) + '%;background:' + barColor + ';border-radius:4px"></div>'
+        + '<div style="position:absolute;left:' + clampedPct.toFixed(1) + '%;top:-2px;width:2px;height:12px;background:#e2e8f0;border-radius:1px;transform:translateX(-1px)"></div>'
+        + '</div>'
+        + '<div style="font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap">L:' + fmt(s.low_52w) + ' H:' + fmt(s.high_52w) + '</div>'
+        + '</div>';
+    }
+
+    // Signal · Action cell
+    const actionColor = sig.action.startsWith('BUY') ? '#4ade80'
+      : sig.action.startsWith('ADD') ? '#86efac'
+      : (sig.action.startsWith('DO NOT') || sig.action.startsWith('WAIT')) ? '#f87171'
+      : sig.action.startsWith('INVESTIGATE') ? '#f87171'
+      : sig.action.startsWith('REVIEW') ? '#fb923c'
+      : sig.action.startsWith('MOMENTUM') ? '#fbbf24'
+      : 'var(--muted)';
+
+    const signalCell = '<span class="sig ' + sig.cls + '">' + sig.text + '</span>'
+      + (sig.subtext ? '<br><span style="font-size:10px;color:var(--muted)">' + sig.subtext + '</span>' : '')
+      + '<br><span style="font-size:10px;font-weight:700;color:' + actionColor + '">' + sig.action + '</span>'
+      + (sig.earnStr ? '<br>' + sig.earnStr : '');
+
+    // Fit cell from SCANNER_META
+    const sm = SCANNER_META[s.ticker];
+    let fitCell = '<span class="muted" style="font-size:10px">—</span>';
+    if (sm) {
+      const tc = _timingColor(sm.timing);
+      const bc = _bucketColor(sm.bucket);
+      const betaNum = sm.beta ? parseFloat(sm.beta.replace('~','')) : null;
+      const betaColor = betaNum == null ? 'var(--muted)'
+        : betaNum <= 0.5 ? '#4ade80'
+        : betaNum <= 0.8 ? '#86efac'
+        : betaNum <= 1.0 ? '#94a3b8'
+        : betaNum <= 1.4 ? '#fbbf24'
+        : '#f87171';
+      const betaBadge = sm.beta
+        ? '<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:' + betaColor + '18;color:' + betaColor + ';border:1px solid ' + betaColor + '30">β' + sm.beta + '</span>'
+        : '';
+      fitCell = '<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:' + tc + '18;color:' + tc + ';border:1px solid ' + tc + '30">' + sm.timing + '</span>'
+        + '<br><span style="font-size:10px;color:var(--green)">' + sm.yield_est + ' div</span>'
+        + (betaBadge ? '<br>' + betaBadge : '')
+        + '<br><span style="font-size:10px;padding:1px 5px;border-radius:3px;background:' + bc + '18;color:' + bc + '">' + sm.bucket + '</span>';
+    }
+
+    return '<tr>'
+      + '<td><button class="ticker-btn" onclick=\'openDrilldown("' + s.ticker + '", null)\'>' + s.ticker + '</button>' + hotBadge + '</td>'
+      + '<td style="font-size:11px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis">' + (s.name || '') + '</td>'
+      + '<td class="r">' + (s.price != null ? fmt(s.price) : '—') + '</td>'
+      + '<td class="r"><span class="' + pC + ' pct-big">' + (pct != null ? sign(pct) + fmt(pct) + '%' : '—') + '</span></td>'
+      + '<td class="r"><span class="' + wC + '">' + wStr + '</span></td>'
+      + '<td class="r"><span style="font-weight:700;color:' + rsiCol + '">' + rsiVal + '</span></td>'
+      + '<td>' + rangeCell + '</td>'
+      + '<td>' + signalCell + '</td>'
+      + '<td>' + fitCell + '</td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = rows.join('');
+
+  // News feed — most recent headlines from all tickers with news
+  const allNews = [];
+  scanner.forEach(s => {
+    (s.news || []).forEach(n => allNews.push({ ticker: s.ticker, title: n.title, publisher: n.publisher }));
+  });
+  const feed = E('news-feed');
+  if (allNews.length) {
+    const items = allNews.slice(0, 8).map(n =>
+      '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<span style="font-size:10px;font-weight:700;color:var(--blue);white-space:nowrap;padding-top:1px">' + n.ticker + '</span>'
+      + '<span style="font-size:12px;color:#94a3b8;line-height:1.4">' + n.title + '</span>'
+      + (n.publisher ? '<span style="font-size:10px;color:var(--muted);white-space:nowrap;margin-left:auto">' + n.publisher + '</span>' : '')
+      + '</div>'
+    ).join('');
+    feed.innerHTML = '<div class="section-title" style="margin-bottom:8px">📰 Latest News</div>' + items;
+  } else {
+    feed.innerHTML = '';
+  }
+}
+
+function renderMarket(status) {
+  E('market-pills').innerHTML = [
+    status.eu_open ? '<span class="pill pill-open">EU Open</span>' : '<span class="pill pill-closed">EU Closed</span>',
+    status.us_open ? '<span class="pill pill-open">US Open</span>' : '<span class="pill pill-closed">US Closed</span>',
+  ].join('');
+}
+
+function renderDeployments(deployments) {
+  const today = new Date().toISOString().split('T')[0];
+  E('deploy-strip').innerHTML = (deployments || []).map(d => {
+    const days = Math.round((new Date(d.date) - new Date(today)) / 86400000);
+    if (days < -14) return '';
+    const label = days < 0 ? 'Past' : days === 0 ? '🔔 TODAY' : `in ${days}d`;
+    return `<div class="deploy-item"><span class="deploy-label">${label}</span><span>${d.date} — ${d.note}</span></div>`;
+  }).join('');
+}
+
+// ── Briefing ─────────────────────────────────────────────────────
+async function generateBriefing() {
+  const btn = E('briefing-btn');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  E('briefing-text').textContent = 'Generating your briefing...';
+  E('briefing-text').className = '';
+  try {
+    const r = await fetch('/api/briefing/generate', {method:'POST'});
+    const d = await r.json();
+    E('briefing-text').textContent = d.briefing;
+    E('briefing-text').className = 'loaded';
+    btn.textContent = 'Regenerate';
+  } catch(e) {
+    E('briefing-text').textContent = 'Error — check OPENAI_API_KEY in .env';
+  }
+  btn.disabled = false;
+}
+
+async function loadBriefing() {
+  const r = await fetch('/api/briefing');
+  const d = await r.json();
+  if (d.briefing && !d.briefing.startsWith('No briefing')) {
+    E('briefing-text').textContent = d.briefing;
+    E('briefing-text').className = 'loaded';
+    E('briefing-btn').textContent = 'Regenerate';
+  }
+}
+
+function _switchPanel(name) {
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  E('panel-' + name).classList.add('active');
+  if (name === 'performance') loadCharts();
+}
+
+function showDesktopPanel(name, btn) {
+  document.querySelectorAll('.desktop-nav .btn-ghost').forEach(b => b.classList.remove('active-period'));
+  btn.classList.add('active-period');
+  _switchPanel(name);
+}
+
+function switchTab(name, ev) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  ev.target.classList.add('active');
+  _switchPanel(name);
+}
+
+// ── WebSocket + live countdown ────────────────────────────────────
+let _nextRefresh = null;
+
+function startCountdown() {
+  _nextRefresh = Date.now() + 60000;
+  const tick = () => {
+    if (!_nextRefresh) return;
+    const secs = Math.max(0, Math.round((_nextRefresh - Date.now()) / 1000));
+    const el = E('update-time');
+    if (el) el.textContent = secs > 0 ? `Live · next in ${secs}s` : 'Updating…';
+    setTimeout(tick, 1000);
+  };
+  tick();
+}
+
+function connect() {
+  // Pass Basic Auth credentials as a base64 token in the WS query string
+  const wsUrl = `ws${location.protocol === 'https:' ? 's' : ''}://${location.host}/ws${_wsToken ? '?token=' + _wsToken : ''}`;
+  const ws = new WebSocket(wsUrl);
+  ws.onopen = () => { E('update-time').textContent = 'Live'; startCountdown(); };
+
+  ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    renderPortfolio(d.portfolio || []);
+    renderScanner(d.scanner || []);
+    renderMarket(d.market_status || {});
+    renderSummary(d.portfolio || [], d.fx_rates || {});
+    if (d.deployments) renderDeployments(d.deployments);
+    if (d.lifetime) renderLifetime(d.lifetime);
+    renderStrategy(d.portfolio || [], d.lifetime || {});
+    renderPlaybook(d.portfolio || [], d.lifetime || {});
+    _drilldownCache = {};
+    startCountdown();
+  };
+
+  ws.onclose = () => {
+    _nextRefresh = null;
+    E('update-time').textContent = 'Reconnecting…';
+    setTimeout(connect, 3000);
+  };
+}
+
+async function bootstrapDeployments() {
+  const r = await fetch('/api/portfolio');
+  const d = await r.json();
+  renderDeployments(d.deployments);
+  if (d.fx_rates) renderSummary([], d.fx_rates);
+  if (d.lifetime) renderLifetime(d.lifetime);
+  if (d.positions) renderStrategy(d.positions, d.lifetime || {});
+  if (d.positions) renderPlaybook(d.positions, d.lifetime || {});
+}
+
+let _wsToken = '';
+
+async function populateStudio() {
+  // Fetch changelog from GitHub API (public repo)
+  try {
+    const r = await fetch('https://api.github.com/repos/afronteddu/investment-tracker/commits?per_page=10');
+    if (r.ok) {
+      const commits = await r.json();
+      const cl = E('studio-changelog');
+      if (cl && commits.length) {
+        cl.innerHTML = commits.map(c => {
+          const msg = c.commit.message.split('\n')[0].replace('Co-Authored-By:','').replace(/claude sonnet.*/i,'').trim().slice(0,60);
+          const d = c.commit.author.date.slice(0,10);
+          const h = c.sha.slice(0,7);
+          return '<div style="display:flex;gap:8px;align-items:baseline">'
+            + '<span style="color:#6e7681;font-size:10px;flex-shrink:0">' + d + '</span>'
+            + '<span style="color:#79c0ff;font-size:10px;flex-shrink:0">' + h + '</span>'
+            + '<span style="color:#e6edf3">' + msg + '</span></div>';
+        }).join('');
+      }
+    }
+  } catch(e) {
+    const cl = E('studio-changelog');
+    if (cl) cl.innerHTML = '<div style="color:#8b949e;font-size:11px">changelog requires network</div>';
+  }
+  // Approximate LOC from dashboard size
+  const loc = E('studio-loc');
+  if (loc) loc.textContent = '~' + (Math.round(document.documentElement.outerHTML.length / 50)).toLocaleString() + ' lines';
+}
+
+async function init() {
+  try {
+    const r = await fetch('/api/ws-token');
+    if (r.ok) _wsToken = (await r.json()).token;
+  } catch(e) {}
+  loadBriefing();
+  bootstrapDeployments();
+  connect();
+  populateStudio();
+}
+
+// ── Strategy Advisor ─────────────────────────────────────────────
+const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25, house_savings: 0 };
+const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6', house_savings: '#fb923c' };
+const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction', house_savings: 'Income / Dividend' };
+
+// Ireland tax: UCITS ETFs = 41% exit tax + 8yr deemed disposal (HOLD, never add).
+// ETCs (IGLN, ISLN) = debt securities = 33% CGT, no deemed disposal.
+// Individual stocks = 33% CGT on disposal only. Annual CGT exemption €1,270.
+const IE_TAX_41 = new Set(['IWDA.AS','VUSA.AS','IMAE.AS','AEME.PA','IEAG.AS']);
+
+// Currency denomination per ticker (for FX concentration signal)
+const TICKER_CCY = {
+  'BRK-B':'USD','NVDA':'USD','SNDK':'USD','NBIS':'USD','VRT':'USD','APLD':'USD',
+  'ASML.AS':'EUR','IMAE.AS':'EUR','IWDA.AS':'EUR','VUSA.AS':'EUR','AEME.PA':'EUR','IEAG.AS':'EUR',
+  'IGLN.L':'GBP','ISLN.L':'GBP',
+  // Watchlist / suggestions
+  'NOVO-B.CO':'DKK','SAP':'EUR','SAP.DE':'EUR','OR.PA':'EUR','AIR.PA':'EUR','SIE.DE':'EUR',
+  'TTE.PA':'EUR','IBE.MC':'EUR','LDO.MI':'EUR','RHM.DE':'EUR',
+  'SHEL':'USD','SHEL.L':'GBP','BP.L':'GBP','RIO.L':'GBP','BA.L':'GBP',
+  'TSM':'USD','HDB':'USD','CEG':'USD','XOM':'USD','JNJ':'USD','WM':'USD',
+  'GOOGL':'USD','MSFT':'USD',
+  'UCG.MI':'EUR','ROG.SW':'CHF','ENEL.MI':'EUR','NOVN.SW':'CHF',
+  'AXA.PA':'EUR','IBE.MC':'EUR','TTE.PA':'EUR','GSK.L':'GBP',
+  'PYPL':'USD','ABNB':'USD',
+};
+
+// Sector/geography metadata for held tickers
+const TICKER_META = {
+  // Retirement
+  'BRK-B':   { sector:'Financials / Conglomerate', geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Berkshire Hathaway B — internally diversified (insurance, railroads, energy, consumer)' },
+  'IGLN.L':  { sector:'Commodities',  geo:'Global', ccy:'GBP', type:'ETC (33% CGT)', desc:'Physical Gold ETC — debt security, 33% CGT, no deemed disposal' },
+  'ISLN.L':  { sector:'Commodities',  geo:'Global', ccy:'GBP', type:'ETC (33% CGT)', desc:'Physical Silver ETC — debt security, 33% CGT, no deemed disposal' },
+  'IWDA.AS': { sector:'Diversified',  geo:'Global', ccy:'EUR', type:'ETF (41% IE tax)', desc:'MSCI World ETF — LEGACY, hold don\'t sell' },
+  'VUSA.AS': { sector:'Diversified',  geo:'US',     ccy:'EUR', type:'ETF (41% IE tax)', desc:'S&P 500 ETF — LEGACY, hold don\'t sell' },
+  'IMAE.AS': { sector:'Diversified',  geo:'Europe', ccy:'EUR', type:'ETF (41% IE tax)', desc:'MSCI Europe ETF — LEGACY, hold don\'t sell' },
+  'AEME.PA': { sector:'Diversified',  geo:'EM',     ccy:'EUR', type:'ETF (41% IE tax)', desc:'MSCI EM ex-China ETF — LEGACY, hold don\'t sell' },
+  'IEAG.AS': { sector:'Fixed Income', geo:'Europe', ccy:'EUR', type:'ETF (41% IE tax)', desc:'EUR Govt Bond ETF — LEGACY, hold don\'t sell' },
+  // Growth
+  'NVDA':    { sector:'Semiconductors / AI Hardware', geo:'US', ccy:'USD', type:'stock (33% CGT)', desc:'Nvidia — AI GPU monopoly, data centre revenue' },
+  'ASML.AS': { sector:'Semiconductors / Equipment',   geo:'Europe', ccy:'EUR', type:'stock (33% CGT)', desc:'ASML — only maker of EUV lithography machines globally' },
+  'SNDK':    { sector:'Storage / Flash',  geo:'US', ccy:'USD', type:'stock (33% CGT)', desc:'SanDisk — WD spinoff, flash storage' },
+  // High conviction
+  'NBIS':    { sector:'AI Infra / Cloud', geo:'Global', ccy:'USD', type:'stock (33% CGT)', desc:'Nebius — AI cloud infrastructure (ex-Yandex)' },
+  'VRT':     { sector:'AI Infra / Power', geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Vertiv — power/thermal management for data centres' },
+  'APLD':    { sector:'AI Infra / HPC',   geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Applied Digital — HPC hosting for AI workloads' },
+  // House savings — CORE
+  'UCG.MI':  { sector:'Financials / Banking',   geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'UniCredit — Italian bank, 7%+ div + buybacks, CET1>16%. ⚠ β0.9 — highest beta in CORE.' },
+  'ENEL.MI': { sector:'Utilities / Regulated',  geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'Enel — Italian regulated utility, 6.2% div, β0.5. Tariff-backed cash flows.' },
+  'NOVN.SW': { sector:'Healthcare / Pharma',    geo:'Europe (CH)', ccy:'CHF', type:'stock (33% CGT)', desc:'Novartis — CHF pharma, 3.9% div, β0.4. Post-Sandoz spinoff, no binary catalyst risk.' },
+  'AXA.PA':  { sector:'Financials / Insurance', geo:'Europe (FR)', ccy:'EUR', type:'stock (33% CGT)', desc:'AXA — French insurer, 5.5% div, β0.75. Capital-light float model, Solvency II >200%.' },
+  'IBE.MC':  { sector:'Utilities / Renewables', geo:'Europe (ES)', ccy:'EUR', type:'stock (33% CGT)', desc:'Iberdrola — Spanish renewables utility, 4.5% div, β0.5. Spain/UK/US/Brazil regulated revenues.' },
+  // House savings — SATELLITE
+  'TTE.PA':  { sector:'Integrated Energy / LNG', geo:'Europe (FR)', ccy:'EUR', type:'stock (33% CGT)', desc:'TotalEnergies — EUR LNG+solar+oil, 4% div, PE ~8-9×. Zero AI correlation.' },
+  'GSK.L':   { sector:'Healthcare / Pharma',    geo:'Europe (UK)', ccy:'GBP', type:'stock (33% CGT)', desc:'GSK — UK pharma post-Haleon spinoff, 4.5% div, β0.5. Clean vaccines+HIV+speciality focus.' },
+  // House savings — GROWTH (sell H1 2028)
+  'ROG.SW':  { sector:'Healthcare / Pharma',    geo:'Europe (CH)', ccy:'CHF', type:'stock (33% CGT)', desc:'Roche — ⚠ CT-388 binary event 2026-27. GROWTH tier: upside bet, sell before 2028 window.' },
+  'PYPL':    { sector:'Fintech / Payments',     geo:'US',           ccy:'USD', type:'stock (33% CGT)', desc:'PayPal — 60%+ below ATH, PE~15×, $5B buyback. Target $90-100 by H1 2028. Sell first.' },
+  'ABNB':    { sector:'Travel / Platform',      geo:'US',           ccy:'USD', type:'stock (33% CGT)', desc:'Airbnb — asset-light travel, $10B+ FCF, buybacks. Target ~$180 by 2028. Sell first.' },
+};
+
+// Static per-ticker metadata for scanner enrichment.
+// yield_est: trailing annual dividend yield, approximate (label as "est." in UI).
+// bucket: suggested bucket assignment.
+// timing: LONG-RUN | TIMED-AI | TIMED-HOUSE | TIMED-HC-2027 | SPECULATIVE
+const SCANNER_META = {
+  'NVDA':     { yield_est:'~0%',   bucket:'growth',         timing:'TIMED-AI',     beta:'~1.6', note:'AI GPU monopoly. Sell with capex cycle.' },
+  'AMD':      { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.5', note:'AI GPU challenger. Lagging NVDA cycle.' },
+  'TSM':      { yield_est:'~1.8%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~1.1', note:'Only advanced chip fab (N3/N2). Geopolitical risk (Taiwan).' },
+  'ARM':      { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.4', note:'CPU IP royalty play on every AI device.' },
+  'SMCI':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.8', note:'AI server integrator. Accounting risk — small size only.' },
+  'IONQ':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~2.0', note:'Quantum computing — pre-revenue phase. Lottery ticket sizing.' },
+  'RGTI':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~2.2', note:'Quantum computing — pre-revenue. High dilution risk.' },
+  'QUBT':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~2.1', note:'Quantum computing — speculative. Small position max.' },
+  'PLTR':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.3', note:'AI/defence analytics. High PE (~100×) — momentum name.' },
+  'SOUN':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~1.9', note:'Voice AI — small cap. No defined bucket.' },
+  'BBAI':     { yield_est:'0%',    bucket:'none',           timing:'SPECULATIVE',  beta:'~1.7', note:'Defence AI — micro cap. Speculative only.' },
+  'MSFT':     { yield_est:'~0.8%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.9', note:'Azure + Office365 recurring revenue. LONG-RUN compounder.' },
+  'GOOGL':    { yield_est:'~0.5%', bucket:'growth',         timing:'LONG-RUN',     beta:'~1.0', note:'Search monopoly + Cloud + AI. 10yr hold thesis.' },
+  'META':     { yield_est:'~0.3%', bucket:'growth',         timing:'TIMED-AI',     beta:'~1.1', note:'AI-driven ad rebound. Sell when AI capex cycle turns.' },
+  'AMZN':     { yield_est:'0%',    bucket:'growth',         timing:'LONG-RUN',     beta:'~1.1', note:'AWS + retail. Long compounding thesis.' },
+  'TSLA':     { yield_est:'0%',    bucket:'growth',         timing:'TIMED-AI',     beta:'~1.7', note:'EV + energy storage + robotics. High-beta speculative.' },
+  'AAPL':     { yield_est:'~0.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~1.2', note:'Services flywheel + hardware ecosystem. LONG-RUN.' },
+  'ASML.AS':  { yield_est:'~1.0%', bucket:'growth',         timing:'LONG-RUN',     beta:'~1.2', note:'EUV lithography monopoly. Hold through cycles.' },
+  'PYPL':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~1.0', note:'60% below ATH, $5B buyback. Target $90-100. Sell H1 2028.' },
+  'ABNB':     { yield_est:'0%',    bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~1.1', note:'Asset-light travel. Target ~$180. Sell H1 2028.' },
+  'UCG.MI':   { yield_est:'~7.2%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.9', note:'CORE tier. 7%+ div + buybacks. ⚠ β0.9. Sell H1 2029.' },
+  'ENEL.MI':  { yield_est:'~6.2%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'CORE tier. Regulated tariff income. β0.5. Sell H1 2029.' },
+  'NOVN.SW':  { yield_est:'~3.9%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.4', note:'CORE tier. CHF pharma. β0.4. No binary risk. Sell H1 2029.' },
+  'AXA.PA':   { yield_est:'~5.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.75',note:'CORE tier. EUR insurance, Solvency II >200%. Sell H1 2029.' },
+  'IBE.MC':   { yield_est:'~4.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'CORE tier. Renewables utility ES/UK/US/BR. Sell H1 2029.' },
+  'TTE.PA':   { yield_est:'~4.0%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.65',note:'SATELLITE tier. LNG + solar. PE ~8-9×. Sell H2 2028.' },
+  'GSK.L':    { yield_est:'~4.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'SATELLITE tier. UK pharma post-Haleon. GBP. Sell H2 2028.' },
+  'ROG.SW':   { yield_est:'~3.5%', bucket:'house_savings',  timing:'TIMED-HOUSE',  beta:'~0.5', note:'GROWTH tier. CT-388 binary catalyst 2026-27. Sell H1 2028.' },
+  'LDO.MI':   { yield_est:'~2.0%', bucket:'high_conviction',timing:'TIMED-HC-2027',beta:'~1.0', note:'2027 HC candidate. NATO spend cycle. Entry: €20-24. NOT YET.' },
+  'RHM.DE':   { yield_est:'~0.5%', bucket:'high_conviction',timing:'TIMED-HC-2027',beta:'~1.1', note:'2027 HC. Wait for peace-talk dip to €900-1,000. NOT YET.' },
+  'NOVO-B.CO':{ yield_est:'~5.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.5', note:'GLP-1 compounder. 70% off ATH, 10× PE. DKK-denominated.' },
+  'SAP.DE':   { yield_est:'~1.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.9', note:'ERP cloud monopoly. Margin expansion 30%→40%+. EUR.' },
+  'OR.PA':    { yield_est:'~2.1%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.7', note:"L'Oréal. 115yr compounder. China recovery pending. EUR." },
+  'AIR.PA':   { yield_est:'~1.8%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.9', note:'Airbus. €1T backlog. Defence ramp adds upside. EUR.' },
+  'CEG':      { yield_est:'~0.7%', bucket:'growth',         timing:'TIMED-AI',     beta:'~0.9', note:'Nuclear PPA play. MSFT/AMZN/META data centre power.' },
+  'SHEL.L':   { yield_est:'~3.5%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.6', note:'Shell. GBP denomination. LNG + renewables. FX diversifier.' },
+  'HDB':      { yield_est:'~1.2%', bucket:'retirement',     timing:'LONG-RUN',     beta:'~0.7', note:'HDFC Bank ADR. India 6-7% GDP growth. PE ~15×.' },
+};
+
+// Suggested additions — grounded in actual portfolio gaps.
+// Priority: 'brk_fix' = BRK-B concentration fix | 'geo' = FX/geo diversification
+//           'energy' = energy/power sector | 'hc2027' = next HC cycle | 'em' = EM growth
+const SUGGESTION_POOL = [
+
+  // ── BRK-B concentration fix: EUR/GBP compounders ──────────────
+  {
+    ticker:'NOVO-B.CO', sector:'Healthcare / GLP-1', geo:'Europe (DK)', ccy:'DKK',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Copenhagen (NOVO-B.CO)', degiro:'✓ Available',
+    buyGuide:'10 shares now, 10 more at 240 DKK if it dips',
+    diversifies:'First healthcare position. DKK-denominated — cuts USD concentration. Zero AI/tech cycle correlation. Defensive compounder.',
+    why:'~70% below 2024 ATH at 10× PE, 5.5% dividend yield. Bear case (Lilly competition, oral generics) is real but already priced. Manufacturing scale moat takes years to replicate. Adjacent pipeline: NASH, CKD, rare blood disorders. At 10× PE the dividend alone pays you to wait. Stock — 33% CGT.',
+    bearCase:'Lilly tirzepatide clinically superior. Oral GLP-1 generics from China/India in 3–5 years. CagriSema pipeline failure already damaged credibility.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'SAP.DE', sector:'Enterprise Software', geo:'Europe (DE)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Xetra (SAP.DE)', degiro:'✓ Available',
+    buyGuide:'1 share (~€180–200)',
+    diversifies:'EUR-denominated — zero USD drag. European software monopoly uncorrelated to hardware/AI capex.',
+    why:'Cloud ERP transition just hit operating leverage inflection: revenue +8% YoY, earnings +129%. Next 3 years: margin expansion from 30% → 40%+ as SaaS mix rises. Only global ERP vendor — displacing SAP requires 5+ years of enterprise migration. Stock — 33% CGT.',
+    bearCase:'Premium valuation (PE ~24). Enterprise IT spend contracts in a recession.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'OR.PA', sector:'Consumer Staples / Beauty', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Euronext Paris (OR.PA)', degiro:'✓ Available',
+    buyGuide:'1 share (~€380–420)',
+    diversifies:'First consumer staples. EUR-denominated. Pricing power through all macro cycles. EM distribution upside.',
+    why:"L'Oréal — 115 years of compounding at ~10%/yr. China drag (~25% revenue) is temporary, structural EM middle class growth is permanent. Recession-resilient (lipstick index). 2.1% dividend + buybacks. Stock — 33% CGT.",
+    bearCase:'China revenue recovery slower than expected. Prestige beauty faces Gen Z brand fragmentation.',
+    conviction:'MEDIUM',
+  },
+  {
+    ticker:'AIR.PA', sector:'Aerospace / Defence', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Euronext Paris (AIR.PA)', degiro:'✓ Available',
+    buyGuide:'1–2 shares (~€180–360)',
+    diversifies:'Aerospace/defence gap. EUR-denominated. Backlog gives revenue visibility regardless of macro.',
+    why:'Airbus — €1 trillion order backlog (8+ years of production). Boeing supply crisis is a gift. European defence ramp adds military aircraft upside. No USD risk. Stock — 33% CGT.',
+    bearCase:'Supply chain bottlenecks limiting delivery cadence. Labour disputes.',
+    conviction:'MEDIUM',
+  },
+
+  // ── Energy / Power: AI data centre electricity demand ─────────
+  {
+    ticker:'CEG', sector:'Nuclear Energy', geo:'US', ccy:'USD',
+    priority:'energy', bucket:'growth',
+    exchange:'Nasdaq (CEG)', degiro:'✓ Available',
+    buyGuide:'2–3 shares (~€260–390) — after current pullback',
+    diversifies:'Nuclear baseload power. Different mechanism from NVDA/NBIS — energy supply, not compute. Zero AI software risk.',
+    why:'Largest US nuclear operator. Signed 20-year PPAs with Microsoft (Three Mile Island restart), Amazon, Meta. Data centres want 24/7 carbon-free power — only nuclear delivers. YTD -19% creates entry. Stock — 33% CGT.',
+    bearCase:'Nuclear subsidy regulatory uncertainty. Rate pressure from utilities sector repricing.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'TTE.PA', sector:'Integrated Energy / LNG', geo:'Europe (FR)', ccy:'EUR',
+    priority:'energy', bucket:'retirement',
+    exchange:'Euronext Paris (TTE.PA)', degiro:'✓ Available',
+    buyGuide:'3–5 shares (~€180–300)',
+    diversifies:'EUR-denominated energy. LNG bridge fuel for EU + Asia coal phase-out. ~4% dividend.',
+    why:'TotalEnergies — most diversified European major (LNG + solar + oil). ~4% dividend, PE ~8–9×. LNG is the structural bridge fuel for the next 15 years. Better than XOM at these valuations. Stock — 33% CGT.',
+    bearCase:'Oil price collapse scenario. Green energy transition longer than expected.',
+    conviction:'MEDIUM',
+  },
+  {
+    ticker:'SHEL.L', sector:'Integrated Energy / LNG', geo:'Europe (UK)', ccy:'GBP',
+    priority:'energy', bucket:'retirement',
+    exchange:'LSE (SHEL.L)', degiro:'✓ Available — buy on LSE for GBP',
+    buyGuide:'5–10 shares (~£350–700)',
+    diversifies:'GBP-denominated — cuts USD drag. Largest private LNG portfolio globally. Negative correlation to tech selloffs.',
+    why:'Shell — LNG + hydrogen + offshore wind. 3.5% dividend. More renewable exposure than BP. GBP denomination is an FX hedge vs USD-heavy portfolio. Stock — 33% CGT.',
+    bearCase:'LNG price normalization. Renewable transition capital misallocation.',
+    conviction:'MEDIUM',
+  },
+
+  // ── 2027 HC Candidates — start researching now ─────────────────
+  {
+    ticker:'LDO.MI', sector:'Defence / Aerospace', geo:'Europe (IT)', ccy:'EUR',
+    priority:'hc2027', bucket:'high_conviction',
+    exchange:'Borsa Italiana (LDO.MI)', degiro:'✓ Available',
+    buyGuide:'NOT YET — monitor for 6–12 months. Entry: €20–24',
+    diversifies:'European defence — structural NATO spending cycle, legally binding commitments. EUR-denominated, zero USD risk.',
+    why:'Leonardo SpA — Italian aerospace/defence. Helicopters, radar, cyber. PE ~14, dividend ~2%. Least priced-in of European defence names (vs Rheinmetall which has already 5×). EU defence integration disproportionately benefits Italian/French industrial defence. 10-year spending cycle visibility. Stock — 33% CGT.',
+    bearCase:'Russia-Ukraine peace deal triggers 30–40% sector correction. Political risk around Italian government.',
+    conviction:'WATCH — 2027 HC candidate',
+  },
+  {
+    ticker:'RHM.DE', sector:'Defence / Ammunition', geo:'Europe (DE)', ccy:'EUR',
+    priority:'hc2027', bucket:'high_conviction',
+    exchange:'Xetra (RHM.DE)', degiro:'✓ Available',
+    buyGuide:'NOT YET — wait for peace-talk dip 25–30%. Watch €900–1,000 range',
+    diversifies:'European defence supplier. Germany €500B defence fund directly funds Rheinmetall orders. EUR-denominated.',
+    why:'Rheinmetall — artillery shells, armoured vehicles, the ammunition factory of NATO. Revenue guidance €14–16B (from €9B in 2023). Has already run 5×. Wait for a geopolitical de-escalation dip to enter at a discount. Stock — 33% CGT.',
+    bearCase:'Peace dividend — ceasefire could crater the stock 30–40% quickly.',
+    conviction:'WATCH — 2027 HC candidate if dip materialises',
+  },
+  {
+    ticker:'HDB', sector:'Banking / EM Growth', geo:'India', ccy:'USD',
+    priority:'em', bucket:'retirement',
+    exchange:'NYSE ADR (HDB)', degiro:'✓ Available',
+    buyGuide:'10–15 shares (~€230–345) — wait for price stability',
+    diversifies:'First India exposure. 1.4B population financial inclusion story. Loan growth 15–20%/yr as middle class expands.',
+    why:'HDFC Bank — India largest private bank by assets. PE 15×, near 52-week lows after governance concerns already priced in. India GDP growing 6–7%/yr. Credit penetration still low — bank account + loan growth is structural. Stock — 33% CGT.',
+    bearCase:'Current 52-wk range $23–$40, trading at lows — governance issue needs resolution. Currency risk (USD ADR but INR underlying).',
+    conviction:'MEDIUM — research governance issue first',
+  },
+
+  // ── House savings CORE: EUR/CHF income floor ──────────────────
+  {
+    ticker:'UCG.MI', sector:'Financials / Banking', geo:'Europe (IT)', ccy:'EUR',
+    priority:'house', bucket:'house_savings',
+    exchange:'Borsa Italiana (UCG.MI)', degiro:'✓ Available',
+    buyGuide:'20–30 shares (~€880–1,320 at ~€44). DCA monthly — income floor from day 1.',
+    diversifies:'EUR-denominated bank income. Zero USD/GBP FX risk. 7%+ dividend yield + active buyback programme = highest total return in house savings CORE tier.',
+    why:'UniCredit — best-capitalised large European bank (CET1 >16%). Dividend + buybacks compound at ~10%/yr total return even with zero price appreciation. Italian exposure means direct EUR yield, no currency drag. ⚠ β0.9 — highest beta in CORE: most exposed in a 2028–29 credit shock. Pair with ENEL.MI (β0.5) to balance. Stock — 33% CGT.',
+    bearCase:'Italian sovereign spread widening. ECB rate cuts compress NIM faster than expected. Euro area recession re-prices financials.',
+    conviction:'HIGH — house savings CORE',
+  },
+  {
+    ticker:'NOVN.SW', sector:'Healthcare / Pharma', geo:'Europe (CH)', ccy:'CHF',
+    priority:'house', bucket:'house_savings',
+    exchange:'SIX Swiss Exchange (NOVN.SW)', degiro:'✓ Available',
+    buyGuide:'5–8 shares (~CHF500–800). CHF gives a natural FX cushion against EUR weakness.',
+    diversifies:'CHF-denominated defensive. Healthcare sector is negative-correlated to AI selloffs. Post-Sandoz spinoff = clean focus on high-margin drugs (oncology, immunology, cardiovascular). No binary catalyst risk.',
+    why:'Novartis — ~4% dividend yield in CHF, β0.4 (lowest-beta CHF name available). Post-Sandoz spinoff the remaining business has higher margins and a cleaner pipeline. Preferred over Roche (ROG.SW has binary CT-388 Phase 2 risk in 2026–27). A miss there re-rates ROG down hard inside the 3yr house savings window. NOVN avoids that. Stock — 33% CGT.',
+    bearCase:'CHF/EUR appreciation reduces EUR return on dividends. Biosimilar competition on blockbusters (Entresto, Cosentyx).',
+    conviction:'HIGH — house savings CORE. Preferred CHF pharma over ROG.SW.',
+  },
+];
+
+function renderPlaybook(positions, lifetime) {
+  const pb = E('playbook-body');
+  if (!pb) return;
+
+  const totalValue = positions.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const bucketValues = {retirement:0,growth:0,high_conviction:0,house_savings:0};
+  positions.forEach(p=>{ const b=p.bucket||'growth'; bucketValues[b]=(bucketValues[b]||0)+(p.current_value_eur||0); });
+  const retPct   = totalValue>0 ? (bucketValues.retirement/totalValue*100).toFixed(0) : 0;
+  const groPct   = totalValue>0 ? (bucketValues.growth/totalValue*100).toFixed(0) : 0;
+  const hcPct2   = totalValue>0 ? (bucketValues.high_conviction/totalValue*100).toFixed(0) : 0;
+  const hsPct2   = totalValue>0 ? (bucketValues.house_savings/totalValue*100).toFixed(0) : 0;
+
+  const held = positions.map(p=>p.ticker);
+  const heldStr = held.length ? held.join(', ') : 'none';
+
+  const aiTickers = ['NVDA','ASML.AS','SNDK','NBIS','VRT','APLD'];
+  const aiVal = positions.filter(p=>aiTickers.includes(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const aiConc2 = totalValue>0 ? (aiVal/totalValue*100).toFixed(0) : 0;
+
+  const usdVal = positions.filter(p=>{ const ccy=(window._fxRates&&Object.keys(window._fxRates||{})); return p.currency==='USD'; }).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const usdConc2 = totalValue>0 ? (usdVal/totalValue*100).toFixed(0) : '—';
+
+  // SoRR phase from FIRE inputs
+  const _spd = +(localStorage.getItem('fireMonthlySpend')||3500);
+  const _sav = +(localStorage.getItem('fireMonthlySave')||1500);
+  const _tgt = +(localStorage.getItem('fireTargetAge')||50);
+  const _cur = +(localStorage.getItem('fireCurrentAge')||30);
+  const _inv = positions.filter(p=>p.bucket!=='house_savings').reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const _ftgt = _spd*320;
+  let _ytf2=null;
+  for(let n=0;n<=65;n++){const fv=_inv*Math.pow(1.07,n)+(_sav*12)*(Math.pow(1.07,n)-1)/0.07;if(fv>=_ftgt){_ytf2=n;break;}}
+  const sorPhaseLabel = _ytf2==null?'Accumulation (>60yr to FIRE)':_ytf2>10?'Accumulation ('+_ytf2+'yr to FIRE)':_ytf2>5?'⚠ Transition ('+_ytf2+'yr — begin glide path)':'🔴 DANGER ZONE ('+_ytf2+'yr — build cash buffer now)';
+  const sorPhaseColor = _ytf2!=null&&_ytf2<=5?'#f87171':_ytf2!=null&&_ytf2<=10?'#fbbf24':'#4ade80';
+
+  // Changelog — last 10 git commits injected server-side, fallback to static
+  const changelog = window._CHANGELOG || [
+    { hash:'09634d6', msg:'Embed SoRR into risk signals, FIRE glide path, suggestions, Playbook', date:'2026-06-05' },
+    { hash:'6aed4dc', msg:'Fix FIRE number formatting: show €1.05M not €1050k', date:'2026-06-05' },
+    { hash:'b539658', msg:'Remove ETFs and non-strategy tickers from scanner and hot picks', date:'2026-06-05' },
+    { hash:'fe73530', msg:'Enrich scanner (52W/1W/RSI action/Fit), add Playbook panel, fix CHF/DKK FX', date:'2026-06-04' },
+    { hash:'37d53b4', msg:'Add FIRE Calculator section to Strategy panel', date:'2026-06-04' },
+    { hash:'feb22ab', msg:'Rebuild house savings bucket: 3 tiers, EUR/CHF tilt', date:'2026-06-03' },
+    { hash:'9695624', msg:'Add Transactions 9+10, house savings suggestions, defence watchlist', date:'2026-06-02' },
+  ];
+
+  const card = (title, color, body) =>
+    '<div class="strat-card" style="border-color:' + (color||'#ffffff') + '20">'
+    + '<div class="strat-card-title" style="color:' + (color||'var(--text)') + '">' + title + '</div>'
+    + '<div class="strat-card-body">' + body + '</div></div>';
+
+  const row = (label, val, color) =>
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #ffffff08">'
+    + '<span style="color:var(--muted)">' + label + '</span>'
+    + '<span style="font-weight:700;color:' + (color||'var(--text)') + '">' + val + '</span></div>';
+
+  const section1 = card('1. Tax & Structure Rules', '#60a5fa',
+    row('New buys', 'individual stocks + ETCs only (33% CGT)', '#4ade80')
+    + row('UCITS ETFs', '41% exit tax + 8yr deemed disposal — avoid adding', '#f87171')
+    + row('Legacy ETFs', 'HOLD — do not sell (41% crystallises on disposal)', '#fbbf24')
+    + row('Annual CGT exemption', '€1,270 — harvest every December', '#4ade80')
+    + row('DIRT on deposits', '33% — factor into cash layer yield', 'var(--muted)')
+    + row('Pension / PRSA', '40% marginal rate relief — maximise before taxable accounts', '#4ade80')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">No leveraged products, no derivatives, no new UCITS ETFs — ever.</div>'
+  );
+
+  const section2 = card('2. Bucket Rules — Live', 'var(--text)',
+    row('Retirement', retPct + '% of portfolio (target 40%)', Math.abs(retPct-40)>10?'#fbbf24':'#4ade80')
+    + row('Growth', groPct + '% (target 35%)', Math.abs(groPct-35)>10?'#fbbf24':'#4ade80')
+    + row('High Conviction', hcPct2 + '% (target 25%)', Math.abs(hcPct2-25)>10?'#fbbf24':'#4ade80')
+    + row('Income / Dividend', hsPct2 + '% (timed exit bucket)', '#94a3b8')
+    + row('AI/data-centre cluster', aiConc2 + '% of portfolio', aiConc2>40?'#f87171':aiConc2>30?'#fbbf24':'#4ade80')
+    + row('Holdings', heldStr, 'var(--muted)')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">HC exit: Nov 2026 – May 2027. Next HC: European defence (LDO.MI/RHM.DE) from mid-2027. Income bucket exit: phased H1 2028–2029.</div>'
+  );
+
+  const section3 = card('3. Signal Interpretation', 'var(--text)',
+    row('RSI > 75', 'Strongly overbought — DO NOT ADD', '#f87171')
+    + row('RSI > 70', 'Overbought — wait, no new buys', '#fb923c')
+    + row('RSI < 30', 'Oversold — BUY ZONE if thesis intact', '#4ade80')
+    + row('RSI < 25', 'Strongly oversold — strong mean-reversion', '#4ade80')
+    + row('Day ≥ ±8%', 'EXTRAORDINARY — investigate immediately', '#f87171')
+    + row('Day ±3–8%', 'Strong move — normal for volatile names', 'var(--muted)')
+    + row('🔥 Hot badge', 'Top 8 movers by abs% · refreshed midnight + 08:00', '#fbbf24')
+    + row('Earnings badge', 'Within 14 days — reduce sizing on binary events', '#fb923c')
+    + row('β ≤ 0.5', 'Low-beta · defensive · prioritise near FIRE', '#4ade80')
+    + row('β > 1.4', 'High-beta · amplifies drawdowns · size carefully', '#f87171')
+  );
+
+  const section4 = card('4. FIRE + SoRR Rules', '#a78bfa',
+    row('Regola del 300', '×300 = 4.0% SWR base case', 'var(--muted)')
+    + row('IE Rule of 320', '×320 = 3.75% SWR (33% CGT-adjusted) — USE THIS', '#a78bfa')
+    + row('Regola del 345', '×345 = 3.48% SWR — max conservative', 'var(--muted)')
+    + row('Current SoRR phase', sorPhaseLabel, sorPhaseColor)
+    + row('Glide path Now', '80% growth / 20% income', 'var(--muted)')
+    + row('Glide path 5yr out', '60% growth / 40% income', 'var(--muted)')
+    + row('Glide path 3yr out', '40% growth / 60% income — no new speculative', 'var(--muted)')
+    + row('Glide path 1yr out', '25% growth / 75% income+cash', 'var(--muted)')
+    + row('Cash buffer rule', '2yr spending in deposits — never sell equities into bear', '#4ade80')
+    + row('IE CGT on withdrawals', 'Each sale triggers 33% — withdraw from cash first', '#fbbf24')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Savings rate benchmarks: 60%+ → ~12yr · 50% → ~17yr · 40% → ~22yr · 30% → ~28yr (from zero).</div>'
+  );
+
+  const section5 = card('5. Data Sources', 'var(--text)',
+    row('Prices', 'Yahoo Finance v8 API · every 60s', 'var(--muted)')
+    + row('RSI (14-day)', 'yfinance 3mo daily · every 30 min', 'var(--muted)')
+    + row('Earnings', 'yfinance earnings_dates · every 6hr', 'var(--muted)')
+    + row('News', 'yfinance feed · every 30 min · top 4/ticker', 'var(--muted)')
+    + row('History/charts', 'daily 90d + weekly beyond · every 6hr', 'var(--muted)')
+    + row('FX rates', 'USD, GBP, CHF, DKK vs EUR · every 5 min', 'var(--muted)')
+    + row('AI briefing', 'Gemini 2.5-flash → GPT-4o-mini fallback · 22:05 Dublin', 'var(--muted)')
+    + row('Hot picks', 'Top 8 movers from 35-ticker universe · midnight + 08:00', 'var(--muted)')
+    + row('Alerts', 'Portfolio ±5% · Watchlist ±8% · via Telegram', 'var(--muted)')
+    + row('Health check', 'Prices + FX + signals + WS payload · every 6hr · Telegram', 'var(--muted)')
+    + row('Midnight reload', 'data/transactions/ auto-reloaded (drop new DeGiro xlsx + commit)', 'var(--muted)')
+  );
+
+  const section6 = card('6. Scanner Fit Legend', '#fbbf24',
+    row('LONG-RUN (10yr+)', 'core compounders — no planned exit', '#60a5fa')
+    + row('TIMED-AI (6–24mo)', 'sell with AI capex cycle reversal', '#fbbf24')
+    + row('TIMED-HOUSE (2028–29)', 'house savings — hard exit before HTB', '#fb923c')
+    + row('TIMED-HC-2027', 'next HC bet — do not deploy early', '#f472b6')
+    + row('SPECULATIVE', 'no defined bucket — small position only', '#94a3b8')
+    + row('β ≤ 0.5', 'low-beta · defensive · prioritise in glide path', '#4ade80')
+    + row('β 0.5–1.0', 'moderate beta · market-correlated · core range', '#94a3b8')
+    + row('β > 1.0', 'high-beta · amplifies drawdowns · SoRR caution', '#f87171')
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Yield est. is trailing annual dividend yield. Approximate — verify on company IR page before transacting.</div>'
+  );
+
+  pb.innerHTML = section1 + section2 + section3 + section4 + section5 + section6;
+}
+
+function renderStrategy(positions, lifetime) {
+  if (!positions || !positions.length) return;
+
+  const totalValue = positions.reduce((s, p) => s + (p.current_value_eur || 0), 0);
+  if (!totalValue) return;
+
+  // ── Bucket allocation ──────────────────────────────────────────
+  const bucketValues = { retirement:0, growth:0, high_conviction:0, house_savings:0 };
+  positions.forEach(p => {
+    const b = p.bucket || 'growth';
+    bucketValues[b] = (bucketValues[b] || 0) + (p.current_value_eur || 0);
+  });
+
+  const allocHtml = Object.entries(BUCKET_TARGETS).map(([b, target]) => {
+    const val = bucketValues[b] || 0;
+    const pct = totalValue > 0 ? val / totalValue * 100 : 0;
+    const diff = pct - target;
+    const diffStr = diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
+    const diffCol = Math.abs(diff) > 10 ? 'var(--red)' : Math.abs(diff) > 5 ? '#fbbf24' : 'var(--green)';
+    const fillW = Math.min(pct / (target * 1.5) * 100, 100);
+    return `<div class="alloc-bar-wrap">
+      <div class="alloc-bar-label">${BUCKET_LABELS[b]}</div>
+      <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${fillW}%;background:${BUCKET_ACCENT[b]}"></div></div>
+      <div class="alloc-bar-pct" style="color:${BUCKET_ACCENT[b]}">${pct.toFixed(1)}%</div>
+      <div style="width:54px;font-size:11px;color:${diffCol};text-align:right">target ${target}% <span style="font-weight:700">${diffStr}</span></div>
+    </div>`;
+  }).join('');
+
+  // ── Currency breakdown ─────────────────────────────────────────
+  const ccyMap = {};
+  positions.forEach(p => {
+    const ccy = (TICKER_META[p.ticker]||{}).ccy || TICKER_CCY[p.ticker] || 'USD';
+    ccyMap[ccy] = (ccyMap[ccy]||0) + (p.current_value_eur||0);
+  });
+  const ccyColors = { USD:'#f87171', EUR:'#60a5fa', GBP:'#34d399', DKK:'#fbbf24', OTHER:'#a78bfa' };
+  const ccySorted = Object.entries(ccyMap).sort((a,b)=>b[1]-a[1]);
+  const usdPct = totalValue > 0 ? (ccyMap['USD']||0)/totalValue*100 : 0;
+  const ccyBars = ccySorted.map(([ccy, val]) => {
+    const pct = totalValue > 0 ? val/totalValue*100 : 0;
+    const col = ccyColors[ccy] || ccyColors.OTHER;
+    return `<div class="alloc-bar-wrap">
+      <div class="alloc-bar-label" style="font-size:11px">${ccy}</div>
+      <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="alloc-bar-pct" style="color:${col}">${pct.toFixed(0)}%</div>
+      <div style="width:54px;font-size:10px;color:var(--muted);text-align:right">€${Math.round(val/1000*10)/10}k</div>
+    </div>`;
+  }).join('');
+  const usdWarn = usdPct > 70
+    ? `<div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ ${usdPct.toFixed(0)}% USD exposure — a 10% EUR/USD move = €${Math.round(totalValue*usdPct/100*0.1).toLocaleString()} P&L with no stock change. Add EUR/GBP positions to reduce.</div>`
+    : usdPct > 55
+    ? `<div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ ${usdPct.toFixed(0)}% USD — moderate FX concentration. Add NOVO-B, SAP.DE or TTE.PA to dilute.</div>`
+    : `<div style="font-size:11px;color:var(--green);margin-top:6px">✓ FX mix is reasonable.</div>`;
+
+  E('strat-alloc').innerHTML = `
+    <div class="strat-label">Bucket Allocation vs Target</div>
+    ${allocHtml}
+    <div class="strat-label" style="margin-top:14px">Currency Exposure (FX Risk)</div>
+    ${ccyBars}${usdWarn}`;
+
+  // ── Bucket cards ────────────────────────────────────────────────
+  const retPos = positions.filter(p => p.bucket === 'retirement');
+  const growPos = positions.filter(p => p.bucket === 'growth');
+  const hcPos  = positions.filter(p => p.bucket === 'high_conviction');
+  // house_savings positions are parsed from portfolio but tracked separately in house section
+
+  const retVal   = retPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const growVal  = growPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const hcVal    = hcPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const retPct   = totalValue ? retVal/totalValue*100 : 0;
+  const growPct  = totalValue ? growVal/totalValue*100 : 0;
+  const hcPct    = totalValue ? hcVal/totalValue*100 : 0;
+
+  const retPnl   = retPos.reduce((s,p)=>s+(p.pnl_pct||0)*((p.current_value_eur||0)/retVal||0),0);
+  const growPnl  = growPos.reduce((s,p)=>s+(p.pnl_pct||0)*((p.current_value_eur||0)/growVal||0),0);
+  const hcPnlAbs = hcPos.reduce((s,p)=>s+(p.pnl_eur||0),0);
+  const hcCost   = hcPos.reduce((s,p)=>s+(p.total_cost_eur||0),0);
+  const hcPnlPct = hcCost > 0 ? hcPnlAbs/hcCost*100 : 0;
+
+  const retTargetPct = BUCKET_TARGETS.retirement;
+  const retDiff = retPct - retTargetPct;
+  // Count existing 41% tax positions — legacy, don't add more
+  const taxHeavyVal = retPos.filter(p => IE_TAX_41.has(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const taxHeavyPct = retVal > 0 ? taxHeavyVal/retVal*100 : 0;
+  const taxWarning = taxHeavyVal > 0
+    ? `<div style="color:#fbbf24;font-size:11px;margin-top:5px">⚠️ €${Math.round(taxHeavyVal).toLocaleString()} in legacy UCITS ETFs (41% exit tax). Hold — selling now triggers that tax. All new buys: stocks or ETCs only.</div>`
+    : '';
+
+  // ── Retirement goal tracker: €100k by Dec 2030 ─────────────────
+  const RET_GOAL = 100000;
+  const RET_GOAL_DATE = new Date('2031-12-31');
+  // RET_MONTHLY is the actual retirement allocation from the split (computed below from localStorage)
+  const _totalBudget   = +(localStorage.getItem('houseTotalBudget')   || 1500);
+  const _houseSharePct = +(localStorage.getItem('houseSharePct')      || 55);  // % of budget → house cash
+  const _retSharePct   = +(localStorage.getItem('retSharePct')        || 30);  // % → retirement
+  // growth gets the remainder implicitly: 100 - house - ret
+  const RET_MONTHLY = Math.round(_totalBudget * _retSharePct / 100);
+  const todayRet = new Date();
+  const monthsLeft = Math.max(1, (RET_GOAL_DATE.getFullYear() - todayRet.getFullYear()) * 12 + (RET_GOAL_DATE.getMonth() - todayRet.getMonth()));
+  const rMonthly = 0.07 / 12;
+  const projectedVal = retVal * Math.pow(1 + rMonthly, monthsLeft) + RET_MONTHLY * (Math.pow(1 + rMonthly, monthsLeft) - 1) / rMonthly;
+  const projectedOnTrack = projectedVal >= RET_GOAL;
+  const retGoalPct = Math.min(100, retVal / RET_GOAL * 100);
+  const retGoalColor = retGoalPct >= 80 ? 'var(--green)' : retGoalPct >= 50 ? '#fbbf24' : '#60a5fa';
+
+  // BRK-B concentration within retirement bucket
+  const brkPos = retPos.find(p => p.ticker === 'BRK-B');
+  const brkVal = brkPos ? (brkPos.current_value_eur||0) : 0;
+  const brkConc = retVal > 0 ? brkVal/retVal*100 : 0;
+  const brkConcColor = brkConc > 70 ? 'var(--red)' : brkConc > 50 ? '#fbbf24' : 'var(--green)';
+  const brkFill = Math.min(100, brkConc);
+  const brkNote = brkConc > 70
+    ? `<span style="color:var(--red)">⚠ BRK-B is ${brkConc.toFixed(0)}% of retirement bucket — too concentrated. Next buys should diversify: NOVO-B, SAP.DE, OR.PA, TTE.PA.</span>`
+    : brkConc > 50
+    ? `<span style="color:#fbbf24">BRK-B at ${brkConc.toFixed(0)}% — moderate concentration. Add 1 non-US stock to dilute.</span>`
+    : `<span style="color:var(--green)">BRK-B concentration within bounds.</span>`;
+
+  // Next buy guidance based on portfolio gaps
+  const hasHealthcare = positions.some(p => ['NOVO-B.CO','JNJ'].includes(p.ticker));
+  const hasEnergy = positions.some(p => ['TTE.PA','SHEL.L','CEG','XOM','BP.L'].includes(p.ticker));
+  const hasEurStock = positions.filter(p => (TICKER_META[p.ticker]||{}).ccy === 'EUR' && !IE_TAX_41.has(p.ticker) && p.bucket === 'retirement').length > 0;
+  const nextBuys = [];
+  if (!hasHealthcare) nextBuys.push('NOVO-B.CO (healthcare gap, 70% off ATH)');
+  if (brkConc > 60 && !hasEurStock) nextBuys.push('SAP.DE or OR.PA (EUR compounder, cuts USD concentration)');
+  if (!hasEnergy) nextBuys.push('TTE.PA or CEG (energy gap, AI data centre power thesis)');
+  if (!hasHealthcare && !nextBuys.includes('NOVO-B.CO')) nextBuys.push('NOVO-B.CO');
+  const nextBuyStr = nextBuys.length ? nextBuys.slice(0,2).join(' · ') : 'BRK-B DCA if below cost';
+
+  const retAction = `
+  <div style="margin:8px 0 6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>€${Math.round(retVal).toLocaleString()} now</span>
+      <span style="color:#60a5fa">€${(RET_GOAL/1000).toFixed(0)}k goal</span>
+      <span>Dec 2030</span>
+    </div>
+    <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+      <div style="height:100%;width:${retGoalPct.toFixed(1)}%;background:${retGoalColor};border-radius:5px;transition:width 0.6s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
+      <span style="color:${retGoalColor};font-weight:700">${retGoalPct.toFixed(1)}% of €${(RET_GOAL/1000).toFixed(0)}k</span>
+      <span style="color:${projectedOnTrack?'var(--green)':'#fbbf24'}">${projectedOnTrack ? '✓ On track' : '⚠ Behind pace'} · projected €${Math.round(projectedVal/1000).toFixed(0)}k</span>
+    </div>
+  </div>
+  <div style="margin:10px 0 4px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
+      <span>BRK-B concentration in retirement bucket</span>
+      <span style="color:${brkConcColor};font-weight:700">${brkConc.toFixed(0)}%</span>
+    </div>
+    <div style="position:relative;height:8px;background:var(--border);border-radius:4px;overflow:visible">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${brkFill}%;background:${brkConcColor};border-radius:4px;transition:width 0.6s"></div>
+      <div style="position:absolute;left:40%;top:-2px;width:2px;height:12px;background:#60a5fa44;border-radius:1px" title="40% healthy max"></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:3px">${brkNote}</div>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-top:8px">${monthsLeft} months to target date · €${RET_MONTHLY.toLocaleString()}/mo DCA · 7%/yr assumed · no new UCITS ETFs</div>
+  <div style="font-size:11px;color:#60a5fa;margin-top:4px;font-weight:600">Next buy: ${nextBuyStr}</div>
+  ${taxWarning}`;
+
+  // ── Growth goal tracker: €30k realistic / €50k aspirational by Dec 2028 ──
+  const GROW_LOW = 30000, GROW_HIGH = 50000;
+  const GROW_GOAL_DATE = new Date('2028-12-31');
+  const growCost = growPos.reduce((s,p)=>s+(p.total_cost_eur||0),0);
+  const growLowMarker = GROW_LOW / GROW_HIGH * 100; // 60%
+  const growCurrentPct = Math.min(100, growVal / GROW_HIGH * 100);
+  const growBarColor = growVal >= GROW_LOW ? 'var(--green)' : growVal >= growCost * 1.5 ? '#fbbf24' : '#34d399';
+  const monthsToGrow = Math.max(1, (GROW_GOAL_DATE.getFullYear() - new Date().getFullYear()) * 12 + (GROW_GOAL_DATE.getMonth() - new Date().getMonth()));
+  const growNeededLow = Math.max(0, GROW_LOW - growVal);
+  const growMultiLow  = growCost > 0 ? (GROW_LOW  / growCost).toFixed(1) : '—';
+  const growMultiHigh = growCost > 0 ? (GROW_HIGH / growCost).toFixed(1) : '—';
+  const growPnlPct = growCost > 0 ? (growVal - growCost) / growCost * 100 : 0;
+
+  // Per-position rows
+  const growRows = growPos.map(p => {
+    const pnl = p.pnl_pct || 0;
+    const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
+    let signal, note;
+    if (p.ticker === 'SNDK') {
+      signal = pnl > 40 ? 'TRIM ▲' : pnl < -20 ? 'REVIEW ▼' : 'HOLD';
+      note = 'Separate spin-off bet — independent thesis from AI cluster. Exit if thesis breaks.';
+    } else if (p.ticker === 'NVDA') {
+      signal = pnl > 80 ? 'LET RUN' : pnl > 50 ? 'HOLD' : 'ADD DIP';
+      note = pnl > 50 ? 'Let winners run — mental stop at 2× fair value.' : 'Core AI infrastructure hold. Add on pullbacks below €140.';
+    } else if (p.ticker === 'ASML.AS') {
+      signal = pnl < 0 ? 'ADD DIP' : 'HOLD';
+      note = 'European semi monopoly. Pullbacks near €1,200 are historically good entries.';
+    } else {
+      signal = pnl > 30 ? 'TRIM ▲' : 'HOLD';
+      note = 'Monitor multiples — hold unless valuation stretches beyond 2× fair value.';
+    }
+    const sigColor = signal.startsWith('TRIM') ? '#fbbf24' : signal === 'ADD DIP' ? 'var(--green)' : 'var(--muted)';
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #ffffff0f">
+      <div style="width:52px;font-weight:700;font-size:13px;color:var(--fg)">${p.ticker}</div>
+      <div style="width:54px;font-weight:700;font-size:13px;color:${pnlColor}">${pnlStr}</div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:${sigColor}">${signal}</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.4">${note}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const growAction = `
+  <div style="margin:8px 0 6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>€${Math.round(growCost).toLocaleString()} cost</span>
+      <span style="color:#34d399">€30k</span>
+      <span style="color:var(--muted)">€50k</span>
+    </div>
+    <div style="position:relative;height:10px;background:var(--border);border-radius:5px;overflow:visible">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${growCurrentPct.toFixed(1)}%;background:${growBarColor};border-radius:5px;transition:width 0.6s"></div>
+      <div style="position:absolute;left:${growLowMarker}%;top:-3px;width:2px;height:16px;background:#34d399;border-radius:1px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
+      <span style="color:${growBarColor};font-weight:700">€${Math.round(growVal).toLocaleString()} · ${(growPnlPct>=0?'+':'')+growPnlPct.toFixed(1)}%</span>
+      <span style="color:var(--muted)">${growNeededLow > 0 ? `+€${Math.round(growNeededLow).toLocaleString()} to €30k (${growMultiLow}× cost)` : '✓ Realistic target reached'} · ${growMultiHigh}× for €50k</span>
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${monthsToGrow} months to Dec 2028 · contributions only from extras — no committed DCA</div>
+  ${growRows || '<span style="color:var(--muted)">No growth positions yet.</span>'}`;
+
+  // ── HC: visual goal tracker ─────────────────────────────────────
+  const EXIT_LOW = 15000, EXIT_HIGH = 20000;
+  const hcMultiplier = hcCost > 0 ? hcVal / hcCost : 1;
+  const multNeededLow  = hcCost > 0 ? EXIT_LOW  / hcCost : 0;
+  const multNeededHigh = hcCost > 0 ? EXIT_HIGH / hcCost : 0;
+  // Progress bar: scale 0 → EXIT_HIGH
+  const costBarPct    = Math.min(100, hcCost / EXIT_HIGH * 100);
+  const currentBarPct = Math.min(100, hcVal  / EXIT_HIGH * 100);
+  const lowMarkerPct  = EXIT_LOW / EXIT_HIGH * 100; // = 75%
+  const barColor = hcVal >= EXIT_LOW ? 'var(--green)' : hcVal >= hcCost * 1.5 ? '#fbbf24' : '#f472b6';
+  // Exit window: 6-12mo from first HC buy (derived from positions data)
+  const hcFirstDates = hcPos.map(p => p.first_buy_date).filter(Boolean).sort();
+  const firstBuy = hcFirstDates.length ? new Date(hcFirstDates[0]) : new Date('2026-05-11');
+  const exitStart = new Date(firstBuy); exitStart.setMonth(exitStart.getMonth() + 6);
+  const exitEnd   = new Date(firstBuy); exitEnd.setMonth(exitEnd.getMonth() + 12);
+  const today = new Date();
+  const daysToWindow = Math.max(0, Math.round((exitStart - today) / 86400000));
+  const windowOpen = today >= exitStart;
+  const windowLabel = windowOpen
+    ? `<strong style="color:var(--green)">Exit window open</strong> (closes ${exitEnd.toLocaleDateString('en-IE',{month:'short',year:'numeric'})})`
+    : `Exit window opens in <strong>${daysToWindow}d</strong> (${exitStart.toLocaleDateString('en-IE',{month:'short',year:'numeric'})} – ${exitEnd.toLocaleDateString('en-IE',{month:'short',year:'numeric'})})`;
+  const neededLow = Math.max(0, EXIT_LOW - hcVal);
+  const hcAction = `
+  <div style="margin:8px 0 6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>Cost €${Math.round(hcCost).toLocaleString()}</span>
+      <span style="color:#f472b6">€15k</span>
+      <span style="color:var(--muted)">€20k</span>
+    </div>
+    <div style="position:relative;height:12px;background:var(--border);border-radius:6px;overflow:visible">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${currentBarPct.toFixed(1)}%;background:${barColor};border-radius:6px;transition:width 0.6s"></div>
+      <div style="position:absolute;left:${lowMarkerPct}%;top:-3px;width:2px;height:18px;background:#f472b6;border-radius:1px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
+      <span style="color:${barColor};font-weight:700">€${Math.round(hcVal).toLocaleString()} · ${(hcPnlPct>=0?'+':'')+hcPnlPct.toFixed(1)}% · ${hcMultiplier.toFixed(2)}×</span>
+      <span style="color:var(--muted)">${neededLow > 0 ? `need +€${Math.round(neededLow).toLocaleString()} (${multNeededLow.toFixed(1)}× cost)` : '✓ Lower target reached'}</span>
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-top:6px">${windowLabel}</div>
+  <div style="font-size:11px;color:var(--muted);margin-top:4px">Position locked — no further additions. Need ${multNeededLow.toFixed(1)}× to hit €15k · ${multNeededHigh.toFixed(1)}× for €20k.</div>`;
+
+  E('strat-buckets').innerHTML = [
+    { title:'🛡️ Retirement / Defensive', color:'#60a5fa', pct:retPct, tickers:retPos.map(p=>p.ticker).join(' · '), body:retAction },
+    { title:'📈 Growth', color:'#34d399', pct:growPct, tickers:growPos.map(p=>p.ticker).join(' · '), body:growAction },
+    { title:'🚀 High Conviction', color:'#f472b6', pct:hcPct, tickers:hcPos.map(p=>p.ticker).join(' · '), body:hcAction },
+  ].map(c => `<div class="strat-card" style="border-color:${c.color}20">
+    <div class="strat-card-title" style="color:${c.color}">${c.title} <span style="float:right;font-size:13px;font-weight:700;color:${c.color}">${c.pct.toFixed(1)}%</span></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${c.tickers}</div>
+    <div class="strat-card-body">${c.body}</div>
+  </div>`).join('');
+
+  // ── Income bucket info (public view — no house fund section) ────
+  // house_savings positions are relabeled as "Income / Dividend" in public mode
+  const HOUSE_GOAL = 57000;
+  const HOUSE_DATE = new Date('2029-06-01');
+  const HOUSE_MONTHS_LEFT = Math.max(1,
+    (HOUSE_DATE.getFullYear() - new Date().getFullYear()) * 12 +
+    (HOUSE_DATE.getMonth() - new Date().getMonth()));
+
+  // User-controlled split (persisted in localStorage)
+  // _totalBudget, _houseSharePct, _retSharePct already loaded above for RET_MONTHLY
+  const _growthSharePct = Math.max(0, 100 - _houseSharePct - _retSharePct);
+  const houseAlloc  = Math.round(_totalBudget * _houseSharePct  / 100);
+  const retAlloc    = Math.round(_totalBudget * _retSharePct    / 100);
+  const growthAlloc = Math.round(_totalBudget * _growthSharePct / 100);
+
+  // House fund: cash savings (no market risk) — user updates manually
+  const houseSaved = +(localStorage.getItem('houseFundSaved') || 0);
+
+  // House savings portfolio bucket (house_savings) — liquid stocks held as part of deposit strategy
+  const hsSavPos = positions.filter(p => p.bucket === 'house_savings');
+  const hsSavVal = hsSavPos.reduce((s,p) => s + (p.current_value_eur || 0), 0);
+  const hsSavCost= hsSavPos.reduce((s,p) => s + (p.total_cost_eur || 0), 0);
+  const hsSavPnl = hsSavCost > 0 ? (hsSavVal - hsSavCost) / hsSavCost * 100 : 0;
+
+  // Combined house progress = cash savings + house_savings portfolio value
+  const houseTotalFunded = houseSaved + hsSavVal;
+  const houseNeeded = Math.max(0, HOUSE_GOAL - houseTotalFunded);
+  const housePct = Math.min(100, houseTotalFunded / HOUSE_GOAL * 100);
+  const houseColor = housePct >= 80 ? 'var(--green)' : housePct >= 40 ? '#fbbf24' : '#fb923c';
+  const houseMonthlyNeeded = houseNeeded > 0 ? Math.ceil(houseNeeded / HOUSE_MONTHS_LEFT) : 0;
+  const projectedHouseSaved = houseTotalFunded + houseAlloc * HOUSE_MONTHS_LEFT;
+  const houseOnTrack = projectedHouseSaved >= HOUSE_GOAL;
+
+  // House savings bucket — rebuilt June 2026. Three tiers calibrated for 3yr horizon (exit H1 2029).
+  // CORE (50%) — EUR/CHF income anchors. Job: don't lose money. Hold until H1 2029.
+  // SATELLITE INCOME (25%) — secondary sector diversification + dividend floor.
+  // GROWTH SATELLITE (25%) — non-AI upside plays. SELL FIRST in H1 2028 deleverage.
+  //
+  // REMOVED: T, VZ (same USD telecom, better EUR options exist), KHC (dividend cut, brand erosion),
+  //          PFE (patent cliff 2025-30, Seagen thesis >3yr), CVS (Amazon/Walgreens disruption),
+  //          NU (β1.3 LatAm fintech — wrong risk profile for house capital).
+  // ROG.SW moved from RECOVERY to GROWTH — binary CT-388 outcome is upside bet, not stable income.
+  const HOUSE_SAVINGS_TICKERS = [
+    // ── CORE INCOME (50%): EUR/CHF anchored, low-beta, hold until H1 2029 ─────────
+    { tier:'CORE', ticker:'UCG.MI',  price:'~€44',    div:'7.2%', beta:'0.9',
+      why:'UniCredit — best-capitalised large European bank (CET1 >16%). Dividend + buyback programme = ~10%/yr total return even with zero price appreciation. Highest yield in CORE. ⚠ β0.9 = most volatile — pair with ENEL (β0.5) to balance. EUR, no USD risk. 33% CGT.' },
+    { tier:'CORE', ticker:'ENEL.MI', price:'~€7.5',   div:'6.2%', beta:'0.5',
+      why:'Enel — Italian regulated utility. Revenues are government-set tariffs: predictable to the decimal. 6.2% dividend from contractual cash flows, not earnings guesses. Lowest beta in CORE = best capital preservation per euro deployed. EUR. 33% CGT.' },
+    { tier:'CORE', ticker:'NOVN.SW', price:'~CHF100', div:'3.9%', beta:'0.4',
+      why:'Novartis — CHF denomination is a natural hedge if EUR weakens near your 2029 purchase window. β0.4 = safest beta in the entire portfolio. Post-Sandoz spinoff: clean oncology/immunology/cardiovascular pipeline. Zero binary catalyst risk (unlike Roche CT-388). 33% CGT.' },
+    { tier:'CORE', ticker:'AXA.PA',  price:'~€35',    div:'5.5%', beta:'0.75',
+      why:'AXA — French insurance giant. Capital-light model: earns from premiums + float regardless of economic cycle. 5.5% div, Solvency II ratio >200% (fortress balance sheet). Replaces T/VZ/KHC — superior EUR income with better sector diversification. Globally diversified (EU/Asia/US). EUR. 33% CGT.' },
+    { tier:'CORE', ticker:'IBE.MC',  price:'~€14',    div:'4.5%', beta:'0.5',
+      why:'Iberdrola — largest European renewables operator + Spanish regulated utility. Revenue from Spain/UK/US/Brazil/Mexico: geographically diversified, unlike Enel\'s Italian concentration. 4.5% div backed by regulated tariffs. EUR. Complements ENEL with different country/regulatory risk. 33% CGT.' },
+    // ── SATELLITE INCOME (25%): sector diversification + dividend floor ───────────
+    { tier:'SATELLITE', ticker:'TTE.PA', price:'~€55', div:'4.0%', beta:'0.65',
+      why:'TotalEnergies — EUR energy major. LNG + solar + oil = most diversified European energy company. PE ~8-9× (historically cheap). LNG is the 15yr bridge fuel for EU/Asia coal phase-out — structural demand regardless of AI cycle. 4% div. Zero tech/AI correlation. EUR. 33% CGT.' },
+    { tier:'SATELLITE', ticker:'GSK.L',  price:'~£17', div:'4.5%', beta:'0.5',
+      why:'GSK — UK pharma post-Haleon spinoff (consumer health separated 2022). Now a clean vaccines + speciality medicines + HIV company with a sharper focus. No binary weight-loss catalyst (unlike Roche CT-388). GBP denomination adds FX diversification vs EUR-heavy CORE. 4.5% div. 33% CGT.' },
+    // ── GROWTH SATELLITE (25%): non-AI upside, SELL FIRST in H1 2028 ─────────────
+    { tier:'GROWTH', ticker:'PYPL', price:'~$65',    div:'—',    beta:'1.0',
+      why:'PayPal — 60%+ below ATH, PE ~15×, $5B FCF/yr + $5B buyback running. New CEO executing Braintree margin recovery + Venmo monetisation + PYUSD stablecoin. Target $90–100 by H1 2028. Non-AI, non-EUR: uncorrelated return driver. SELL before H2 2028. 33% CGT.' },
+    { tier:'GROWTH', ticker:'ABNB',   price:'~$125',  div:'—',    beta:'1.1',
+      why:'Airbnb — most capital-efficient travel platform ($10B+ FCF/yr, no debt, aggressive buybacks). Asset-light: no hotels, no planes. Travel structural growth post-COVID. Target ~$180 by 2028. Non-AI, non-EUR. SELL before H2 2028. 33% CGT.' },
+    { tier:'GROWTH', ticker:'ROG.SW', price:'~CHF260', div:'3.5%', beta:'0.5',
+      why:'Roche — ⚠ CT-388 (weight-loss) Phase 2 readout 2026–27 = binary event. HIT: stock re-rates +40%+. MISS: -20–30%. Moved to GROWTH because this is an upside bet, not stable income. 3.5% div pays you to wait. CHF. SELL H1 2028 regardless of outcome — do not hold this through the house purchase window. 33% CGT.' },
+  ];
+
+  // Annual exit window — house savings liquidation phases
+  const HS_PHASES = [
+    { label:'Accumulate', yr:'2026–2027', start:'2026-01-01', end:'2027-12-31', color:'#4ade80', action:'DCA into all tiers monthly. Priority: CORE first (UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC), then SATELLITE (TTE.PA, GSK.L), then GROWTH (PYPL, ABNB, ROG.SW). Do not sell.' },
+    { label:'Deleverage', yr:'H1 2028',   start:'2028-01-01', end:'2028-06-30', color:'#fbbf24', action:'Stop DCA. Sell GROWTH first: PYPL, ABNB, ROG.SW (regardless of CT-388 outcome). Park proceeds in AIB 7-day Notice or Revolut.' },
+    { label:'Reduce',     yr:'H2 2028',   start:'2028-07-01', end:'2028-12-31', color:'#fb923c', action:'Sell SATELLITE: TTE.PA, GSK.L. Remaining cash into deposit only — no new stock DCA.' },
+    { label:'Full Exit',  yr:'H1 2029',   start:'2029-01-01', end:'2029-06-01', color:'#f87171', action:'Liquidate CORE: UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC. All cash before HTB submission. Spread sells over 4–6 weeks to reduce slippage.' },
+  ];
+  const _hsTodayMs = Date.now();
+  const _hsPhaseIdx = HS_PHASES.findIndex(p => _hsTodayMs >= new Date(p.start).getTime() && _hsTodayMs <= new Date(p.end).getTime());
+  const _hsActivePh = _hsPhaseIdx >= 0 ? HS_PHASES[_hsPhaseIdx] : HS_PHASES[0];
+  const _hsBarHtml = HS_PHASES.map((p, i) => `<div style="flex:1;height:5px;border-radius:3px;background:${i===_hsPhaseIdx?p.color:p.color+'33'}"></div>`).join('');
+  const _hsLabelHtml = HS_PHASES.map((p, i) => `<div style="flex:1;font-size:9px;color:${i===_hsPhaseIdx?p.color:'var(--muted)'};font-weight:${i===_hsPhaseIdx?'700':'400'};line-height:1.4">${p.label}<br>${p.yr}</div>`).join('');
+  const _hsExitWindowHtml = `<div style="margin:8px 0 10px;padding:8px 10px;background:var(--surface2);border-radius:6px"><div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">Exit Window Plan</div><div style="display:flex;gap:3px;margin-bottom:4px">${_hsBarHtml}</div><div style="display:flex;gap:3px;margin-bottom:6px">${_hsLabelHtml}</div><div style="font-size:10px;padding:5px 8px;border-radius:4px;border-left:2px solid ${_hsActivePh.color};background:${_hsActivePh.color}18;color:var(--text)"><strong style="color:${_hsActivePh.color}">${_hsActivePh.label}:</strong> ${_hsActivePh.action}</div></div>`;
+
+  // Per-position rows for house_savings bucket
+  const hsSavRows = hsSavPos.length ? hsSavPos.map(p => {
+    const pnl = p.pnl_pct || 0;
+    const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const signal = pnl > 30 ? 'TRIM ▲ — ahead of plan' : pnl < -15 ? 'REVIEW — check thesis' : 'HOLD · DCA monthly';
+    const sigColor = signal.startsWith('TRIM') ? '#fbbf24' : signal.startsWith('REVIEW') ? '#f87171' : 'var(--muted)';
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff0f">
+      <div style="width:52px;font-weight:700;font-size:12px;color:#fb923c">${p.ticker}</div>
+      <div style="width:54px;font-weight:700;font-size:12px;color:${pnlColor}">${(pnl>=0?'+':'')+pnl.toFixed(1)}%</div>
+      <div style="flex:1;font-size:11px;color:${sigColor}">${signal}</div>
+    </div>`;
+  }).join('') : `<div style="font-size:11px;color:var(--muted);padding:6px 0">No house_savings positions yet — see ticker ideas below.</div>`;
+
+  const houseAction = `
+  <div style="margin:8px 0 10px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+      <span>Funded: €${Math.round(houseTotalFunded).toLocaleString()}</span>
+      <span style="color:${houseColor}">Goal: €${(HOUSE_GOAL/1000).toFixed(0)}k</span>
+      <span>${HOUSE_DATE.toLocaleDateString('en-IE',{month:'short',year:'numeric'})}</span>
+    </div>
+    <div style="position:relative;height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${Math.min(100, houseSaved/HOUSE_GOAL*100).toFixed(1)}%;background:#fb923c88;border-radius:5px 0 0 5px"></div>
+      <div style="position:absolute;left:${Math.min(100, houseSaved/HOUSE_GOAL*100).toFixed(1)}%;top:0;height:100%;width:${Math.min(100-houseSaved/HOUSE_GOAL*100, hsSavVal/HOUSE_GOAL*100).toFixed(1)}%;background:#fb923c;border-radius:0 5px 5px 0"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:3px;color:var(--muted)">
+      <span><span style="color:#fb923c88">■</span> Cash €${Math.round(houseSaved).toLocaleString()}</span>
+      <span><span style="color:#fb923c">■</span> Portfolio €${Math.round(hsSavVal).toLocaleString()} (${hsSavPnl>=0?'+':''}${hsSavPnl.toFixed(1)}%)</span>
+      <span style="color:${houseOnTrack?'var(--green)':'#fbbf24'}">${houseOnTrack?'✓ On track':'⚠ Behind'}</span>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+    <strong style="color:var(--text)">Strategy:</strong> 60% cash → AIB 7-day Notice / Revolut ~3.25% (emergency fund in Bunq kept separate, not tracked here). 40% stocks DCA monthly per tier below.<br>
+    <strong style="color:var(--text)">HTB:</strong> ~2029 (need 4yr IE tax residency). New builds only, ≤€500k. <strong style="color:var(--text)">FHS:</strong> gov tops up to 30% equity on any shortfall — use if needed. Max €30k from HTB + FHS combined.<br>
+    <strong style="color:var(--text)">Portfolio tilt:</strong> EUR/CHF anchored (you already have >70% USD elsewhere). Non-AI, non-tech: zero correlation to HC/growth bets. Income floor from dividends even if prices stagnate.
+  </div>
+  ${_hsExitWindowHtml}
+  <div style="margin-bottom:10px">${hsSavRows}</div>
+  <details style="margin-bottom:8px">
+    <summary style="font-size:11px;color:#fb923c;cursor:pointer;font-weight:600">Ticker ideas for house_savings bucket ▾</summary>
+    <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
+      ${HOUSE_SAVINGS_TICKERS.map(t => {
+        const tierColor = t.tier === 'CORE' ? '#60a5fa' : t.tier === 'SATELLITE' ? '#fbbf24' : '#4ade80';
+        return `<div style="display:flex;gap:8px;font-size:11px;padding:5px 0;border-bottom:1px solid #ffffff08">
+          <span style="width:8px;height:auto;background:${tierColor};border-radius:2px;flex-shrink:0"></span>
+          <span style="width:46px;font-weight:700;color:#fb923c">${t.ticker}</span>
+          <span style="width:36px;color:var(--muted);font-size:10px">${t.price}</span>
+          <span style="width:30px;color:var(--green);font-weight:600;font-size:10px">${t.div}</span>
+          <span style="width:30px;color:var(--muted);font-size:10px">β${t.beta}</span>
+          <span style="flex:1;color:#94a3b8">${t.why}</span>
+        </div>`;
+      }).join('')}
+      <div style="margin-top:6px;font-size:10px;color:var(--muted)">
+        <span style="color:#60a5fa">■</span> CORE 50% (UCG.MI⚠β0.9 + ENEL.MI β0.5 + NOVN.SW β0.4 + AXA.PA β0.75 + IBE.MC β0.5) — EUR/CHF, income floor. Hold until H1 2029.
+        <span style="color:#fbbf24;margin-left:8px">■</span> SATELLITE 25% (TTE.PA + GSK.L) — energy + pharma sector diversification. Sell H2 2028.
+        <span style="color:#4ade80;margin-left:8px">■</span> GROWTH 25% (PYPL + ABNB + ROG.SW⚠binary) — non-AI upside. Sell first, H1 2028.
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px">Add these in portfolio.yaml with bucket: house_savings. They appear in the portfolio table with the 🏠 badge.</div>
+  </details>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:11px;color:var(--muted);width:120px">Cash saved (€)</span>
+    <input type="number" id="house-saved-input" value="${houseSaved}" min="0" max="200000" step="500"
+      style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text);font-size:12px;outline:none">
+    <button onclick="_updateHouseSaved()" style="font-size:11px;padding:4px 10px;background:#fb923c20;color:#fb923c;border:1px solid #fb923c40;border-radius:5px;cursor:pointer;font-weight:700">Save</button>
+  </div>`;
+
+  // ── Monthly Split Planner (slider-based, €1,500 total) ────────────
+  // growth% = 100 - house% - ret%, clamped to 0
+  const _growthPct_disp = Math.max(0, 100 - _houseSharePct - _retSharePct);
+  const splitAction = `
+  <div style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+      <span style="font-size:11px;color:var(--muted)">Monthly budget (€)</span>
+      <input type="number" id="split-budget-input" value="${_totalBudget}" min="100" max="10000" step="100"
+        style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text);font-size:12px;outline:none">
+      <button onclick="_updateSplit()" style="font-size:11px;padding:4px 10px;background:#60a5fa20;color:#60a5fa;border:1px solid #60a5fa40;border-radius:5px;cursor:pointer;font-weight:700">Apply</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Drag sliders — growth gets the remainder automatically.</div>
+
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:#fb923c;font-weight:700">🏠 House (cash + house_savings DCA)</span>
+        <span id="split-house-label" style="font-weight:700;color:#fb923c">${_houseSharePct}% · €${houseAlloc.toLocaleString()}/mo</span>
+      </div>
+      <input type="range" id="split-house-slider" min="10" max="80" step="5" value="${_houseSharePct}"
+        oninput="_onSplitSlide()" style="width:100%;accent-color:#fb923c">
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ 60% cash (AIB 7-day Notice / Revolut ~3.25%) · 40% stocks: <span style="color:#60a5fa">CORE</span> UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC (EUR/CHF income) + <span style="color:#fbbf24">SATELLITE</span> TTE.PA, GSK.L + <span style="color:#4ade80">GROWTH</span> PYPL, ABNB, ROG.SW (sell H1 2028).</div>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:#60a5fa;font-weight:700">🛡️ Retirement (BRK-B / NOVO-B / SAP.DE)</span>
+        <span id="split-ret-label" style="font-weight:700;color:#60a5fa">${_retSharePct}% · €${retAlloc.toLocaleString()}/mo</span>
+      </div>
+      <input type="range" id="split-ret-slider" min="5" max="60" step="5" value="${_retSharePct}"
+        oninput="_onSplitSlide()" style="width:100%;accent-color:#60a5fa">
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ BRK-B every other month + alternate: NOVO-B.CO (DKK, healthcare) → SAP.DE (EUR, ERP) → OR.PA (EUR, staples). No USD-only exposure. No liquidation before 2030.</div>
+    </div>
+
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:#34d399;font-weight:700">📈 Growth / HC (NVDA / ASML / next HC)</span>
+        <span id="split-growth-label" style="font-weight:700;color:#34d399">${_growthPct_disp}% · €${growthAlloc.toLocaleString()}/mo</span>
+      </div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+        <div id="split-growth-bar" style="height:100%;width:${_growthPct_disp}%;background:#34d399;border-radius:4px;transition:width .2s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ Only deploy if house fund is on pace. Pause growth DCA if house is behind.</div>
+    </div>
+
+    <div id="split-verdict" style="font-size:11px;padding:7px 10px;border-radius:6px;border:1px solid ${houseOnTrack?'#4ade8030':'#fbbf2430'};background:${houseOnTrack?'#4ade8012':'#fbbf2412'};color:${houseOnTrack?'var(--green)':'#fbbf24'}">
+      ${houseOnTrack
+        ? `✓ €${houseAlloc.toLocaleString()}/mo into house fund → €${Math.round(projectedHouseSaved).toLocaleString()} by Jun 2029 · goal covered.`
+        : `⚠ €${houseAlloc.toLocaleString()}/mo → €${Math.round(projectedHouseSaved).toLocaleString()} by Jun 2029, €${Math.round(HOUSE_GOAL-projectedHouseSaved).toLocaleString()} short. FHS bridges the gap — or increase house %.`}
+    </div>
+  </div>`;
+
+  // Public view: show Income bucket summary card instead of house fund details
+  const _oldHouseSection = document.getElementById('house-section');
+  if (_oldHouseSection) _oldHouseSection.remove();
+  const hsSavPos2 = positions.filter(p => p.bucket === 'house_savings');
+  const hsSavVal2 = hsSavPos2.reduce((s,p) => s + (p.current_value_eur || 0), 0);
+  const hsSavCost2 = hsSavPos2.reduce((s,p) => s + (p.total_cost_eur || 0), 0);
+  const hsSavPnl2 = hsSavCost2 > 0 ? (hsSavVal2 - hsSavCost2) / hsSavCost2 * 100 : 0;
+  if (hsSavPos2.length > 0) {
+    const houseSection = document.createElement('div');
+    houseSection.id = 'house-section';
+    houseSection.style.cssText = 'margin-bottom:24px';
+    const incomeRows = hsSavPos2.map(p => {
+      const pnl = p.pnl_pct || 0;
+      const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+      const signal = pnl > 30 ? 'TRIM ▲' : pnl < -15 ? 'REVIEW ▼' : 'HOLD';
+      const sigColor = signal.startsWith('TRIM') ? '#fbbf24' : signal.startsWith('REVIEW') ? '#f87171' : 'var(--muted)';
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff0f">
+        <div style="width:52px;font-weight:700;font-size:12px;color:#fb923c">${p.ticker}</div>
+        <div style="width:54px;font-weight:700;font-size:12px;color:${pnlColor}">${(pnl>=0?'+':'')+pnl.toFixed(1)}%</div>
+        <div style="flex:1;font-size:11px;color:${sigColor}">${signal}</div>
+      </div>`;
+    }).join('');
+    houseSection.innerHTML = `<div class="strat-card" style="border-color:#fb923c20">
+      <div class="strat-card-title" style="color:#fb923c">🏦 Income / Dividend Bucket <span style="float:right;font-size:13px;font-weight:700;color:#fb923c">${(totalValue > 0 ? hsSavVal2/totalValue*100 : 0).toFixed(1)}%</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">EUR/CHF income positions — low-beta, dividend-focused. Started Dec 2025.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Value: <strong style="color:var(--text)">€${Math.round(hsSavVal2).toLocaleString()}</strong> · Cost: €${Math.round(hsSavCost2).toLocaleString()} · P&L: <span style="color:${hsSavPnl2>=0?'var(--green)':'var(--red)'}">${hsSavPnl2>=0?'+':''}${hsSavPnl2.toFixed(1)}%</span></div>
+      ${incomeRows}
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">Strategy: EUR/CHF-anchored income stocks — low beta, dividend yield, zero AI/tech cycle correlation. Timed exit planned H1 2028–2029.</div>
+    </div>`;
+    const bucketsEl = E('strat-buckets');
+    if (bucketsEl.nextSibling) {
+      bucketsEl.parentNode.insertBefore(houseSection, bucketsEl.nextSibling);
+    } else {
+      bucketsEl.parentNode.appendChild(houseSection);
+    }
+  }
+
+  // ── Diversification ─────────────────────────────────────────────
+  const sectorMap = {}, geoMap = {}, typeMap = {};
+  positions.forEach(p => {
+    const m = TICKER_META[p.ticker];
+    const val = p.current_value_eur || 0;
+    if (!m) return;
+    sectorMap[m.sector] = (sectorMap[m.sector]||0) + val;
+    geoMap[m.geo]       = (geoMap[m.geo]||0) + val;
+    typeMap[m.type]      = (typeMap[m.type]||0) + val;
+  });
+
+  const _divCard = (title, map, color) => {
+    const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+    const total = sorted.reduce((s,[,v])=>s+v,0);
+    const bars = sorted.map(([k,v]) => {
+      const pct = total > 0 ? v/total*100 : 0;
+      return `<div class="alloc-bar-wrap" style="margin-bottom:5px">
+        <div class="alloc-bar-label" style="width:130px;font-size:11px">${k}</div>
+        <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="alloc-bar-pct" style="font-size:11px;color:${color}">${pct.toFixed(0)}%</div>
+      </div>`;
+    }).join('');
+    return `<div class="strat-card"><div class="strat-card-title">${title}</div>${bars}</div>`;
+  };
+
+  E('strat-diversification').innerHTML =
+    _divCard('By Sector', sectorMap, '#60a5fa') +
+    _divCard('By Geography', geoMap, '#34d399') +
+    _divCard('By Asset Type', typeMap, '#a78bfa');
+
+  // ── Risk signals — grounded in actual holdings ──────────────────
+
+  // Signal 1: USD FX concentration
+  const usdConc = totalValue > 0 ? (ccyMap['USD']||0)/totalValue*100 : 0;
+  const eurConc  = totalValue > 0 ? (ccyMap['EUR']||0)/totalValue*100 : 0;
+  const fxImpact10pct = Math.round(totalValue * usdConc/100 * 0.10); // EUR impact of 10% USD move
+
+  // Signal 2: AI/data-centre cluster (NVDA + ASML + SNDK + NBIS + VRT + APLD)
+  const aiTickers = ['NVDA','ASML.AS','SNDK','NBIS','VRT','APLD'];
+  const aiVal = positions.filter(p => aiTickers.includes(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const aiConc = totalValue > 0 ? aiVal/totalValue*100 : 0;
+
+  // Signal 3: BRK-B as % of retirement bucket
+  const brkConcRisk = brkConc; // already computed above
+
+  // Signal 4: HC bucket exit progress vs time
+  const hcPctRisk = hcPct;
+  const hcExitTarget = 17500;
+  const hcProgress = hcVal > 0 ? Math.min(100, hcVal/hcExitTarget*100) : 0;
+  const daysToExitStart = Math.max(0, Math.round((new Date('2026-11-11') - new Date()) / 86400000));
+  const daysToExitEnd   = Math.max(0, Math.round((new Date('2027-05-11') - new Date()) / 86400000));
+
+  // Signal 5: Healthcare/Energy sector gaps
+  const hasHealthcareRisk = !positions.some(p => ['NOVO-B.CO','JNJ','NVO','SNY'].includes(p.ticker));
+  const hasEnergyRisk     = !positions.some(p => ['TTE.PA','SHEL.L','CEG','XOM','BP.L','IBE.MC'].includes(p.ticker));
+
+  // Signal 6: Single largest position concentration
+  const singleMax = Math.max(...positions.map(p => totalValue>0 ? (p.current_value_eur||0)/totalValue*100 : 0));
+  const singleName = positions.find(p => totalValue>0 && Math.abs((p.current_value_eur||0)/totalValue*100 - singleMax) < 0.01)?.ticker || '?';
+
+  // Signal 7: Irish tax legacy
+  const taxHeavyPct2 = retVal > 0 ? taxHeavyVal/retVal*100 : 0;
+
+  // Signal 8: Sequence of returns risk — based on years-to-FIRE from FIRE calculator
+  // Recompute here independently so risk panel doesn't depend on FIRE section having run
+  const _riskFireSpend = +(localStorage.getItem('fireMonthlySpend') || 3500);
+  const _riskFireSave  = +(localStorage.getItem('fireMonthlySave')  || 1500);
+  const _riskFireAge   = +(localStorage.getItem('fireTargetAge')    || 50);
+  const _riskCurrAge   = +(localStorage.getItem('fireCurrentAge')   || 30);
+  const _riskFireTarget = _riskFireSpend * 320;
+  const _riskInvestable = positions.filter(p => p.bucket !== 'house_savings').reduce((s,p)=>s+(p.current_value_eur||0),0);
+  let _riskYTF = null;
+  for (let n = 0; n <= 65; n++) {
+    const fv = _riskInvestable * Math.pow(1.07, n) + (_riskFireSave*12) * (Math.pow(1.07,n)-1)/0.07;
+    if (fv >= _riskFireTarget) { _riskYTF = n; break; }
+  }
+  const _riskSorPhase = _riskYTF == null ? 'accumulate' : _riskYTF > 10 ? 'accumulate' : _riskYTF > 5 ? 'transition' : 'danger';
+
+  const risks = [
+    {
+      icon: '💱',
+      label: `USD concentration: ${usdConc.toFixed(0)}% of portfolio — a 10% EUR/USD move = ±€${fxImpact10pct.toLocaleString()} with no stock change`,
+      level: usdConc > 72 ? 'danger' : usdConc > 55 ? 'warn' : 'ok',
+      badge: usdConc > 72 ? 'HIGH' : usdConc > 55 ? 'MODERATE' : 'OK',
+      note: usdConc > 55
+        ? `Add EUR-denominated stocks to dilute: NOVO-B.CO (DKK), SAP.DE (EUR), TTE.PA (EUR), OR.PA (EUR). Target <60% USD. No ETFs — 41% IE tax.`
+        : 'FX mix is reasonable — USD/EUR/GBP spread is adequate.',
+    },
+    {
+      icon: '🤖',
+      label: `AI/data-centre cluster: ${aiConc.toFixed(0)}% of portfolio in NVDA, ASML, SNDK, NBIS, VRT, APLD`,
+      level: aiConc > 55 ? 'danger' : aiConc > 40 ? 'warn' : 'ok',
+      badge: aiConc > 55 ? 'VERY HIGH' : aiConc > 40 ? 'HIGH' : 'OK',
+      note: aiConc > 40
+        ? `All 6 positions share the same macro risk: AI capex cycle reversal or hyperscaler spend cut. If any 2 of MSFT/AMZN/GOOGL/META trim capex >10%, all 6 re-rate together. Diversify with healthcare (NOVO-B), energy (CEG/TTE.PA), or consumer (OR.PA).`
+        : 'AI concentration within acceptable bounds.',
+    },
+    {
+      icon: '🏛️',
+      label: `BRK-B is ${brkConcRisk.toFixed(0)}% of retirement bucket — concentration target is <40%`,
+      level: brkConcRisk > 65 ? 'danger' : brkConcRisk > 45 ? 'warn' : 'ok',
+      badge: brkConcRisk > 65 ? 'CONCENTRATED' : brkConcRisk > 45 ? 'WATCH' : 'OK',
+      note: brkConcRisk > 45
+        ? `BRK-B is internally diversified (insurance, railroads, energy) but it's one USD name. Add: NOVO-B.CO for healthcare/DKK, SAP.DE for EUR software, TTE.PA for EUR energy. Target BRK-B below 40% of retirement bucket.`
+        : 'BRK-B concentration within healthy range.',
+    },
+    {
+      icon: '🚀',
+      label: `HC exit: €${Math.round(hcVal).toLocaleString()} of €${hcExitTarget.toLocaleString()} target — ${hcProgress.toFixed(0)}% there${daysToExitStart > 0 ? ', window opens in ' + daysToExitStart + 'd' : ' · exit window open'}`,
+      level: hcVal >= hcExitTarget ? 'ok' : daysToExitStart < 60 && hcProgress < 60 ? 'danger' : daysToExitStart < 120 ? 'warn' : 'ok',
+      badge: hcVal >= hcExitTarget ? 'TARGET HIT' : daysToExitStart < 60 ? 'WATCH' : 'HOLD',
+      note: `NBIS + VRT + APLD — exit window ${daysToExitStart > 0 ? 'Nov 2026 – May 2027' : 'open now'}. No further capital additions. Exit if target hit or at window close — do not let HC become permanent holding.`,
+    },
+    {
+      icon: '🏥',
+      label: `Healthcare: 0% allocation — entire portfolio has zero healthcare exposure`,
+      level: hasHealthcareRisk ? 'warn' : 'ok',
+      badge: hasHealthcareRisk ? 'MISSING' : 'OK',
+      note: hasHealthcareRisk
+        ? 'Healthcare is the most defensive sector in bear markets (negative AI cycle correlation). NOVO-B.CO is at 70% below 2024 ATH at 10× PE — the structural entry point for a 5–10yr hold. DKK-denominated, 5.5% dividend, 33% CGT.'
+        : 'Healthcare exposure present.',
+    },
+    {
+      icon: '⚡',
+      label: `Energy: 0% allocation — no exposure to the sector most directly benefiting from AI data centre power demand`,
+      level: hasEnergyRisk ? 'warn' : 'ok',
+      badge: hasEnergyRisk ? 'MISSING' : 'OK',
+      note: hasEnergyRisk
+        ? 'Data centres will consume ~1,000 TWh/yr by 2030 (4× today). CEG (nuclear PPAs with MSFT/AMZN/META), TTE.PA (EUR LNG, 4% div), SHEL.L (GBP, LNG+renewables). Energy positions also hedge against cost shocks that hurt NBIS/APLD margins.'
+        : 'Energy exposure present.',
+    },
+    {
+      icon: '🇮🇪',
+      label: `Irish tax: €${Math.round(taxHeavyVal).toLocaleString()} (${taxHeavyPct2.toFixed(0)}% of retirement) in legacy UCITS ETFs at 41% exit tax`,
+      level: taxHeavyVal > 0 ? 'warn' : 'ok',
+      badge: taxHeavyVal > 0 ? 'LEGACY' : 'OK',
+      note: taxHeavyVal > 0
+        ? `Hold — do not sell (41% exit tax crystallises immediately). All new purchases: individual stocks or ETCs only (33% CGT). No new UCITS ETFs ever. Annual CGT exemption: €1,270 — use it by harvesting small losses each December.`
+        : 'No 41% ETF exposure. All positions at 33% CGT.',
+    },
+    {
+      icon: '📉',
+      label: `Sequence of returns risk: ${_riskSorPhase === 'danger' ? 'DANGER ZONE — within 5yr of FIRE' : _riskSorPhase === 'transition' ? 'TRANSITION ZONE — 5–10yr from FIRE, begin glide path' : 'Accumulation phase — ' + (_riskYTF != null ? _riskYTF + 'yr to FIRE' : '>10yr to FIRE') + ', SoRR low'}`,
+      level: _riskSorPhase === 'danger' ? 'danger' : _riskSorPhase === 'transition' ? 'warn' : 'ok',
+      badge: _riskSorPhase === 'danger' ? 'DANGER ZONE' : _riskSorPhase === 'transition' ? 'TRANSITION' : 'LOW',
+      note: _riskSorPhase === 'danger'
+        ? 'A 30% crash now could permanently impair your FIRE date if you sell to fund spending. Build a 2yr cash buffer. Rotate TIMED-AI into income stocks. No new speculative entries. See FIRE → Glide Path.'
+        : _riskSorPhase === 'transition'
+        ? 'Start rotating TIMED-AI positions toward long-run income compounders on each rebalance. Every new buy should ask: "will I want to sell this into a bear market to fund spending?" If yes — don\'t buy it now.'
+        : 'Keep accumulating. A crash during accumulation is a buying opportunity, not a loss. Focus on savings rate and long-run compounders. Revisit glide path when within 10yr of FIRE.',
+    },
+  ];
+
+  const activeRisks = risks.filter(r => r.level !== 'ok');
+  E('strat-risk').innerHTML = activeRisks.length === 0
+    ? `<div class="strat-card" style="color:var(--green);font-size:13px">✓ No active risk signals — portfolio is within all thresholds.</div>`
+    : `<div class="strat-card">${activeRisks.map(r => `
+    <div class="risk-row">
+      <div class="risk-icon">${r.icon}</div>
+      <div class="risk-label">
+        <div>${r.label}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${r.note}</div>
+      </div>
+      <div class="risk-badge risk-${r.level}">${r.badge}</div>
+    </div>`).join('')}</div>`;
+
+  // ── December CGT annual exemption reminder ──────────────────────
+  const _now = new Date();
+  const _month = _now.getMonth(); // 0=Jan … 11=Dec
+  const _daysToDecember = (() => {
+    const dec1 = new Date(_now.getFullYear(), 11, 1);
+    if (_now >= dec1) return 0;
+    return Math.ceil((dec1 - _now) / 86400000);
+  })();
+  const _isDecember = _month === 11;
+  const _isNovDec   = _month >= 10;
+  const _taxCalColor  = _isDecember ? '#4ade80' : _isNovDec ? '#fbbf24' : '#94a3b8';
+  const _taxCalBorder = _isDecember ? '#4ade8030' : _isNovDec ? '#fbbf2430' : '#ffffff10';
+  const _taxCalBg     = _isDecember ? '#4ade8008' : _isNovDec ? '#fbbf2408' : 'transparent';
+  const _taxCalBadge  = _isDecember ? 'ACT NOW' : _isNovDec ? 'SOON' : `${_daysToDecember}d`;
+  const _taxCalMsg    = _isDecember
+    ? `<strong style="color:#4ade80">December — act now.</strong> You have until 31 Dec to crystallise up to €1,270 in net gains (or losses) tax-free under the annual CGT exemption. Review all positions: sell anything showing a small gain or loss to use the allowance, then buy back after 4 weeks if desired. This resets your cost basis and eliminates future CGT on that slice.`
+    : _isNovDec
+    ? `<strong style="color:#fbbf24">November — prepare.</strong> December CGT window is weeks away. Start reviewing which positions have small unrealised gains or losses you could crystallise. Aim to have your trade list ready by 1 Dec so you're not rushing before 31 Dec.`
+    : `Every December, the €1,270 annual CGT exemption resets. Use it or lose it — sell positions with gains/losses up to that limit by 31 Dec each year to reduce your future tax bill. This is a recurring annual action. ${_daysToDecember} days until December.`;
+  const _taxCalHtml = `<div class="strat-card" style="border-color:${_taxCalBorder};background:${_taxCalBg}">
+    <div class="risk-row">
+      <div class="risk-icon">🇮🇪</div>
+      <div class="risk-label">
+        <div style="font-weight:600;color:${_taxCalColor}">Annual CGT Exemption Window — every December</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.6">${_taxCalMsg}</div>
+        <div style="font-size:11px;margin-top:8px;padding:6px 10px;background:#ffffff08;border-radius:5px;border-left:3px solid ${_taxCalColor}">
+          <strong>Checklist:</strong> (1) Sum all realised gains/losses YTD. (2) Identify positions with small unrealised gains or losses. (3) Sell up to €1,270 net before 31 Dec. (4) Optionally re-buy after 4 weeks to reset cost basis. (5) File CG1 return by 31 Oct following year.
+        </div>
+      </div>
+      <div class="risk-badge risk-${_isDecember ? 'warn' : 'ok'}" style="background:${_taxCalColor}20;color:${_taxCalColor};border-color:${_taxCalColor}40">${_taxCalBadge}</div>
+    </div>
+  </div>`;
+  const _taxCalEl = E('strat-tax-calendar');
+  if (_taxCalEl) _taxCalEl.innerHTML = _taxCalHtml; // safe: no user-supplied strings
+
+  // ── FIRE Calculator ───────────────────────────────────────────────
+  // Framework: TheBull "Regola del 300/345" podcast (ep.324) + Irish tax adjustments.
+  // All values interpolated below are numbers (computed or parsed from localStorage with +cast).
+  // No user-supplied string content is interpolated — XSS not applicable here.
+  const _fireEl = E('strat-fire');
+  if (_fireEl) {
+    // --- Inputs from localStorage (all cast to number, never strings) ---
+    const _fireMonthlySpend  = +(localStorage.getItem('fireMonthlySpend')  || 3500);
+    const _fireMonthlyIncome = +(localStorage.getItem('fireMonthlyIncome') || 5000);
+    const _fireMonthlySave   = +(localStorage.getItem('fireMonthlySave')   || 1500);
+    const _fireTargetAge     = +(localStorage.getItem('fireTargetAge')     || 50);
+    const _currentAge        = +(localStorage.getItem('fireCurrentAge')    || 30);
+
+    // Investable portfolio = all buckets except house_savings (that capital is earmarked)
+    const _investableVal = positions
+      .filter(p => p.bucket !== 'house_savings')
+      .reduce((s, p) => s + (p.current_value_eur || 0), 0);
+
+    // FIRE target numbers (all arithmetic, no string interpolation from user data)
+    const _fireNum300 = _fireMonthlySpend * 300;  // 4.0% SWR — base (Regola del 300)
+    const _fireNum320 = _fireMonthlySpend * 320;  // 3.75% SWR — IE CGT-adjusted
+    const _fireNum345 = _fireMonthlySpend * 345;  // 3.48% SWR — max conservative (Regola del 345)
+    const _annualWithdrawal = _fireMonthlySpend * 12;
+
+    // Coast FIRE: amount needed today to reach _fireNum320 at target age with zero further savings
+    // Using 4% real annual return (conservative EUR: 6% nominal − 2% inflation)
+    const _yearsToTarget = Math.max(0, _fireTargetAge - _currentAge);
+    const _coastNum = _yearsToTarget > 0
+      ? _fireNum320 / Math.pow(1.04, _yearsToTarget)
+      : _fireNum320;
+    const _isCoastFIRE = _investableVal >= _coastNum;
+
+    // Years to FIRE — numeric solve: FV(PV=_investableVal, PMT=annual savings, r=7%) >= _fireNum320
+    const _annualSavings = _fireMonthlySave * 12;
+    const _r = 0.07; // 7% nominal (conservative for EUR diversified equity)
+    let _yearsToFire = null;
+    for (let n = 0; n <= 65; n++) {
+      const fv = _investableVal * Math.pow(1 + _r, n)
+               + (_annualSavings > 0 ? _annualSavings * (Math.pow(1 + _r, n) - 1) / _r : 0);
+      if (fv >= _fireNum320) { _yearsToFire = n; break; }
+    }
+    const _fireYear = _yearsToFire != null ? new Date().getFullYear() + _yearsToFire : null;
+    const _fireAge  = _yearsToFire != null ? _currentAge + _yearsToFire : null;
+
+    // Savings rate
+    const _savingsRate = _fireMonthlyIncome > 0 ? _fireMonthlySave / _fireMonthlyIncome * 100 : 0;
+    const _srColor = _savingsRate >= 40 ? 'var(--green)' : _savingsRate >= 25 ? '#fbbf24' : 'var(--red)';
+    const _srLabel = _savingsRate >= 50 ? 'EXCELLENT' : _savingsRate >= 35 ? 'STRONG' : _savingsRate >= 20 ? 'MODERATE' : 'LOW';
+    // TheBull savings rate heuristic: approximate years to FIRE from SR alone (starting from zero)
+    const _srYearsBull = _savingsRate >= 60 ? 12 : _savingsRate >= 50 ? 17 : _savingsRate >= 40 ? 22 : _savingsRate >= 30 ? 28 : 35;
+
+    // Portfolio progress
+    const _firePct = _investableVal > 0 ? Math.min(100, _investableVal / _fireNum320 * 100) : 0;
+    const _fireBarColor = _firePct >= 80 ? 'var(--green)' : _firePct >= 40 ? '#fbbf24' : '#a78bfa';
+
+    // Monte Carlo confidence (simplified Bengen/Trinity outcomes for 33yr retirement)
+    const _swr = _fireNum320 > 0 ? _annualWithdrawal / _fireNum320 : 0.04;
+    let _mcConf = _swr <= 0.035 ? 99 : _swr <= 0.0375 ? 98 : _swr <= 0.04 ? 95 : 90;
+    if (aiConc > 40) _mcConf = Math.max(85, _mcConf - 4); // AI concentration amplifies SoRR
+
+    const _mcColor = _mcConf >= 97 ? 'var(--green)' : _mcConf >= 93 ? '#fbbf24' : 'var(--red)';
+
+    // Sequence of returns risk — live glide path based on years-to-FIRE
+    // Danger zone: first 5yr in retirement AND final 5yr before FIRE — a crash in this window
+    // can permanently impair the portfolio if you're forced to sell at lows to fund spending.
+    const _ytf = _yearsToFire;
+    const _sorPhase = _ytf == null ? 'accumulate'
+      : _ytf > 10 ? 'accumulate'
+      : _ytf > 5  ? 'transition'
+      : _ytf > 0  ? 'danger'
+      : 'fire';
+
+    const _sorGlideRows = [
+      { phase:'Now',       alloc:'80% growth / 20% low-beta income',  note:'Maximise compounding. Keep adding EUR/CHF income names.' },
+      { phase:'5yr out',   alloc:'60% growth / 40% income',           note:'Start rotating TIMED-AI positions into LONG-RUN compounders.' },
+      { phase:'3yr out',   alloc:'40% growth / 60% income',           note:'No new speculative entries. Build bond tent (VGOV or similar). Harvest CGT losses in Dec.' },
+      { phase:'1yr out',   alloc:'25% growth / 75% income+cash',      note:'Max cash buffer = 2yr spending in deposit. Stop adding growth equities.' },
+      { phase:'FIRE year', alloc:'20% growth / 80% income+cash',      note:'Withdraw from cash first. Never sell equities at a loss — bond tent absorbs spending.' },
+    ];
+    const _sorActivePh = _sorPhase === 'fire' ? 4 : _sorPhase === 'danger' ? 3 : _sorPhase === 'transition' ? 2 : 0;
+
+    const _sorTable = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:6px">'
+      + '<tr style="color:var(--muted)">'
+      + '<td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #ffffff10">Horizon</td>'
+      + '<td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #ffffff10">Target allocation</td>'
+      + '<td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #ffffff10">Action</td></tr>'
+      + _sorGlideRows.map((row, i) => {
+          const isActive = i === _sorActivePh;
+          const bg = isActive ? 'background:#a78bfa12;' : '';
+          const col = isActive ? 'color:var(--text);font-weight:600' : 'color:var(--muted)';
+          return '<tr style="' + bg + '">'
+            + '<td style="padding:3px 6px;' + col + (isActive?';border-left:2px solid #a78bfa':'') + '">' + row.phase + '</td>'
+            + '<td style="padding:3px 6px;' + col + '">' + row.alloc + '</td>'
+            + '<td style="padding:3px 6px;' + col + '">' + row.note + '</td></tr>';
+        }).join('')
+      + '</table>';
+
+    const _sorWarning = _sorPhase === 'danger'
+      ? '<strong style="color:#f87171">⚠ DANGER ZONE:</strong> within 5yr of FIRE. A 30% crash now could delay retirement by 3–5yr if you must sell to fund spending. Build 2yr cash buffer now. Rotate remaining TIMED-AI positions to income. Stop all speculative entries.'
+      : _sorPhase === 'transition'
+      ? '<strong style="color:#fbbf24">⚠ TRANSITION ZONE:</strong> 5–10yr from FIRE. Begin glide path now. Add EUR/CHF income stocks on every buy. No new TIMED-AI entries unless you\'ll sell before FIRE date.'
+      : '<strong style="color:#a78bfa">Accumulation phase:</strong> SoRR risk is low — you have time to recover from a crash. Stay growth-tilted but keep building low-beta income layer (NOVN.SW, ENEL.MI, IGLN.L).';
+
+    // Build HTML — all interpolated values are computed numbers, not user strings
+    const _fmtK = n => n >= 1000 ? (n/1000).toFixed(2).replace(/\.?0+$/, '') + 'M' : n + 'k';
+    const _f300k = _fmtK(Math.round(_fireNum300 / 1000));
+    const _f320k = _fmtK(Math.round(_fireNum320 / 1000));
+    const _f345k = _fmtK(Math.round(_fireNum345 / 1000));
+    const _coastK = _fmtK(Math.round(_coastNum / 1000));
+    const _invK = Math.round(_investableVal).toLocaleString();
+    const _yrsStr = _yearsToFire != null ? _yearsToFire + 'yr' : '> 60yr';
+    const _yrSub = _fireYear ? _fireYear + ' · age ' + _fireAge : 'increase savings';
+
+    _fireEl.innerHTML = '<div class="strat-card">'
+
+      // --- Input grid ---
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">'
+      + [['fireMonthlySpend','Monthly spend (€)',_fireMonthlySpend,500,10000,100],
+         ['fireMonthlySave','Monthly savings (€)',_fireMonthlySave,100,10000,100],
+         ['fireMonthlyIncome','Monthly net income (€)',_fireMonthlyIncome,500,20000,200],
+         ['fireCurrentAge','Current age',_currentAge,18,60,1],
+         ['fireTargetAge','Target FIRE age',_fireTargetAge,35,70,1]]
+        .map(([k,lbl,v,mn,mx,st]) =>
+          '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">' + lbl + '</div>'
+          + '<input type="number" value="' + v + '" min="' + mn + '" max="' + mx + '" step="' + st + '"'
+          + ' style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:12px"'
+          + ' oninput="localStorage.setItem(\'' + k + '\',this.value);renderStrategy(window._lastPositions||[],window._lastLifetime||{})"'
+          + '></div>').join('')
+      + '</div>'
+
+      // --- Progress bar ---
+      + '<div style="margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'
+      + '<span style="color:var(--muted)">Portfolio progress to FIRE (IE 3.75% SWR)</span>'
+      + '<span style="color:' + _fireBarColor + ';font-weight:700">' + _firePct.toFixed(1) + '%</span></div>'
+      + '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">'
+      + '<div style="height:100%;width:' + _firePct.toFixed(1) + '%;background:' + _fireBarColor + ';border-radius:4px;transition:width .3s"></div></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:3px;color:var(--muted)">'
+      + '<span>Investable: <strong style="color:var(--text)">€' + _invK + '</strong></span>'
+      + '<span>IE FIRE target: <strong style="color:var(--text)">€' + _f320k + '</strong></span></div></div>'
+
+      // --- Three FIRE numbers ---
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #60a5fa">'
+      + '<div style="font-size:9px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Regola del 300</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f300k + '</div>'
+      + '<div style="font-size:10px;color:var(--muted)">4.0% SWR — base</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #a78bfa">'
+      + '<div style="font-size:9px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">IE Rule of 320</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f320k + '</div>'
+      + '<div style="font-size:10px;color:var(--muted)">3.75% SWR — IE CGT-adj</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-top:2px solid #fbbf24">'
+      + '<div style="font-size:9px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Regola del 345</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text)">€' + _f345k + '</div>'
+      + '<div style="font-size:10px;color:var(--muted)">3.48% SWR — max conservative</div></div></div>'
+
+      // --- Key metrics ---
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px">'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Years to FIRE</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + (_yearsToFire != null && _yearsToFire <= 20 ? 'var(--green)' : '#fbbf24') + '">' + _yrsStr + '</div>'
+      + '<div style="font-size:10px;color:var(--muted)">' + _yrSub + ' @ 7% nominal</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Savings Rate</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + _srColor + '">' + _savingsRate.toFixed(0) + '%</div>'
+      + '<div style="font-size:10px;color:var(--muted)">' + _srLabel + ' · ~' + _srYearsBull + 'yr from zero (TheBull)</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Monte Carlo</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + _mcColor + '">' + _mcConf + '%</div>'
+      + '<div style="font-size:10px;color:var(--muted)">success rate · 33yr retirement</div></div>'
+      + '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border:1px solid ' + (_isCoastFIRE ? 'var(--green)' : 'var(--border)') + '">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Coast FIRE</div>'
+      + '<div style="font-size:19px;font-weight:700;color:' + (_isCoastFIRE ? 'var(--green)' : '#a78bfa') + '">' + (_isCoastFIRE ? '✓ HIT' : '€' + _coastK) + '</div>'
+      + '<div style="font-size:10px;color:var(--muted)">' + (_isCoastFIRE ? 'could coast to FIRE at ' + _fireTargetAge : 'to coast to FIRE at age ' + _fireTargetAge) + '</div></div></div>'
+
+      // --- Sequence of returns risk — live glide path ---
+      + '<div style="font-size:11px;padding:8px 10px;background:#a78bfa0a;border-radius:5px;border-left:2px solid #a78bfa;color:var(--muted);line-height:1.6;margin-bottom:10px">'
+      + '<div style="font-size:10px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Sequence of Returns Risk (SoRR) — Glide Path</div>'
+      + '<div style="font-size:11px;line-height:1.6;margin-bottom:6px">' + _sorWarning + '</div>'
+      + _sorTable
+      + '<div style="font-size:10px;color:var(--muted);margin-top:6px">⚡ Each sale to fund spending triggers 33% CGT — size your cash buffer so you never sell equities into a downturn. Bond tent (VGOV/IEAG): UCITS but exempt from deemed disposal if held in a pension/PRSA — consider this route only.</div>'
+      + '</div>'
+
+      // --- IE tax note ---
+      + '<div style="font-size:10px;color:var(--muted);line-height:1.7;padding:0 2px">'
+      + '<strong style="color:var(--text)">Tax note:</strong> Rule of 320 uses 3.75% SWR to account for 33% CGT on stock gains at withdrawal (vs standard 4% / Rule of 300). '
+      + 'UCITS ETFs face 41% exit tax — avoid for FIRE portfolio; use individual stocks + ETCs only. '
+      + 'Annual €1,270 CGT exemption: use every December to harvest gains/losses and reset cost basis. '
+      + 'Deposit income (DIRT 33%) — factor into withdrawal planning.<br>'
+      + '<strong style="color:var(--text)">Pension:</strong> contributions get income tax relief at marginal rate (40% for higher earners) — maximise pension before taxable accounts for FIRE capital efficiency.'
+      + '</div>'
+
+      + '</div>'; // end strat-card
+  }
+
+  // Expose positions + lifetime for FIRE re-render on input change
+  window._lastPositions = positions;
+  window._lastLifetime  = lifetime;
+
+  // ── Suggestions — ranked by actual portfolio gaps ────────────────
+  const held = new Set(positions.map(p => p.ticker));
+  const available = SUGGESTION_POOL.filter(s => !held.has(s.ticker));
+
+  // Rank: fix BRK-B concentration and sector gaps first
+  const pickedSuggestions = [];
+  const needsFX     = usdConc > 55;
+  const needsHealth = hasHealthcareRisk;
+  const needsEnergy = hasEnergyRisk;
+  const needsBrkFix = brkConcRisk > 50;
+
+  if (needsBrkFix || needsFX) {
+    available.filter(s => s.priority === 'brk_fix').forEach(s => {
+      if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
+    });
+  }
+  if (needsEnergy) {
+    available.filter(s => s.priority === 'energy').forEach(s => {
+      if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
+    });
+  }
+  // Always show 2027 HC candidates + EM + house savings
+  available.filter(s => ['hc2027','em','house'].includes(s.priority)).forEach(s => {
+    if (!pickedSuggestions.find(p => p.ticker === s.ticker)) pickedSuggestions.push(s);
+  });
+  // Fill any remaining from pool
+  available.filter(s => !pickedSuggestions.find(p => p.ticker === s.ticker))
+    .slice(0, Math.max(0, 10 - pickedSuggestions.length)).forEach(s => pickedSuggestions.push(s));
+
+  const priorityLabels = {
+    brk_fix: { label:'Retirement Diversification', color:'#60a5fa' },
+    energy:  { label:'Energy / Power', color:'#fbbf24' },
+    hc2027:  { label:'2027 HC Watch', color:'#f472b6' },
+    em:      { label:'EM / India Growth', color:'#34d399' },
+    house:   { label:'House Savings CORE', color:'#fb923c' },
+  };
+
+  const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : b === 'house_savings' ? '#fb923c' : 'var(--cyan)';
+  const bucketLabel = b => b === 'high_conviction' ? 'HC Watch' : b === 'growth' ? 'Growth' : b === 'house_savings' ? 'House' : 'Retirement';
+
+  const convictionBadge = c => {
+    if (c && c.startsWith('HIGH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#4ade8022;color:#4ade80">HIGH</span>`;
+    if (c && c.startsWith('MEDIUM')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fbbf2422;color:#fbbf24">MEDIUM</span>`;
+    if (c && c.startsWith('WATCH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f472b622;color:#f472b6">WATCH</span>`;
+    return '';
+  };
+
+  // Store suggestion objects by ticker so onclick handlers can look them up safely
+  pickedSuggestions.forEach(s => { _suggestionMap[s.ticker] = s; });
+
+  const _renderSuggestions = (priceMap) => {
+    const gapBanners = [];
+    if (needsBrkFix) gapBanners.push(`<span>🏛️ BRK-B ${brkConcRisk.toFixed(0)}% of retirement — add EUR/GBP compounders</span>`);
+    if (needsFX)     gapBanners.push(`<span>💱 ${usdConc.toFixed(0)}% USD — add non-USD names</span>`);
+    if (needsHealth) gapBanners.push(`<span>🏥 Zero healthcare — NOVO-B.CO is highest priority</span>`);
+    if (needsEnergy) gapBanners.push(`<span>⚡ Zero energy — CEG or TTE.PA</span>`);
+    const bannerHtml = gapBanners.length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${gapBanners.map(b=>`<div style="font-size:11px;color:#fbbf24;background:#fbbf2415;padding:3px 8px;border-radius:4px;border:1px solid #fbbf2430">${b}</div>`).join('')}</div>`
+      : `<div style="font-size:11px;color:var(--green);margin-bottom:10px">✓ Core gaps addressed.</div>`;
+
+    E('strat-suggestions').innerHTML = `<div class="strat-card">${bannerHtml}${pickedSuggestions.map(s => {
+      const q = priceMap[s.ticker];
+      const priceStr = q && q.price != null
+        ? `<span style="font-size:13px;font-weight:700;color:var(--fg)">${q.price.toFixed(2)}</span><span style="font-size:10px;color:var(--muted);margin-left:3px">${q.currency||''}</span>`
+        : '<span style="font-size:11px;color:var(--muted)">—</span>';
+      const dayStr = q && q.day_pct != null
+        ? `<span style="font-size:11px;font-weight:600;color:${q.day_pct>=0?'var(--green)':'var(--red)'}">${q.day_pct>=0?'+':''}${q.day_pct.toFixed(1)}%</span>`
+        : '';
+      const bc = bucketColor(s.bucket);
+      const bl = bucketLabel(s.bucket);
+      const pl = priorityLabels[s.priority] || { label: s.priority, color:'var(--muted)' };
+      const bearHtml = s.bearCase ? `<div style="font-size:10px;color:#f87171;margin-top:3px;padding:3px 8px;background:#f8717110;border-radius:4px;border-left:2px solid #f87171">⚠ Bear: ${s.bearCase}</div>` : '';
+      // SoRR impact: does this suggestion help or hurt the glide path?
+      const _sorrBucket = s.bucket;
+      const _sorrTiming = s.priority;
+      let _sorrHtml = '';
+      if (_riskSorPhase === 'danger') {
+        if (['hc2027','energy'].includes(_sorrTiming) || _sorrBucket === 'growth') {
+          _sorrHtml = '<div style="font-size:10px;color:#f87171;margin-top:3px;padding:3px 8px;background:#f8717112;border-radius:4px;border-left:2px solid #f87171">📉 SoRR warning: you are within 5yr of FIRE. This is a growth/speculative entry — buying now increases volatility at the worst time. Only add if you can hold through a 40% drawdown without selling.</div>';
+        } else if (_sorrBucket === 'house_savings') {
+          _sorrHtml = '<div style="font-size:10px;color:#fbbf24;margin-top:3px;padding:3px 8px;background:#fbbf2412;border-radius:4px;border-left:2px solid #fbbf24">📉 SoRR note: house savings GROWTH tier must be liquidated before any market downturn — sell PYPL/ABNB/ROG.SW in H1 2028 regardless of price.</div>';
+        } else {
+          _sorrHtml = '<div style="font-size:10px;color:#4ade80;margin-top:3px;padding:3px 8px;background:#4ade8012;border-radius:4px;border-left:2px solid #4ade80">📉 SoRR fit: low-beta income — reduces portfolio volatility approaching FIRE. Consistent with glide path.</div>';
+        }
+      } else if (_riskSorPhase === 'transition') {
+        if (['hc2027'].includes(_sorrTiming)) {
+          _sorrHtml = '<div style="font-size:10px;color:#fbbf24;margin-top:3px;padding:3px 8px;background:#fbbf2412;border-radius:4px;border-left:2px solid #fbbf24">📉 SoRR note: HC bet is valid but size carefully — you are entering the transition zone. No entry larger than 5% of investable portfolio.</div>';
+        } else if (_sorrBucket === 'retirement' && ['brk_fix','em'].includes(_sorrTiming)) {
+          _sorrHtml = '<div style="font-size:10px;color:#4ade80;margin-top:3px;padding:3px 8px;background:#4ade8012;border-radius:4px;border-left:2px solid #4ade80">📉 SoRR fit: long-run compounder — correct direction for glide path. Prioritise over speculative names at this stage.</div>';
+        }
+      }
+      const cachedResponse = _challengeCache[s.ticker];
+      const challengeResponseHtml = cachedResponse === '__loading__'
+        ? `<div id="challenge-resp-${s.ticker}" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:12px;height:12px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>Analysing…</div></div>`
+        : cachedResponse
+        ? `<div id="challenge-resp-${s.ticker}" style="margin-top:8px">${_formatChallengeResponse(cachedResponse)}</div>`
+        : `<div id="challenge-resp-${s.ticker}"></div>`;
+      const tid = s.ticker;
+      return `
+      <div class="suggest-row" style="flex-direction:column;gap:4px;padding:12px 0;border-bottom:1px solid #ffffff08">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:${pl.color}18;color:${pl.color};border:1px solid ${pl.color}30">${pl.label}</span>
+          ${convictionBadge(s.conviction)}
+          <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${bc}22;color:${bc}">${bl} · ${s.ccy||''}</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="min-width:90px">
+            <div class="suggest-ticker" style="color:var(--fg)">${tid}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px">${s.geo}</div>
+            <div style="font-size:9px;color:#475569;margin-top:2px">${s.exchange||''}</div>
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">
+              ${priceStr}${dayStr ? ' ' + dayStr : ''}
+              <span style="font-size:10px;color:#fbbf24;font-weight:600">${s.buyGuide}</span>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:3px">${s.why}</div>
+            <div style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--surface2);border-radius:5px;border-left:2px solid ${bc}">
+              <span style="color:${bc};font-weight:700">Adds: </span>${s.diversifies}
+            </div>
+            ${bearHtml}
+            ${_sorrHtml}
+            <!-- AI Challenge row — uses data-ticker + event delegation, no JS in attributes -->
+            <div class="challenge-row" style="display:flex;gap:6px;margin-top:8px;align-items:center">
+              <input class="challenge-input" data-ticker="${tid}"
+                type="text" placeholder="Challenge this… e.g. why not MSFT instead?"
+                style="flex:1;font-size:11px;padding:5px 8px;background:#0f172a;border:1px solid #334155;border-radius:5px;color:var(--fg);outline:none;min-width:0"
+              />
+              <button class="challenge-btn" data-ticker="${tid}"
+                style="font-size:10px;padding:5px 10px;background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:700">
+                Ask AI ▶
+              </button>
+            </div>
+            ${challengeResponseHtml}
+          </div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  };
+
+  _renderSuggestions({});
+  const suggTickers = pickedSuggestions.map(s => s.ticker).join(',');
+  fetch(`/api/quotes?tickers=${encodeURIComponent(suggTickers)}`)
+    .then(r => r.json())
+    .then(priceMap => _renderSuggestions(priceMap))
+    .catch(() => {});
+}
+
+// ── AI Challenge (Suggested Additions) ───────────────────────────────────────
+const _challengeCache = {};
+const _suggestionMap = {};
+
+function _formatChallengeResponse(text) {
+  const sectionColors = {
+    'Bull Case': '#4ade80',
+    'Contrarian Take': '#f87171',
+    'Sources & Assumptions to Verify': '#fbbf24',
+    'Portfolio Fit Verdict': '#60a5fa',
+  };
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>');
+  Object.entries(sectionColors).forEach(([title, color]) => {
+    const escaped = title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    html = html.replace(
+      new RegExp(`## ${escaped}`, 'g'),
+      `</div><div class="challenge-section" style="border-left:2px solid ${color};padding:6px 10px;margin-top:6px;background:${color}0d">` +
+      `<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${title}</div>`
+    );
+  });
+  // Wrap lines
+  html = html.replace(/\n- /g, '<br>• ').replace(/\n\n/g,'<br>').replace(/\n/g,'<br>');
+  // Strip leading orphan </div>
+  html = html.replace(/^<\/div>/, '');
+  // Close last section
+  html += '</div>';
+  return `<div style="font-size:11px;color:#cbd5e1;line-height:1.6;border-radius:6px;overflow:hidden;border:1px solid #1e293b">${html}</div>`;
+}
+
+const _challengeInFlight = new Set();
+
+async function _submitChallenge(ticker) {
+  if (_challengeInFlight.has(ticker)) return; // already running
+  const suggestion = _suggestionMap[ticker] || {};
+
+  // Always re-query DOM — never cache elements across an await
+  const getInput = () => document.querySelector(`.challenge-input[data-ticker="${ticker}"]`);
+  const getResp  = () => document.getElementById(`challenge-resp-${ticker}`);
+
+  const query = (getInput() || {}).value?.trim();
+  if (!query) { const el = getInput(); if (el) el.focus(); return; }
+
+  _challengeInFlight.add(ticker);
+  // Store query so re-renders can restore the loading state
+  _challengeCache[ticker] = '__loading__';
+
+  const setResp = html => {
+    const el = getResp();
+    if (el) el.innerHTML = html;
+  };
+
+  setResp(`<div style="font-size:11px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px">
+    <span style="display:inline-block;width:12px;height:12px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>
+    Analysing with full portfolio context…
+  </div>`);
+
+  try {
+    const res = await fetch('/api/suggest/challenge', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ticker, query, suggestion }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    _challengeCache[ticker] = data.analysis;
+    setResp(_formatChallengeResponse(data.analysis));
+  } catch(e) {
+    _challengeCache[ticker] = null;
+    setResp(`<div style="font-size:11px;color:#f87171;padding:6px 0">Error: ${e.message}</div>`);
+  } finally {
+    _challengeInFlight.delete(ticker);
+  }
+}
+
+// Event delegation — handles clicks/Enter for all challenge rows
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.challenge-btn');
+  if (btn) _submitChallenge(btn.dataset.ticker);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.classList.contains('challenge-input')) {
+    _submitChallenge(e.target.dataset.ticker);
+  }
+});
+
+// ── AI Health Badge ───────────────────────────────────────────────────────────
+function _updateAiHealthBadge(data) {
+  const badge = document.getElementById('ai-health-badge');
+  if (!badge) return;
+  if (data.active === 'gemini') {
+    badge.textContent = 'AI · Gemini ✓';
+    badge.style.cssText = badge.style.cssText.replace(/color:[^;]+/, '') + ';color:#4ade80;background:#4ade8015;border:1px solid #4ade8030';
+  } else if (data.active === 'openai') {
+    badge.textContent = 'AI · GPT-4o ✓';
+    badge.style.cssText = badge.style.cssText.replace(/color:[^;]+/, '') + ';color:#fbbf24;background:#fbbf2415;border:1px solid #fbbf2430';
+  } else {
+    badge.textContent = 'AI · Offline';
+    badge.style.cssText = badge.style.cssText.replace(/color:[^;]+/, '') + ';color:#f87171;background:#f8717115;border:1px solid #f8717130';
+  }
+}
+
+function _pollAiHealth() {
+  fetch('/api/ai/health')
+    .then(r => r.json())
+    .then(d => _updateAiHealthBadge(d))
+    .catch(() => {
+      const badge = document.getElementById('ai-health-badge');
+      if (badge) { badge.textContent = 'AI · Offline'; badge.style.color='#f87171'; }
+    });
+}
+
+// ── House fund localStorage helpers ──────────────────────────────
+function _updateHouseSaved() {
+  const v = +(document.getElementById('house-saved-input')?.value || 0);
+  if (!isNaN(v) && v >= 0) {
+    localStorage.setItem('houseFundSaved', v);
+    renderStrategy(_latestPortfolio, {});
+  }
+}
+
+function _updateSplit() {
+  const b = +(document.getElementById('split-budget-input')?.value || 1500);
+  const h = +(document.getElementById('split-house-slider')?.value || 50);
+  const r = +(document.getElementById('split-ret-slider')?.value  || 30);
+  if (!isNaN(b) && b > 0) localStorage.setItem('houseTotalBudget', b);
+  if (!isNaN(h)) localStorage.setItem('houseSharePct', h);
+  if (!isNaN(r)) localStorage.setItem('retSharePct', r);
+  renderStrategy(_latestPortfolio, {});
+}
+
+function _onSplitSlide() {
+  // Live-update labels without full re-render
+  const budget = +(document.getElementById('split-budget-input')?.value || localStorage.getItem('houseTotalBudget') || 1500);
+  const h = +(document.getElementById('split-house-slider')?.value || 50);
+  const r = +(document.getElementById('split-ret-slider')?.value  || 30);
+  const g = Math.max(0, 100 - h - r);
+  const hE = document.getElementById('split-house-label');
+  const rE = document.getElementById('split-ret-label');
+  const gE = document.getElementById('split-growth-label');
+  const gB = document.getElementById('split-growth-bar');
+  if (hE) hE.textContent = `${h}% · €${Math.round(budget*h/100).toLocaleString()}/mo`;
+  if (rE) rE.textContent = `${r}% · €${Math.round(budget*r/100).toLocaleString()}/mo`;
+  if (gE) gE.textContent = `${g}% · €${Math.round(budget*g/100).toLocaleString()}/mo`;
+  if (gB) gB.style.width = g + '%';
+}
+
+init();
+
+// Poll AI health on load and every 5 minutes
+_pollAiHealth();
+setInterval(_pollAiHealth, 5 * 60 * 1000);
+</script>
+</body>
+</html>

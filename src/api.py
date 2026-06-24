@@ -105,11 +105,36 @@ def _check_auth(request: Request) -> bool:
         return False
 
 
+def _check_public_auth(request: Request) -> bool:
+    username = os.getenv("PUBLIC_USER", "")
+    password = os.getenv("PUBLIC_PASS", "")
+    if not username or not password:
+        return False  # public dashboard disabled if not configured
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Basic "):
+        return False
+    try:
+        decoded = base64.b64decode(auth[6:]).decode()
+        u, _, p = decoded.partition(":")
+        return secrets.compare_digest(u, username) and secrets.compare_digest(p, password)
+    except Exception:
+        return False
+
+
 def _auth_required(request: Request):
     if not _check_auth(request):
         return Response(
             "Unauthorized", status_code=401,
             headers={"WWW-Authenticate": 'Basic realm="Portfolio"'},
+        )
+    return None
+
+
+def _public_auth_required(request: Request):
+    if not _check_public_auth(request) and not _check_auth(request):
+        return Response(
+            "Unauthorized", status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="AlphaStack"'},
         )
     return None
 
@@ -273,6 +298,13 @@ async def dashboard(request: Request):
     if (r := _auth_required(request)):
         return r
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+@app.get("/public", response_class=HTMLResponse)
+async def public_dashboard(request: Request):
+    if (r := _public_auth_required(request)):
+        return r
+    return templates.TemplateResponse("public.html", {"request": request})
 
 
 @app.get("/property", response_class=HTMLResponse)
