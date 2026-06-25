@@ -598,10 +598,21 @@ class Scheduler:
                 "earnings_date": sig.get("earnings_date"),
             })
 
-        scanner_snapshot = [
-            {"ticker": t, "price": quotes.get(t, {}).get("price"), "day_pct": day_change_pct(quotes.get(t, {}))}
-            for t in watchlist
-        ]
+        scanner_snapshot = []
+        for t in watchlist:
+            q = quotes.get(t, {})
+            sig = signals.get(t, {})
+            scanner_snapshot.append({
+                "ticker": t,
+                "price": q.get("price"),
+                "day_pct": day_change_pct(q),
+                "currency": q.get("currency", "?"),
+                "high_52w": q.get("high_52w"),
+                "low_52w": q.get("low_52w"),
+                "rsi": sig.get("rsi"),
+                "rsi_signal": sig.get("rsi_signal"),
+                "earnings_date": sig.get("earnings_date"),
+            })
 
         briefing = generate_briefing(portfolio_snapshot, scanner_snapshot)
         self.state["latest_briefing"] = briefing
