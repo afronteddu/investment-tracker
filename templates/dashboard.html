@@ -1568,7 +1568,7 @@ async function bootstrapDeployments() {
   if (d.positions) renderPlaybook(d.positions, d.lifetime || {});
 }
 
-let _wsToken = '';
+let _wsToken = '{{ ws_token }}';
 
 async function populateStudio() {
   // Fetch changelog from GitHub API (public repo)
@@ -1599,10 +1599,6 @@ async function populateStudio() {
 }
 
 async function init() {
-  try {
-    const r = await fetch('/api/ws-token');
-    if (r.ok) _wsToken = (await r.json()).token;
-  } catch(e) {}
   loadBriefing();
   bootstrapDeployments();
   connect();

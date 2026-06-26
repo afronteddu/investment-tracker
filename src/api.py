@@ -297,7 +297,7 @@ def _signal(pct) -> str:
 async def dashboard(request: Request):
     if (r := _auth_required(request)):
         return r
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "ws_token": _make_ws_token()})
 
 
 @app.get("/public", response_class=HTMLResponse)
