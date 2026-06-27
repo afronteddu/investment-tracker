@@ -608,6 +608,7 @@ class Scheduler:
                 "ticker": t,
                 "price": q.get("price"),
                 "day_pct": day_change_pct(q),
+                "week_pct": q.get("week_pct"),
                 "currency": q.get("currency", "?"),
                 "high_52w": q.get("high_52w"),
                 "low_52w": q.get("low_52w"),

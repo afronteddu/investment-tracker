@@ -99,8 +99,11 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
             pct_off_high = (price - high_52w) / high_52w * 100
             pct_off_low = (price - low_52w) / low_52w * 100
             extras.append(f"52w {low_52w:.2f}–{high_52w:.2f} {currency} ({pct_off_high:+.0f}% vs high / {pct_off_low:+.0f}% vs low)")
+        week_pct = s.get("week_pct")
         extra_str = "  [" + ", ".join(extras) + "]" if extras else ""
-        scanner_lines.append(f"- {s['ticker']}: {s['day_pct']:+.2f}% today, price {price}{extra_str}")
+        week_str = f" / {week_pct:+.1f}% 5d" if week_pct is not None else ""
+        price_str = f"{price:.2f}" if price is not None else "N/A"
+        scanner_lines.append(f"- {s['ticker']}: {s['day_pct']:+.2f}% today{week_str}, price {price_str} {s.get('currency','')}{extra_str}")
 
     prompt = f"""You are a personal investment advisor for a retail investor based in Dublin, Ireland.
 Today is {datetime.now().strftime('%A %d %B %Y')}.
