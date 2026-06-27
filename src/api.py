@@ -55,6 +55,8 @@ WATCHLIST_BASE = [
     "PYPL", "ABNB", "ROG.SW",
     # Defence / 2027 HC watch
     "LDO.MI", "RHM.DE",
+    # HC-2 moonshot candidates (defence drone, space launch, quantum annealing)
+    "RCAT", "RKLB", "QBTS",
 ]
 
 DEPLOYMENTS = []

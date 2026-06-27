@@ -259,6 +259,8 @@ class Scheduler:
             "TTE.PA", "GSK.L",
             "PYPL", "ABNB", "ROG.SW",
             "LDO.MI", "RHM.DE",
+            # HC-2 moonshot candidates
+            "RCAT", "RKLB", "QBTS",
         ]
         try:
             quotes = fetch_quotes(HOT_PICKS_UNIVERSE)
