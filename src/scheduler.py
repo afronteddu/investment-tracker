@@ -241,6 +241,8 @@ class Scheduler:
     def _refresh_hot_picks_sync(self):
         from src.quotes import fetch_quotes, day_change_pct
         from src.positions import TICKER_NAMES
+        # Import canonical watchlist from api.py so HC-2 and house savings tickers are never dropped
+        from src.api import WATCHLIST_BASE
 
         HOT_PICKS_UNIVERSE = [
             "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "INTC", "QCOM",
@@ -249,18 +251,8 @@ class Scheduler:
             "META", "GOOGL", "MSFT", "AMZN", "TSLA", "AAPL",
             "VRT", "VST", "CEG", "NRG",
             "RXRX", "TMDX",
-        ]
-        WATCHLIST_BASE = [
-            "NVDA", "AMD", "TSM", "ARM", "SMCI",
-            "IONQ", "RGTI", "QUBT",
-            "PLTR", "SOUN", "BBAI",
-            "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL", "ASML.AS",
-            "UCG.MI", "NOVN.SW", "ENEL.MI", "AXA.PA", "IBE.MC",
-            "TTE.PA", "GSK.L",
-            "PYPL", "ABNB", "ROG.SW",
-            "LDO.MI", "RHM.DE",
-            # HC-2 moonshot candidates
-            "RCAT", "RKLB", "QBTS",
+            # HC-2 picks always in universe so daily moves are scored
+            "AMTM", "ONDS", "LEU", "TSSI", "BKSY", "AMSC",
         ]
         try:
             quotes = fetch_quotes(HOT_PICKS_UNIVERSE)
