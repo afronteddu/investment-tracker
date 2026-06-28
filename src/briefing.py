@@ -117,8 +117,14 @@ Watchlist scan:
 Investment goals and bucket structure:
 1. RETIREMENT — DCA into diversified ETFs (IWDA, VUSA, IMAE, AEME, IEAG, BRK-B). Long-term hold, no active trading.
 2. GROWTH — Medium-term stock picks (NVDA, ASML, SNDK), 6-12 month horizon.
-3. HIGH CONVICTION — AI/tech bets (NBIS, VRT, APLD). All tranches fully deployed. Target €15–20k exit in 6–12 months. Position locked, no further additions.
-4. HOUSE SAVINGS — Dublin property purchase target ~2028 (First Home Scheme eligible, cap €500k).
+3. HIGH CONVICTION (HC-1) — AI/tech bets (NBIS, VRT, APLD). All tranches fully deployed. Target €15–20k exit in 6–12 months. Position locked, no further additions.
+4. HIGH CONVICTION (HC-2) — NEW orthogonal bucket, €2,000 total. Deployment in progress (NOT correlated to HC-1 AI capex theme). Three picks from adversarial research (Jun 2026):
+   - AMTM (Amentum Holdings, govt services/nuclear): €900 target. Deploy €600 now at ~$20.25, hold €300 for post Aug 4 earnings. At 52w low. Forward P/E 7.99x, FCF yield 8.9%. Hard stop: $14.
+   - ONDS (Ondas Holdings, defence drones/autonomous systems): €650 target. Deploy €325 if price ≤$8.50, hold €325 for Q2 earnings beat or pullback to $5.50. Earnings ~Aug 11-12. Hard stop: revenue miss >15%.
+   - LEU (Centrus Energy, HALEU nuclear monopoly): €450 target. GTC limit order at $152 only — do NOT deploy at market ($165). Earnings Aug 4. Hard stop once filled: $120.
+   - TSSI (TSS Inc) was excluded despite highest EV because it is a 4th AI-infra name correlated to HC-1.
+   IF any HC-2 tickers appear in the watchlist scan with significant moves, flag them specifically.
+5. HOUSE SAVINGS — Dublin property purchase target ~2028 (First Home Scheme eligible, cap €500k).
    - CORE (low-vol dividend): UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC
    - SATELLITE (income): TTE.PA, GSK.L
    - GROWTH (upside): PYPL, ABNB, ROG.SW
@@ -128,12 +134,13 @@ Irish tax rules (CRITICAL — affects any add/trim advice):
 - Stocks: 33% CGT on gains. Trim signals matter here.
 - ETFs/ETCs: 41% exit tax + deemed disposal every 8 years. No new ETF positions.
 - No loss harvesting offset against ETF gains.
+- HC-2 picks (AMTM, ONDS, LEU, TSSI) are all NYSE/NASDAQ stocks — 33% CGT applies, no deemed disposal.
 
-Give a concise briefing (max 280 words):
+Give a concise briefing (max 300 words):
 1. What's moving and why it matters to this portfolio
-2. Standout watchlist moves
-3. One actionable thought for the week — specify bucket (stay course / trim / add), flag CGT if trimming
-4. Key risk to watch
+2. Standout watchlist moves — call out AMTM, ONDS, LEU specifically if in scan
+3. One actionable thought for the week — specify bucket (stay course / trim / add / deploy HC-2 tranche), flag CGT if trimming
+4. Key risk to watch — include HC-2 deployment risk if any entry conditions are approaching
 
 Be direct and specific. No generic disclaimers. Like a smart friend who knows markets and Irish tax."""
 

@@ -97,6 +97,19 @@ TICKER_NAMES = {
     # Defence / 2027 HC watch
     "LDO.MI": "Leonardo SpA",
     "RHM.DE": "Rheinmetall AG",
+    # HC-2 bucket — orthogonal to AI infra (researched Jun 2026, 25-agent adversarial analysis)
+    "AMTM": "Amentum Holdings",
+    "ONDS": "Ondas Holdings",
+    "LEU": "Centrus Energy",
+    # HC-2 watchlist / skipped but monitored
+    "TSSI": "TSS Inc",
+    "BKSY": "BlackSky Technology",
+    "AMSC": "American Superconductor",
+    "RAL": "Ralliant Corp",
+    # HC-2 watchlist already in WATCHLIST_BASE via api.py
+    "RCAT": "Red Cat Holdings",
+    "RKLB": "Rocket Lab USA",
+    "QBTS": "D-Wave Quantum",
 }
 
 BUCKET_MAP = {
