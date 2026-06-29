@@ -340,8 +340,7 @@ Analyst consensus ({fundamentals['analyst_count']} analysts):
     else:
         fundamentals_block = f"(Live data unavailable: {fundamentals['error']})"
 
-    # Investor position context
-    holding_context = ""
+    # ── HELD POSITION ─────────────────────────────────────────────────────
     if position and quote:
         shares = position.get("shares", 0)
         avg_cost = position.get("avg_cost_eur", 0)
@@ -356,13 +355,8 @@ YOUR POSITION:
 - Current price: {price_q:.2f} {currency_q} ({day_pct:+.1f}% today)
 - Current value: €{value_eur:,.0f} | Total P&L: {pnl_pct:+.1f}%
 - Bucket: {bucket}"""
-    elif quote and quote.get("price"):
-        price_q = quote.get("price")
-        currency_q = quote.get("currency", "")
-        day_pct = quote.get("day_pct") or 0
-        holding_context = f"\nNOT HELD (watchlist only). Price: {price_q:.2f} {currency_q} ({day_pct:+.1f}% today)"
 
-    prompt = f"""You are analysing {ticker} ({live_name}) for a long-term retail investor in Dublin, Ireland.
+        prompt = f"""You are analysing {ticker} ({live_name}) for a long-term retail investor in Dublin, Ireland.
 {fundamentals_block}
 {holding_context}
 
@@ -387,8 +381,67 @@ Top 3 concrete risks that could impair this thesis. Be specific.
 Is it cheap, fair, or expensive based on the live multiples above? How does the forward P/E compare to growth rate? What does the analyst target imply?
 
 ## Verdict
-One paragraph: buy, hold, or avoid for a 3-5 year horizon — and why? If held, is the current P&L a reason to trim or add?
+One paragraph: buy, hold, or avoid for a 3-5 year horizon — and why? Is the current P&L a reason to trim or add? Irish tax note: 33% CGT on any sale.
 
 Plain English. Reference the actual numbers. No disclaimers. Max 650 words."""
 
-    return _ask(prompt, max_tokens=1000)
+        return _ask(prompt, max_tokens=1000)
+
+    # ── WATCHLIST TICKER (not held) ────────────────────────────────────────
+    # Build price context for prompt
+    price_context = ""
+    if quote and quote.get("price"):
+        price_q = quote.get("price")
+        currency_q = quote.get("currency", "")
+        day_pct = quote.get("day_pct") or 0
+        price_context = f"\nCurrent price: {price_q:.2f} {currency_q} ({day_pct:+.1f}% today) — NOT HELD"
+
+    # Portfolio context summary (what the investor already owns)
+    portfolio_context = """
+INVESTOR'S EXISTING PORTFOLIO (for fit assessment):
+Positions: NVDA (AI GPU, Growth), ASML.AS (EUV monopoly, Growth), VRT (AI data centre power, HC-1),
+APLD (AI data centre infra, HC-1), NBIS (GPU cloud/AI inference, HC-1), SNDK (storage, Growth),
+BRK-B (conglomerate, Retirement), IWDA/VUSA/IMAE/AEME/IEAG (index ETFs, Retirement).
+Watchlist buckets: QUALITY (long-run compounders), GROWTH (AI-cycle timed), DEFENCE (NATO structural),
+HOUSE (capital preservation 2028-2029, Dublin FTB purchase ~€500k), MOONSHOT (speculative, <5% allocation).
+Irish tax: 33% CGT on stocks (stocks only — never ETFs due to 41% exit tax + deemed disposal)."""
+
+    prompt = f"""You are a senior equity analyst briefing a retail investor in Dublin, Ireland on a watchlist stock they are considering buying.
+Today is {datetime.now().strftime('%d %b %Y')}.
+
+TICKER: {ticker} ({live_name})
+{fundamentals_block}
+{price_context}
+{portfolio_context}
+
+This stock is on the investor's watchlist but NOT yet purchased. Give a rigorous, specific investment case. Use these EXACT markdown headers — every section is mandatory:
+
+## Why This Stock
+Why was {ticker} selected for this watchlist? What structural thesis — competitive moat, macro tailwind, sector position, or valuation asymmetry — justifies monitoring it? Be specific: reference actual business facts, not generalities.
+
+## Portfolio Fit
+How does {ticker} fit this specific portfolio? What does it add that isn't already covered (sector, geography, currency, risk profile)? Name the existing position it most correlates with and explain whether the correlation is acceptable.
+
+## Entry Zone
+Where is the right entry price? Give a specific price range or RSI/technical condition. Is the current price good, extended, or cheap? Reference the 52W range and forward P/E vs growth rate. Where would you set a limit order today?
+
+## Exit Strategy
+What is the exit trigger? Give: (1) a price target (bear / base / bull case), (2) a time horizon, (3) a non-price exit trigger (e.g. thesis broken if X happens). For HOUSE bucket: must be liquid and exit by H1 2029.
+
+## Return Scenarios
+Be quantitative. For each case state the expected price and % return:
+- **Bear case** (30% probability): what goes wrong, what price
+- **Base case** (50% probability): core thesis plays out, what price in 12-24 months
+- **Bull case** (20% probability): upside surprise, what price
+Expected value = (0.3 × bear) + (0.5 × base) + (0.2 × bull). State it.
+
+## Conviction & Invalidation
+Conviction rating: LOW / MEDIUM / HIGH — and why.
+What single development would immediately invalidate this thesis? Be precise (e.g. "if revenue growth drops below X%", "if this contract is lost", "if this regulatory ruling fails").
+
+## Verdict
+One clear paragraph: buy now / wait for better entry / avoid. Give the specific entry condition if waiting. No disclaimers. Irish CGT note: 33% on any gain at sale.
+
+Plain English. Quote actual numbers from the live data. Max 750 words total."""
+
+    return _ask(prompt, max_tokens=1200)

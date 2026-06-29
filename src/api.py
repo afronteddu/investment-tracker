@@ -545,18 +545,22 @@ async def drilldown(ticker: str, request: Request):
     portfolio_rows = _build_portfolio_data()
     position = next((r for r in portfolio_rows if r["ticker"] == ticker), None)
 
-    # Build quote context
+    # Build quote context — enrich with 52W range + year return for watchlist drilldown
     quotes = fetch_quotes([ticker])
     q = quotes.get(ticker, {})
     quote_ctx = None
     if q.get("price"):
         from src.quotes import day_change_pct
+        from src.signals import get_year_return
         quote_ctx = {
             "price": q.get("price"),
             "currency": q.get("currency", ""),
             "day_pct": day_change_pct(q),
             "day_high": q.get("day_high"),
             "day_low": q.get("day_low"),
+            "high_52w": q.get("high_52w"),
+            "low_52w": q.get("low_52w"),
+            "year_return": get_year_return(ticker),
         }
         if position:
             position["day_pct"] = quote_ctx["day_pct"]

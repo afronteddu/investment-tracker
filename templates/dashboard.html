@@ -1311,6 +1311,58 @@ function filterScanner(bucket, btn) {
   _renderScannerRows();
 }
 
+// ── Opportunity score: higher = better entry right now ────────────
+// Factors: RSI oversold (+), 52W return positive (+), near 52W low (+),
+//          day not up huge (+), not overbought (-)
+// Moonshots get a fixed medium score — their opportunity is thesis-driven not technical
+function _opportunityScore(s) {
+  const sm = SCANNER_META[s.ticker];
+  if (!sm) return 0;
+  if (sm.bucketTag === 'MOONSHOT') return 30; // fixed mid-score, ranked by name within bucket
+
+  let score = 50; // base
+
+  // RSI signal — most important factor
+  const rsi = s.rsi;
+  if (rsi != null) {
+    if (rsi <= 25)      score += 35; // strongly oversold = strong opportunity
+    else if (rsi <= 30) score += 25;
+    else if (rsi <= 40) score += 10;
+    else if (rsi >= 75) score -= 30; // overbought = bad entry
+    else if (rsi >= 70) score -= 20;
+    else if (rsi >= 60) score -= 5;
+  }
+
+  // 52W return — positive trend = quality entry, negative = caution
+  const yr = s.year_return;
+  if (yr != null) {
+    if (yr >= 30)      score += 15; // strong momentum
+    else if (yr >= 10) score += 8;
+    else if (yr >= 0)  score += 3;
+    else if (yr >= -15) score -= 10;
+    else               score -= 20; // heavy downtrend
+  }
+
+  // Position in 52W range — near low = opportunity
+  if (s.high_52w != null && s.low_52w != null && s.price != null && s.high_52w > s.low_52w) {
+    const rangePct = (s.price - s.low_52w) / (s.high_52w - s.low_52w) * 100;
+    if (rangePct <= 20)      score += 20; // near 52W low — potential entry
+    else if (rangePct <= 35) score += 12;
+    else if (rangePct >= 90) score -= 15; // near 52W high — extended
+    else if (rangePct >= 75) score -= 8;
+  }
+
+  // Day move — a big up day is NOT an opportunity (chasing), a big down day may be
+  const pct = s.day_pct;
+  if (pct != null) {
+    if (pct <= -5)      score += 8;  // dip = possible entry if thesis intact
+    else if (pct >= 8)  score -= 15; // extraordinary spike = don't chase
+    else if (pct >= 5)  score -= 8;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
 function _scanSignal(s) {
   const pct = s.day_pct;
   const rsi = s.rsi;
@@ -1385,6 +1437,9 @@ function _renderScannerRows() {
     tbody.innerHTML = '<tr><td colspan="10" class="muted" style="text-align:center;padding:20px">No tickers in this bucket</td></tr>';
     return;
   }
+
+  // Sort by opportunity score descending — best entry at top
+  visible.sort((a, b) => _opportunityScore(b) - _opportunityScore(a));
 
   const _timingColor = t => {
     if (t === 'LONG-RUN')      return '#60a5fa';
@@ -1487,8 +1542,18 @@ function _renderScannerRows() {
       ? '<span style="font-size:10px;color:#64748b;max-width:200px;display:inline-block;white-space:normal;line-height:1.4">' + (sm.note || '') + '</span>'
       : '<span class="muted" style="font-size:10px">—</span>';
 
+    // Opportunity score badge
+    const score = _opportunityScore(s);
+    const scoreColor = score >= 70 ? '#4ade80' : score >= 55 ? '#86efac' : score >= 40 ? '#fbbf24' : score >= 25 ? '#f87171' : '#94a3b8';
+    const scoreBadge = '<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:' + scoreColor + '18;color:' + scoreColor + ';border:1px solid ' + scoreColor + '30;margin-left:4px">' + score + '</span>';
+
+    // 2-line business description from SCANNER_META
+    const descHtml = sm && sm.desc
+      ? '<div style="font-size:10px;color:#64748b;max-width:180px;white-space:normal;line-height:1.35;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + sm.desc + '</div>'
+      : '';
+
     return '<tr>'
-      + '<td><button class="ticker-btn" onclick=\'openDrilldown("' + s.ticker + '", null)\'>' + s.ticker + '</button>' + hotBadge + '</td>'
+      + '<td><button class="ticker-btn" onclick=\'openDrilldown("' + s.ticker + '", null)\'>' + s.ticker + '</button>' + hotBadge + scoreBadge + descHtml + '</td>'
       + '<td>' + bucketCell + '</td>'
       + '<td class="r">' + (s.price != null ? fmt(s.price) : '—') + ' <span style="font-size:9px;color:var(--muted)">' + (s.currency || '') + '</span></td>'
       + '<td class="r"><span class="' + pC + ' pct-big">' + (pct != null ? sign(pct) + fmt(pct) + '%' : '—') + '</span></td>'
@@ -1750,55 +1815,137 @@ const TICKER_META = {
 const SCANNER_META = {
 
   // ── QUALITY: Mag-7 + EUR Compounders (LONG-RUN) ──────────────────
-  'MSFT':     { bucketTag:'QUALITY', yield_est:'~0.8%', timing:'LONG-RUN',    beta:'~0.9', note:'Azure + Copilot. 10yr compounder. LONG-RUN.' },
-  'GOOGL':    { bucketTag:'QUALITY', yield_est:'~0.5%', timing:'LONG-RUN',    beta:'~1.0', note:'Search monopoly + Cloud + Gemini. 10yr hold.' },
-  'META':     { bucketTag:'QUALITY', yield_est:'~0.3%', timing:'TIMED-AI',    beta:'~1.1', note:'AI-driven ad rebound. Sell when AI capex cycle turns.' },
-  'AMZN':     { bucketTag:'QUALITY', yield_est:'0%',    timing:'LONG-RUN',    beta:'~1.1', note:'AWS + retail flywheel. LONG-RUN compounder.' },
-  'AAPL':     { bucketTag:'QUALITY', yield_est:'~0.5%', timing:'LONG-RUN',    beta:'~1.2', note:'Services flywheel + 2B device base. LONG-RUN.' },
-  'ASML.AS':  { bucketTag:'QUALITY', yield_est:'~1.0%', timing:'LONG-RUN',    beta:'~1.2', note:'EUV monopoly — every chip in the world. LONG-RUN.' },
-  'TSM':      { bucketTag:'QUALITY', yield_est:'~1.8%', timing:'LONG-RUN',    beta:'~1.1', note:'Only advanced fab (N3/N2). Geopolitical risk priced in.' },
-  'SAP.DE':   { bucketTag:'QUALITY', yield_est:'~1.5%', timing:'LONG-RUN',    beta:'~0.9', note:'ERP cloud monopoly. 30%→40%+ margin expansion. EUR.' },
-  'NOVO-B.CO':{ bucketTag:'QUALITY', yield_est:'~5.5%', timing:'LONG-RUN',    beta:'~0.5', note:'GLP-1 compounder. 70% off ATH, PE 10×. DKK hedge.' },
-  'AIR.PA':   { bucketTag:'QUALITY', yield_est:'~1.8%', timing:'LONG-RUN',    beta:'~0.9', note:'Airbus €1T backlog. Boeing crisis = gift. Defence upside.' },
-  'OR.PA':    { bucketTag:'QUALITY', yield_est:'~2.1%', timing:'LONG-RUN',    beta:'~0.7', note:"L'Oréal. 115yr compounder. EM middle-class structural." },
-  'TTE.PA':   { bucketTag:'QUALITY', yield_est:'~4.0%', timing:'LONG-RUN',    beta:'~0.65',note:'LNG bridge fuel. 4% div, PE ~8. EUR-denominated.' },
-  'SHEL.L':   { bucketTag:'QUALITY', yield_est:'~3.5%', timing:'LONG-RUN',    beta:'~0.6', note:'Shell. GBP denomination. LNG + H2. FX hedge.' },
-  'HDB':      { bucketTag:'QUALITY', yield_est:'~1.2%', timing:'LONG-RUN',    beta:'~0.7', note:'HDFC Bank ADR. India 6-7% GDP. PE 15×, loan growth 15-20%/yr.' },
-  'CEG':      { bucketTag:'QUALITY', yield_est:'~0.7%', timing:'TIMED-AI',    beta:'~0.9', note:'Nuclear PPA — MSFT/AMZN 20yr power deals. AI data centre power.' },
+  'MSFT':     { bucketTag:'QUALITY', yield_est:'~0.8%', timing:'LONG-RUN',    beta:'~0.9',
+    desc:'Azure cloud (#2 globally) + Office 365 ecosystem + Copilot AI across 1B+ users.',
+    note:'Azure + Copilot. 10yr compounder. LONG-RUN.' },
+  'GOOGL':    { bucketTag:'QUALITY', yield_est:'~0.5%', timing:'LONG-RUN',    beta:'~1.0',
+    desc:'Search advertising monopoly (~90% share) + GCP cloud + Gemini AI + YouTube.',
+    note:'Search monopoly + Cloud + Gemini. 10yr hold.' },
+  'META':     { bucketTag:'QUALITY', yield_est:'~0.3%', timing:'TIMED-AI',    beta:'~1.1',
+    desc:'Facebook + Instagram + WhatsApp: 3.3B daily users. AI-driven ad machine + VR bet.',
+    note:'AI-driven ad rebound. Sell when AI capex cycle turns.' },
+  'AMZN':     { bucketTag:'QUALITY', yield_est:'0%',    timing:'LONG-RUN',    beta:'~1.1',
+    desc:'AWS cloud (#1 market share) + retail marketplace flywheel + 200M Prime members.',
+    note:'AWS + retail flywheel. LONG-RUN compounder.' },
+  'AAPL':     { bucketTag:'QUALITY', yield_est:'~0.5%', timing:'LONG-RUN',    beta:'~1.2',
+    desc:'iPhone ecosystem: 2B+ active devices. Services (App Store, Pay) at 75%+ margins.',
+    note:'Services flywheel + 2B device base. LONG-RUN.' },
+  'ASML.AS':  { bucketTag:'QUALITY', yield_est:'~1.0%', timing:'LONG-RUN',    beta:'~1.2',
+    desc:'Sole maker of EUV chip-printing machines — essential for every advanced semiconductor.',
+    note:'EUV monopoly — every chip in the world. LONG-RUN.' },
+  'TSM':      { bucketTag:'QUALITY', yield_est:'~1.8%', timing:'LONG-RUN',    beta:'~1.1',
+    desc:'Manufactures 90%+ of advanced chips (N3/N2). Sole fab for NVDA, AAPL, AMD, ARM.',
+    note:'Only advanced fab (N3/N2). Geopolitical risk priced in.' },
+  'SAP.DE':   { bucketTag:'QUALITY', yield_est:'~1.5%', timing:'LONG-RUN',    beta:'~0.9',
+    desc:'Largest global ERP software vendor — 400,000+ enterprise clients migrating to cloud.',
+    note:'ERP cloud monopoly. 30%→40%+ margin expansion. EUR.' },
+  'NOVO-B.CO':{ bucketTag:'QUALITY', yield_est:'~5.5%', timing:'LONG-RUN',    beta:'~0.5',
+    desc:'Global GLP-1 obesity/diabetes leader (Ozempic, Wegovy). 70% off ATH at PE 10×.',
+    note:'GLP-1 compounder. 70% off ATH, PE 10×. DKK hedge.' },
+  'AIR.PA':   { bucketTag:'QUALITY', yield_est:'~1.8%', timing:'LONG-RUN',    beta:'~0.9',
+    desc:'World\'s largest aircraft manufacturer: €1T backlog. Boeing\'s crisis = Airbus gain.',
+    note:'Airbus €1T backlog. Boeing crisis = gift. Defence upside.' },
+  'OR.PA':    { bucketTag:'QUALITY', yield_est:'~2.1%', timing:'LONG-RUN',    beta:'~0.7',
+    desc:'L\'Oréal — world\'s #1 cosmetics group. 115-year compounder on EM middle-class rise.',
+    note:"L'Oréal. 115yr compounder. EM middle-class structural." },
+  'TTE.PA':   { bucketTag:'QUALITY', yield_est:'~4.0%', timing:'LONG-RUN',    beta:'~0.65',
+    desc:'TotalEnergies: integrated energy giant with #1 global LNG franchise. 4% dividend.',
+    note:'LNG bridge fuel. 4% div, PE ~8. EUR-denominated.' },
+  'SHEL.L':   { bucketTag:'QUALITY', yield_est:'~3.5%', timing:'LONG-RUN',    beta:'~0.6',
+    desc:'Shell: world\'s top LNG trader + integrated oil & gas + renewables pivot. GBP hedge.',
+    note:'Shell. GBP denomination. LNG + H2. FX hedge.' },
+  'HDB':      { bucketTag:'QUALITY', yield_est:'~1.2%', timing:'LONG-RUN',    beta:'~0.7',
+    desc:'HDFC Bank ADR — India\'s largest private bank on 6-7% GDP growth. PE 15×, 20%/yr loans.',
+    note:'HDFC Bank ADR. India 6-7% GDP. PE 15×, loan growth 15-20%/yr.' },
+  'CEG':      { bucketTag:'QUALITY', yield_est:'~0.7%', timing:'TIMED-AI',    beta:'~0.9',
+    desc:'Constellation Energy: largest US nuclear fleet. 20yr PPAs with MSFT/AMZN for AI power.',
+    note:'Nuclear PPA — MSFT/AMZN 20yr power deals. AI data centre power.' },
 
   // ── GROWTH: AI cycle names (TIMED-AI) ────────────────────────────
-  'NVDA':     { bucketTag:'GROWTH',  yield_est:'~0%',   timing:'TIMED-AI',    beta:'~1.6', note:'AI GPU monopoly. 80%+ datacenter revenue. Sell with capex cycle.' },
-  'AMD':      { bucketTag:'GROWTH',  yield_est:'0%',    timing:'TIMED-AI',    beta:'~1.5', note:'AI GPU challenger (MI300X). Lagging NVDA but closes gap.' },
-  'ARM':      { bucketTag:'GROWTH',  yield_est:'0%',    timing:'TIMED-AI',    beta:'~1.4', note:'CPU IP royalty on every AI device, phone, server.' },
-  'PLTR':     { bucketTag:'GROWTH',  yield_est:'0%',    timing:'TIMED-AI',    beta:'~1.3', note:'AI/defence analytics. US Gov + commercial. High PE ~100× — momentum.' },
-  'AVGO':     { bucketTag:'GROWTH',  yield_est:'~1.5%', timing:'TIMED-AI',    beta:'~1.2', note:'AI networking chips + custom ASICs. Google/Meta XPU dependency.' },
+  'NVDA':     { bucketTag:'GROWTH',  yield_est:'~0%',   timing:'TIMED-AI',    beta:'~1.6',
+    desc:'AI GPU monopoly — $50B+/quarter datacenter revenue. H100/Blackwell chips power every AI model.',
+    note:'AI GPU monopoly. 80%+ datacenter revenue. Sell with capex cycle.' },
+  'AMD':      { bucketTag:'GROWTH',  yield_est:'0%',    timing:'TIMED-AI',    beta:'~1.5',
+    desc:'AI GPU challenger (MI300X series) + CPU gains vs Intel. Closes gap on NVDA in inference.',
+    note:'AI GPU challenger (MI300X). Lagging NVDA but closes gap.' },
+  'ARM':      { bucketTag:'GROWTH',  yield_est:'0%',    timing:'TIMED-AI',    beta:'~1.4',
+    desc:'Designs CPU IP architecture in 99% of smartphones and all AI data centre servers. Royalty model.',
+    note:'CPU IP royalty on every AI device, phone, server.' },
+  'PLTR':     { bucketTag:'GROWTH',  yield_est:'0%',    timing:'TIMED-AI',    beta:'~1.3',
+    desc:'AI analytics for US government (CIA, DoD) + enterprise AIP platform. Gotham + Foundry + AIP.',
+    note:'AI/defence analytics. US Gov + commercial. High PE ~100× — momentum.' },
+  'AVGO':     { bucketTag:'GROWTH',  yield_est:'~1.5%', timing:'TIMED-AI',    beta:'~1.2',
+    desc:'AI networking chips + custom XPUs for Google/Meta + VMware software infrastructure. Duopoly.',
+    note:'AI networking chips + custom ASICs. Google/Meta XPU dependency.' },
 
   // ── DEFENCE: Structural NATO spend cycle (TIMED-DEFENCE) ──────────
-  'LDO.MI':   { bucketTag:'DEFENCE', yield_est:'~2.0%', timing:'TIMED-DEFENCE', beta:'~1.0', note:'Leonardo IT. Helicopter/radar/cyber. PE ~14. Least priced-in of EU defence.' },
-  'RHM.DE':   { bucketTag:'DEFENCE', yield_est:'~0.5%', timing:'TIMED-DEFENCE', beta:'~1.1', note:'Rheinmetall. NATO ammo + armour. Wait for peace-talk dip to €900-1,000.' },
-  'HII':      { bucketTag:'DEFENCE', yield_est:'~2.5%', timing:'TIMED-DEFENCE', beta:'~0.9', note:'Huntington Ingalls. Only US nuclear submarine/carrier builder.' },
-  'RTX':      { bucketTag:'DEFENCE', yield_est:'~2.2%', timing:'TIMED-DEFENCE', beta:'~0.85',note:'Raytheon + Pratt & Whitney. Missiles, engines, radar. Defensive beta.' },
-  'BAESY':    { bucketTag:'DEFENCE', yield_est:'~3.0%', timing:'TIMED-DEFENCE', beta:'~0.8', note:'BAE Systems ADR. UK defence. Typhoon, M777, submarines.' },
+  'LDO.MI':   { bucketTag:'DEFENCE', yield_est:'~2.0%', timing:'TIMED-DEFENCE', beta:'~1.0',
+    desc:'Leonardo SpA — Italian aerospace/defence: helicopters, radar, cyber, electronics. PE ~14.',
+    note:'Leonardo IT. Helicopter/radar/cyber. PE ~14. Least priced-in of EU defence.' },
+  'RHM.DE':   { bucketTag:'DEFENCE', yield_est:'~0.5%', timing:'TIMED-DEFENCE', beta:'~1.1',
+    desc:'Rheinmetall — Germany\'s top defence contractor: NATO artillery shells, armoured vehicles.',
+    note:'Rheinmetall. NATO ammo + armour. Wait for peace-talk dip to €900-1,000.' },
+  'HII':      { bucketTag:'DEFENCE', yield_est:'~2.5%', timing:'TIMED-DEFENCE', beta:'~0.9',
+    desc:'Huntington Ingalls — sole US builder of aircraft carriers and nuclear attack submarines.',
+    note:'Huntington Ingalls. Only US nuclear submarine/carrier builder.' },
+  'RTX':      { bucketTag:'DEFENCE', yield_est:'~2.2%', timing:'TIMED-DEFENCE', beta:'~0.85',
+    desc:'Raytheon (Patriot missiles, LTAMDS radar) + Pratt & Whitney jet engines. Highest backlog visibility.',
+    note:'Raytheon + Pratt & Whitney. Missiles, engines, radar. Defensive beta.' },
+  'BAESY':    { bucketTag:'DEFENCE', yield_est:'~3.0%', timing:'TIMED-DEFENCE', beta:'~0.8',
+    desc:'BAE Systems ADR — UK\'s largest defence contractor: Typhoon jets, destroyers, M777 howitzers.',
+    note:'BAE Systems ADR. UK defence. Typhoon, M777, submarines.' },
 
   // ── HOUSE FUND (exit 2028-2029) ────────────────────────────────────
-  'UCG.MI':   { bucketTag:'HOUSE',   yield_est:'~7.2%', timing:'TIMED-HOUSE', beta:'~0.9', note:'CORE. 7%+ div + buybacks. Best-capitalised EU bank. Exit H1 2029.' },
-  'NOVN.SW':  { bucketTag:'HOUSE',   yield_est:'~3.9%', timing:'TIMED-HOUSE', beta:'~0.4', note:'CORE. CHF pharma, β0.4. Post-Sandoz = clean pipeline. Exit H1 2029.' },
-  'ENEL.MI':  { bucketTag:'HOUSE',   yield_est:'~6.2%', timing:'TIMED-HOUSE', beta:'~0.5', note:'CORE. Regulated utility. β0.5. Stable tariff income. Exit H1 2029.' },
-  'AXA.PA':   { bucketTag:'HOUSE',   yield_est:'~5.5%', timing:'TIMED-HOUSE', beta:'~0.75',note:'CORE. EUR insurance. Solvency II >200%. Exit H1 2029.' },
-  'IBE.MC':   { bucketTag:'HOUSE',   yield_est:'~4.5%', timing:'TIMED-HOUSE', beta:'~0.5', note:'CORE. Iberdrola. Renewables ES/UK/US/BR. Exit H1 2029.' },
-  'PYPL':     { bucketTag:'HOUSE',   yield_est:'0%',    timing:'TIMED-HOUSE', beta:'~1.0', note:'60% below ATH. $5B buyback. Target $90-100. Exit H1 2028.' },
-  'ABNB':     { bucketTag:'HOUSE',   yield_est:'0%',    timing:'TIMED-HOUSE', beta:'~1.1', note:'Asset-light travel. Target ~$180. Exit H1 2028.' },
+  'UCG.MI':   { bucketTag:'HOUSE',   yield_est:'~7.2%', timing:'TIMED-HOUSE', beta:'~0.9',
+    desc:'UniCredit SpA — Italy\'s best-capitalised bank. 7%+ dividend + massive buyback programme.',
+    note:'CORE. 7%+ div + buybacks. Best-capitalised EU bank. Exit H1 2029.' },
+  'NOVN.SW':  { bucketTag:'HOUSE',   yield_est:'~3.9%', timing:'TIMED-HOUSE', beta:'~0.4',
+    desc:'Novartis AG — Swiss pharma post-Sandoz spin: clean innovative pipeline + 3.9% dividend.',
+    note:'CORE. CHF pharma, β0.4. Post-Sandoz = clean pipeline. Exit H1 2029.' },
+  'ENEL.MI':  { bucketTag:'HOUSE',   yield_est:'~6.2%', timing:'TIMED-HOUSE', beta:'~0.5',
+    desc:'Enel SpA — Italy\'s largest utility: regulated electricity tariffs + 6.2% dividend. β=0.5.',
+    note:'CORE. Regulated utility. β0.5. Stable tariff income. Exit H1 2029.' },
+  'AXA.PA':   { bucketTag:'HOUSE',   yield_est:'~5.5%', timing:'TIMED-HOUSE', beta:'~0.75',
+    desc:'AXA — Europe\'s #1 insurer. Solvency II >200%, 5.5% dividend yield. EUR-denominated safety.',
+    note:'CORE. EUR insurance. Solvency II >200%. Exit H1 2029.' },
+  'IBE.MC':   { bucketTag:'HOUSE',   yield_est:'~4.5%', timing:'TIMED-HOUSE', beta:'~0.5',
+    desc:'Iberdrola — global renewables leader (Spain/UK/US/Brazil): regulated grid + wind & solar.',
+    note:'CORE. Iberdrola. Renewables ES/UK/US/BR. Exit H1 2029.' },
+  'PYPL':     { bucketTag:'HOUSE',   yield_est:'0%',    timing:'TIMED-HOUSE', beta:'~1.0',
+    desc:'PayPal — 60% below 2021 ATH. $5B buyback programme, recovering unit economics, new CEO.',
+    note:'60% below ATH. $5B buyback. Target $90-100. Exit H1 2028.' },
+  'ABNB':     { bucketTag:'HOUSE',   yield_est:'0%',    timing:'TIMED-HOUSE', beta:'~1.1',
+    desc:'Airbnb — asset-light platform: 7M+ listings, zero debt, expanding experiences + long stays.',
+    note:'Asset-light travel. Target ~$180. Exit H1 2028.' },
 
   // ── MOONSHOTS: Speculative — high risk, small size only ─────────────
-  'RKLB':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.0', note:'Rocket Lab. Electron + Neutron 2026. Only private orbital launcher. Buy dips.' },
-  'ASTS':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.5', note:'AST SpaceMobile. Direct-to-cell satellite. AT&T/Verizon agreements. Pre-revenue.' },
-  'IONQ':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.0', note:'IonQ. Trapped-ion quantum. IQ 35 — nearest to useful compute. Lottery ticket.' },
-  'RGTI':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.2', note:'Rigetti. Superconducting qubits. Pre-revenue. High dilution risk.' },
-  'SERV':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.3', note:'Serve Robotics. NVDA-backed sidewalk delivery. Uber partnership. Pre-profit.' },
-  'RCAT':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.1', note:'Red Cat Holdings. Military drone + payload. DoD-contracted. Tiny float.' },
-  'ACHR':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.4', note:'Archer Aviation. eVTOL — Delta 100 aircraft order. Stellantis manufacturing deal.' },
-  'OKLO':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.0', note:'Oklo. Microreactor. Sam Altman board. Data centre power. Pre-revenue.' },
-  'BBAI':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~1.7', note:'BigBear.ai. Defence AI analytics. Micro cap. DoD contracts. High risk.' },
+  'RKLB':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.0',
+    desc:'Rocket Lab — only private small-sat orbital launcher (Electron). Neutron medium rocket 2026.',
+    note:'Rocket Lab. Electron + Neutron 2026. Only private orbital launcher. Buy dips.' },
+  'ASTS':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.5',
+    desc:'AST SpaceMobile — direct-to-cell satellite broadband. AT&T/Verizon/Vodafone agreements live.',
+    note:'AST SpaceMobile. Direct-to-cell satellite. AT&T/Verizon agreements. Pre-revenue.' },
+  'IONQ':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.0',
+    desc:'IonQ — trapped-ion quantum computing. Highest commercial fidelity (IQ 35). Cloud partnerships.',
+    note:'IonQ. Trapped-ion quantum. IQ 35 — nearest to useful compute. Lottery ticket.' },
+  'RGTI':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.2',
+    desc:'Rigetti Computing — superconducting qubit QPUs targeting >100 qubits. Pre-revenue, dilutive.',
+    note:'Rigetti. Superconducting qubits. Pre-revenue. High dilution risk.' },
+  'SERV':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.3',
+    desc:'Serve Robotics — NVDA-backed autonomous sidewalk delivery robots. Uber partnership, LA launch.',
+    note:'Serve Robotics. NVDA-backed sidewalk delivery. Uber partnership. Pre-profit.' },
+  'RCAT':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.1',
+    desc:'Red Cat Holdings — military-grade drone systems (FANG for SOCOM). DoD-contracted, tiny float.',
+    note:'Red Cat Holdings. Military drone + payload. DoD-contracted. Tiny float.' },
+  'ACHR':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.4',
+    desc:'Archer Aviation — eVTOL air taxi: Delta 100-aircraft order + Stellantis manufacturing deal.',
+    note:'Archer Aviation. eVTOL — Delta 100 aircraft order. Stellantis manufacturing deal.' },
+  'OKLO':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~2.0',
+    desc:'Oklo — advanced microreactor developer. Sam Altman chairman. Data centre power pipeline.',
+    note:'Oklo. Microreactor. Sam Altman board. Data centre power. Pre-revenue.' },
+  'BBAI':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~1.7',
+    desc:'BigBear.ai — AI decision intelligence for US DoD. Computer vision + NLP analytics. Micro cap.',
+    note:'BigBear.ai. Defence AI analytics. Micro cap. DoD contracts. High risk.' },
 };
 
 // Suggested additions — grounded in actual portfolio gaps.
