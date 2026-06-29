@@ -619,6 +619,31 @@ class Scheduler:
         from src.signals import get_rsi, rsi_signal, get_news, days_until_earnings
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
+
+        # HC-2 price-level entry alerts — fire once per calendar day when price ≤ entry target.
+        # These tickers may not yet be in positions (pre-deployment), so we check quotes_cache
+        # directly. The hot_picks refresh always quotes them so they'll be present during market hrs.
+        HC2_ENTRIES = {
+            "AMTM": (20.25,  "Amentum Holdings (govt/nuclear)",
+                     "Deploy €600 now. Hold €300 for Aug 4 earnings. Hard stop: $14."),
+            "ONDS": ( 8.50,  "Ondas Holdings (defence drones)",
+                     "Deploy €325 if ≤$8.50. Hold €325 for Q2 earnings Aug 11-12. Hard stop: rev miss >15%."),
+            "LEU":  (152.00, "Centrus Energy (HALEU nuclear monopoly)",
+                     "GTC limit at $152 ONLY — do NOT buy at market. Earnings Aug 4. Hard stop once filled: $120."),
+        }
+        all_quotes = self.state.get("quotes_cache", {})
+        today_str = now_dublin().strftime("%Y-%m-%d")
+        for hc2_ticker, (entry_price, hc2_label, hc2_note) in HC2_ENTRIES.items():
+            q = all_quotes.get(hc2_ticker, {})
+            price = q.get("price")
+            if price is None:
+                continue
+            if price <= entry_price:
+                notify(
+                    f"🎯 HC-2 ENTRY HIT: {hc2_ticker} @ ${price:.2f}",
+                    f"{hc2_label}\nEntry target: ${entry_price:.2f}  |  Current: ${price:.2f}\n{hc2_note}",
+                    alert_key=f"hc2_entry_{hc2_ticker}_{today_str}",
+                )
         threshold = float(os.getenv("ALERT_THRESHOLD_PCT", "5"))
         extraordinary = float(os.getenv("SCANNER_GAINERS_PCT", "8"))
 
