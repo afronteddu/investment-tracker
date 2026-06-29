@@ -202,6 +202,7 @@ class Scheduler:
                 "week_pct": q.get("week_pct"),
                 "high_52w": q.get("high_52w"),
                 "low_52w":  q.get("low_52w"),
+                "year_return": sig.get("year_return"),
             })
         scanner_rows.sort(key=lambda x: x["day_pct"] if x["day_pct"] is not None else 0, reverse=True)
         self.state["scanner_cache"] = scanner_rows
@@ -245,14 +246,18 @@ class Scheduler:
         from src.api import WATCHLIST_BASE
 
         HOT_PICKS_UNIVERSE = [
-            "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "INTC", "QCOM",
-            "PLTR", "AI", "SOUN", "BBAI", "UPST", "PATH", "SNOW",
-            "IONQ", "RGTI", "QUBT", "QBTS",
-            "META", "GOOGL", "MSFT", "AMZN", "TSLA", "AAPL",
-            "VRT", "VST", "CEG", "NRG",
-            "RXRX", "TMDX",
-            # HC-2 picks always in universe so daily moves are scored
-            "AMTM", "ONDS", "LEU", "TSSI", "BKSY", "AMSC",
+            # AI chips & infra
+            "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "QCOM",
+            # AI software & data
+            "PLTR", "MSFT", "META", "GOOGL", "AMZN", "AAPL",
+            # Quantum
+            "IONQ", "RGTI",
+            # Defence
+            "RTX", "HII", "BAESY", "LDO.MI", "RHM.DE",
+            # Nuclear / energy
+            "CEG", "OKLO", "VRT", "VST",
+            # Moonshots
+            "RKLB", "ASTS", "ACHR", "SERV",
         ]
         try:
             quotes = fetch_quotes(HOT_PICKS_UNIVERSE)
@@ -607,6 +612,7 @@ class Scheduler:
                 "rsi": sig.get("rsi"),
                 "rsi_signal": sig.get("rsi_signal"),
                 "earnings_date": sig.get("earnings_date"),
+                "year_return": sig.get("year_return"),
             })
 
         briefing = generate_briefing(portfolio_snapshot, scanner_snapshot)

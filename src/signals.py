@@ -1,5 +1,5 @@
 """
-Technical signals: RSI (14-day), upcoming earnings date, recent news.
+Technical signals: RSI (14-day), upcoming earnings date, recent news, 52W return.
 All via yfinance — no extra API keys required.
 Cached aggressively to avoid rate limits.
 """
@@ -11,10 +11,12 @@ from typing import Optional
 _rsi_cache: dict[str, tuple[float | None, float]] = {}
 _news_cache: dict[str, tuple[list, float]] = {}
 _earnings_cache: dict[str, tuple[str | None, float]] = {}
+_year_cache: dict[str, tuple[float | None, float]] = {}
 
 RSI_TTL = 900       # 15 min
 NEWS_TTL = 1800     # 30 min
 EARNINGS_TTL = 21600  # 6 hours
+YEAR_TTL = 21600    # 6 hours (52W return — slow-moving)
 
 
 def get_rsi(ticker: str) -> Optional[float]:
@@ -101,6 +103,27 @@ def get_news(ticker: str, max_items: int = 3) -> list[dict]:
     return result
 
 
+def get_year_return(ticker: str) -> Optional[float]:
+    """52-week price return in %. Positive = stock up over past year."""
+    now = time.time()
+    cached = _year_cache.get(ticker)
+    if cached and now - cached[1] < YEAR_TTL:
+        return cached[0]
+    result = None
+    try:
+        import yfinance as yf
+        hist = yf.Ticker(ticker).history(period="1y", interval="1wk")
+        if len(hist) >= 40:
+            first_close = hist["Close"].iloc[0]
+            last_close = hist["Close"].iloc[-1]
+            if first_close and first_close > 0:
+                result = round((last_close - first_close) / first_close * 100, 1)
+    except Exception:
+        pass
+    _year_cache[ticker] = (result, now)
+    return result
+
+
 def get_signals(ticker: str) -> dict:
     rsi = get_rsi(ticker)
     return {
@@ -108,6 +131,7 @@ def get_signals(ticker: str) -> dict:
         "rsi_signal": rsi_signal(rsi),
         "earnings_date": get_earnings_date(ticker),
         "news": get_news(ticker, max_items=4),
+        "year_return": get_year_return(ticker),
     }
 
 

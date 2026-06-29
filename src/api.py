@@ -38,25 +38,54 @@ from src.quotes import fetch_quotes, day_change_pct, is_market_open_us, is_marke
 from src.scheduler import Scheduler
 
 # Base watchlist — always scanned
+# Rules: no ticker with persistent negative 52W return stays here. Each has a bucket + thesis.
 WATCHLIST_BASE = [
-    # AI infrastructure
-    "NVDA", "AMD", "TSM", "ARM", "SMCI",
-    # Quantum computing
-    "IONQ", "RGTI", "QUBT",
-    # AI software / data
-    "PLTR", "SOUN", "BBAI",
-    # Mag 7 / broad market
-    "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AAPL", "ASML.AS",
-    # House savings CORE
-    "UCG.MI", "NOVN.SW", "ENEL.MI", "AXA.PA", "IBE.MC",
-    # House savings SATELLITE
-    "TTE.PA", "GSK.L",
-    # House savings GROWTH (sell H1 2028)
-    "PYPL", "ABNB", "ROG.SW",
-    # Defence / 2027 HC watch
-    "LDO.MI", "RHM.DE",
-    # HC-2 moonshot candidates (defence drone, space launch, quantum annealing)
-    "RCAT", "RKLB", "QBTS",
+    # ── QUALITY: Mag-7 + EUR compounders (LONG-RUN) ─────────────────
+    "MSFT", "GOOGL", "META", "AMZN", "AAPL",
+    "ASML.AS",                     # EUV monopoly
+    "SAP.DE",                      # ERP cloud, EUR-denom
+    "NOVO-B.CO",                   # GLP-1 compounder, 70% off ATH
+    "AIR.PA",                      # Airbus €1T backlog
+    "OR.PA",                       # L'Oréal 115yr compounder
+
+    # ── QUALITY: Retirement income (LONG-RUN) ───────────────────────
+    "TTE.PA",                      # LNG + solar, 4% div, PE ~8
+    "SHEL.L",                      # Shell GBP LNG, 3.5% div
+    "HDB",                         # India HDFC Bank ADR
+    "CEG",                         # Nuclear PPA (AI power)
+    "TSM",                         # Only advanced fab, LONG-RUN despite geopolitical
+
+    # ── GROWTH: AI cycle names (TIMED-AI) ───────────────────────────
+    "NVDA", "AMD", "ARM",
+    "PLTR",                        # AI/defence analytics
+    "AVGO",                        # AI networking chips
+
+    # ── GROWTH: Defence structural (TIMED-HC-2027) ──────────────────
+    "LDO.MI",                      # Leonardo IT aerospace, NATO cycle
+    "RHM.DE",                      # Rheinmetall DE ammo, wait for dip
+    "HII",                         # Huntington Ingalls, US naval defence
+    "RTX",                         # Raytheon/Pratt, missile + engines
+    "BAESY",                       # BAE Systems ADR, UK defence
+
+    # ── HOUSE FUND (sell 2028-2029) ──────────────────────────────────
+    "UCG.MI",                      # 7%+ div, CORE tier
+    "NOVN.SW",                     # CHF pharma, β0.4, CORE tier
+    "ENEL.MI",                     # Regulated utility, β0.5
+    "AXA.PA",                      # EUR insurance, 5.5% div
+    "IBE.MC",                      # Iberdrola renewables
+    "PYPL",                        # 60% below ATH, $5B buyback
+    "ABNB",                        # Asset-light travel
+
+    # ── SPECULATIVE: Moonshots (small size only) ─────────────────────
+    "RKLB",                        # Rocket Lab — orbital launch, Neutron 2026
+    "ASTS",                        # AST SpaceMobile — satellite broadband
+    "IONQ",                        # Quantum computing — IQ 35+
+    "RGTI",                        # Quantum — trapped-ion
+    "SERV",                        # Serve Robotics — sidewalk delivery (NVDA-backed)
+    "RCAT",                        # Red Cat Holdings — military drones
+    "ACHR",                        # Archer Aviation — eVTOL, Delta/Stellantis backing
+    "OKLO",                        # Oklo — microreactor, Sam Altman board
+    "BBAI",                        # BigBear.ai — defence AI analytics
 ]
 
 DEPLOYMENTS = []
@@ -155,20 +184,21 @@ def _valid_ws_token(token: str) -> bool:
     return secrets.compare_digest(token, _make_ws_token())
 
 
-# Hot-picks universe — scanned daily to surface the biggest movers/momentum names
+# Hot-picks universe — scanned daily to surface biggest movers/momentum names
+# Only tickers with a positive 52W trend or strong structural thesis are eligible.
 _HOT_PICKS_UNIVERSE = [
     # AI chips & infra
-    "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "INTC", "QCOM",
+    "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "QCOM",
     # AI software & data
-    "PLTR", "AI", "SOUN", "BBAI", "UPST", "PATH", "SNOW",
+    "PLTR", "MSFT", "META", "GOOGL", "AMZN", "AAPL",
     # Quantum
-    "IONQ", "RGTI", "QUBT", "QBTS",
-    # High-growth tech
-    "META", "GOOGL", "MSFT", "AMZN", "TSLA", "AAPL",
-    # Energy / data centre power
-    "VRT", "VST", "CEG", "NRG",
-    # Biotech / speculative AI-adjacent
-    "RXRX", "TMDX",
+    "IONQ", "RGTI",
+    # Defence
+    "RTX", "HII", "BAESY", "LDO.MI", "RHM.DE",
+    # Nuclear / energy
+    "CEG", "OKLO", "VRT", "VST",
+    # Moonshots
+    "RKLB", "ASTS", "ACHR", "SERV",
 ]
 
 
@@ -275,6 +305,7 @@ def _build_scanner_data() -> list[dict]:
             "week_pct": q.get("week_pct"),
             "high_52w": q.get("high_52w"),
             "low_52w":  q.get("low_52w"),
+            "year_return": sig.get("year_return"),
         })
 
     rows.sort(key=lambda x: x["day_pct"] if x["day_pct"] is not None else 0, reverse=True)

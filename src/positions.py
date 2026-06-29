@@ -110,6 +110,20 @@ TICKER_NAMES = {
     "RCAT": "Red Cat Holdings",
     "RKLB": "Rocket Lab USA",
     "QBTS": "D-Wave Quantum",
+    # New watchlist additions Jun 2026
+    "ASTS":   "AST SpaceMobile",
+    "SERV":   "Serve Robotics",
+    "ACHR":   "Archer Aviation",
+    "OKLO":   "Oklo Inc",
+    "HII":    "Huntington Ingalls Industries",
+    "RTX":    "RTX Corporation (Raytheon)",
+    "BAESY":  "BAE Systems ADR",
+    "SAP.DE": "SAP SE",
+    "NOVO-B.CO": "Novo Nordisk B",
+    "AIR.PA": "Airbus SE",
+    "OR.PA":  "L'Oréal SA",
+    "SHEL.L": "Shell plc",
+    "HDB":    "HDFC Bank ADR",
 }
 
 BUCKET_MAP = {
