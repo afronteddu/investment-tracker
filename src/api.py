@@ -86,6 +86,11 @@ WATCHLIST_BASE = [
     "ACHR",                        # Archer Aviation — eVTOL, Delta/Stellantis backing
     "OKLO",                        # Oklo — microreactor, Sam Altman board
     "BBAI",                        # BigBear.ai — defence AI analytics
+
+    # ── BIOTECH HC (researched Jun 2026, adversarial 3-run deep scan) ─
+    "COGT",                        # Cogent Biosciences — bezuclastinib GIST, PDUFA Nov 30 2026
+    "BLTE",                        # Belite Bio — tinlarebant Stargardt Disease, NDA submitted Jun 2026
+    "ABVX",                        # ABIVAX — obefazimod UC, Phase 3 positive, NDA expected H2 2026
 ]
 
 DEPLOYMENTS = []

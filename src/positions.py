@@ -124,6 +124,10 @@ TICKER_NAMES = {
     "OR.PA":  "L'Oréal SA",
     "SHEL.L": "Shell plc",
     "HDB":    "HDFC Bank ADR",
+    # Biotech HC — adversarial deep scan Jun 2026
+    "COGT":  "Cogent Biosciences",
+    "BLTE":  "Belite Bio",
+    "ABVX":  "ABIVAX SA",
 }
 
 BUCKET_MAP = {
