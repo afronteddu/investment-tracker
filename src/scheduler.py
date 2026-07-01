@@ -595,6 +595,7 @@ class Scheduler:
                 "rsi": sig.get("rsi"),
                 "rsi_signal": sig.get("rsi_signal"),
                 "earnings_date": sig.get("earnings_date"),
+                "year_return": sig.get("year_return"),
             })
 
         scanner_snapshot = []

@@ -71,6 +71,9 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
             pct_off_high = (price - high_52w) / high_52w * 100
             pct_off_low = (price - low_52w) / low_52w * 100
             extras.append(f"52w {low_52w:.2f}–{high_52w:.2f} {currency} ({pct_off_high:+.0f}% vs high / {pct_off_low:+.0f}% vs low)")
+        year_ret = p.get("year_return")
+        if year_ret is not None:
+            extras.append(f"52w return {year_ret:+.1f}%")
         extra_str = "  [" + ", ".join(extras) + "]" if extras else ""
         portfolio_lines.append(
             f"- {p['ticker']} ({p['bucket']}): {p['shares']:.1f} shares, "
@@ -99,6 +102,9 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
             pct_off_high = (price - high_52w) / high_52w * 100
             pct_off_low = (price - low_52w) / low_52w * 100
             extras.append(f"52w {low_52w:.2f}–{high_52w:.2f} {currency} ({pct_off_high:+.0f}% vs high / {pct_off_low:+.0f}% vs low)")
+        year_ret = s.get("year_return")
+        if year_ret is not None:
+            extras.append(f"52w return {year_ret:+.1f}%")
         week_pct = s.get("week_pct")
         extra_str = "  [" + ", ".join(extras) + "]" if extras else ""
         week_str = f" / {week_pct:+.1f}% 5d" if week_pct is not None else ""
