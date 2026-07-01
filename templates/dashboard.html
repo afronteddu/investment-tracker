@@ -1759,7 +1759,7 @@ const IE_TAX_41 = new Set(['IWDA.AS','VUSA.AS','IMAE.AS','AEME.PA','IEAG.AS']);
 // Currency denomination per ticker (for FX concentration signal)
 const TICKER_CCY = {
   'BRK-B':'USD','NVDA':'USD','SNDK':'USD','NBIS':'USD','VRT':'USD','APLD':'USD',
-  'RCAT':'USD','LUNR':'USD','BKSY':'USD',
+  'RCAT':'USD','LUNR':'USD','BKSY':'USD','SERV':'USD',
   'ASML.AS':'EUR','IMAE.AS':'EUR','IWDA.AS':'EUR','VUSA.AS':'EUR','AEME.PA':'EUR','IEAG.AS':'EUR',
   'IGLN.L':'GBP','ISLN.L':'GBP',
   // Watchlist / suggestions
@@ -1792,10 +1792,11 @@ const TICKER_META = {
   'NBIS':    { sector:'AI Infra / Cloud', geo:'Global', ccy:'USD', type:'stock (33% CGT)', desc:'Nebius — AI cloud infrastructure (ex-Yandex)' },
   'VRT':     { sector:'AI Infra / Power', geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Vertiv — power/thermal management for data centres' },
   'APLD':    { sector:'AI Infra / HPC',   geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Applied Digital — HPC hosting for AI workloads' },
-  // HC-3 — Space / Defence / Lunar
+  // HC-3 — Space / Defence / Lunar / Robotics
   'RCAT':    { sector:'Defence Tech / Drones',    geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Red Cat Holdings — military small-drone manufacturer, margin recovery thesis. Q1 FY2026 12.7% gross margin.' },
   'LUNR':    { sector:'Space / Lunar',             geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Intuitive Machines — NASA CLPS lunar lander contract. Thesis conditional on Q2 Aug 2026 earnings.' },
   'BKSY':    { sector:'Defence Tech / Satellite',  geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'BlackSky Technology — satellite ISR analytics, $345M backlog, H2 2026 revenue recognition catalyst.' },
+  'SERV':    { sector:'Robotics / Autonomous',     geo:'US',     ccy:'USD', type:'stock (33% CGT)', desc:'Serve Robotics — Nvidia-backed autonomous sidewalk delivery. Revenue inflection or 18mo hold exit.' },
   // House savings — CORE
   'UCG.MI':  { sector:'Financials / Banking',   geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'UniCredit — Italian bank, 7%+ div + buybacks, CET1>16%. ⚠ β0.9 — highest beta in CORE.' },
   'ENEL.MI': { sector:'Utilities / Regulated',  geo:'Europe (IT)', ccy:'EUR', type:'stock (33% CGT)', desc:'Enel — Italian regulated utility, 6.2% div, β0.5. Tariff-backed cash flows.' },

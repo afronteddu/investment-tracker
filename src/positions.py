@@ -27,10 +27,11 @@ ISIN_TO_TICKER = {
     "IE00B4K48X80": "IMAE.AS",    # iShares Core MSCI Europe
     "LU2009202107": "AEME.PA",    # Amundi MSCI Emerging ex-China
     "IE00B4WXJJ64": "IEAG.AS",    # iShares Core EUR Govt Bond
-    # HC-3 bucket — adversarial deep scan Jun 2026, bought 30 Jun 2026
+    # HC-3 bucket — adversarial deep scan Jun 2026, bought 30 Jun – 1 Jul 2026
     "US75644T1007": "RCAT",       # Red Cat Holdings (defence drones)
     "US46125A1007": "LUNR",       # Intuitive Machines (NASA lunar)
     "US09263B2079": "BKSY",       # BlackSky Technology (satellite ISR)
+    "US81758H1068": "SERV",       # Serve Robotics (autonomous delivery)
 }
 
 TICKER_NAMES = {
