@@ -2492,8 +2492,8 @@ function renderStrategy(positions, lifetime) {
   const hc3Rows = hc3Pos.map(p => {
     const pnl = p.pnl_pct || 0;
     const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-    const notes = { RCAT:'Defence drones — margin recovery thesis, Q1 FY2026 12.7% gross margin', BKSY:'Satellite ISR — $345M backlog, H2 2026 revenue recognition', LUNR:'NASA lunar — conditional on Q2 earnings Aug 2026' };
-    const exits = { RCAT:'Exit: 2× within 12mo or margin reversal', BKSY:'Exit: revenue recognition confirmed or $1.5B mkt cap hit', LUNR:'Exit: post-Q2 earnings if thesis intact, or loss >40%' };
+    const notes = { RCAT:'Defence drones — margin recovery thesis, Q1 FY2026 12.7% gross margin', BKSY:'Satellite ISR — $345M backlog, H2 2026 revenue recognition', LUNR:'NASA lunar — conditional on Q2 earnings Aug 2026', SERV:'Robotics last-mile — Nvidia-backed, autonomous delivery at scale' };
+    const exits = { RCAT:'Exit: 2× within 12mo or margin reversal', BKSY:'Exit: revenue recognition confirmed or $1.5B mkt cap hit', LUNR:'Exit: post-Q2 earnings if thesis intact, or loss >40%', SERV:'Exit: revenue inflection visible or position >18mo old' };
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff0f">
       <div style="width:44px;font-weight:700;color:#f87171;flex-shrink:0">${p.ticker}</div>
       <div style="flex:1;min-width:0">

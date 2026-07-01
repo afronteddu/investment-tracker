@@ -149,6 +149,7 @@ BUCKET_MAP = {
     "RCAT": "hc_3",
     "LUNR": "hc_3",
     "BKSY": "hc_3",
+    "SERV": "hc_3",
     "IGLN.L": "retirement",
     "ISLN.L": "retirement",
     "IWDA.AS": "retirement",
