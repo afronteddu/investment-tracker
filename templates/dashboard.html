@@ -153,6 +153,7 @@
       padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
     }
     .b-high { background: rgba(192,132,252,0.15); color: var(--purple); }
+    .b-hc3  { background: rgba(251,113,133,0.15); color: #f87171; }
     .b-growth { background: rgba(251,191,36,0.12); color: var(--yellow); }
     .b-retirement { background: rgba(34,211,238,0.12); color: var(--cyan); }
     .b-house { background: rgba(251,146,60,0.12); color: var(--orange); }
@@ -695,6 +696,7 @@ const cc = n => n == null ? '' : n >= 0 ? 'green' : 'red';
 // ── Performance charts ───────────────────────────────────────────
 const BUCKET_COLORS = {
   high_conviction: ['#c084fc','#a855f7','#7c3aed','#6d28d9'],
+  hc_3:            ['#f87171','#ef4444','#dc2626'],
   growth:          ['#fbbf24','#f59e0b','#d97706'],
   retirement:      ['#22d3ee','#06b6d4','#0891b2','#0e7490','#155e75'],
 };
@@ -1228,8 +1230,8 @@ function renderPortfolio(positions) {
 
     const dayC = p.day_pct == null ? 'muted' : p.day_pct >= 0 ? 'green' : 'red';
     const pnlC = cc(p.pnl_pct);
-    const bClass = p.bucket === 'high_conviction' ? 'b-high' : p.bucket === 'growth' ? 'b-growth' : p.bucket === 'house_savings' ? 'b-house' : 'b-retirement';
-    const bLabel = p.bucket === 'high_conviction' ? 'High Conv.' : p.bucket === 'growth' ? 'Growth' : p.bucket === 'house_savings' ? 'House' : 'Retirement';
+    const bClass = p.bucket === 'high_conviction' ? 'b-high' : p.bucket === 'hc_3' ? 'b-hc3' : p.bucket === 'growth' ? 'b-growth' : p.bucket === 'house_savings' ? 'b-house' : 'b-retirement';
+    const bLabel = p.bucket === 'high_conviction' ? 'HC-1' : p.bucket === 'hc_3' ? 'HC-3' : p.bucket === 'growth' ? 'Growth' : p.bucket === 'house_savings' ? 'House' : 'Retirement';
 
     const barPct = p.pnl_pct != null ? Math.min(Math.abs(p.pnl_pct), 100) : 0;
     const barColor = p.pnl_pct >= 0 ? 'var(--green)' : 'var(--red)';
@@ -1745,9 +1747,9 @@ async function init() {
 }
 
 // ── Strategy Advisor ─────────────────────────────────────────────
-const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 25, house_savings: 0 };
-const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6', house_savings: '#fb923c' };
-const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'High Conviction', house_savings: 'House Savings' };
+const BUCKET_TARGETS = { retirement: 40, growth: 35, high_conviction: 20, hc_3: 5, house_savings: 0 };
+const BUCKET_ACCENT  = { retirement: '#60a5fa', growth: '#34d399', high_conviction: '#f472b6', hc_3: '#f87171', house_savings: '#fb923c' };
+const BUCKET_LABELS  = { retirement: 'Retirement / Defensive', growth: 'Growth', high_conviction: 'HC-1 (AI Infra)', hc_3: 'HC-3 (Space/Defence)', house_savings: 'House Savings' };
 
 // Ireland tax: UCITS ETFs = 41% exit tax + 8yr deemed disposal (HOLD, never add).
 // ETCs (IGLN, ISLN) = debt securities = 33% CGT, no deemed disposal.
@@ -2087,11 +2089,12 @@ function renderPlaybook(positions, lifetime) {
   if (!pb) return;
 
   const totalValue = positions.reduce((s,p)=>s+(p.current_value_eur||0),0);
-  const bucketValues = {retirement:0,growth:0,high_conviction:0,house_savings:0};
+  const bucketValues = {retirement:0,growth:0,high_conviction:0,hc_3:0,house_savings:0};
   positions.forEach(p=>{ const b=p.bucket||'growth'; bucketValues[b]=(bucketValues[b]||0)+(p.current_value_eur||0); });
   const retPct   = totalValue>0 ? (bucketValues.retirement/totalValue*100).toFixed(0) : 0;
   const groPct   = totalValue>0 ? (bucketValues.growth/totalValue*100).toFixed(0) : 0;
   const hcPct2   = totalValue>0 ? (bucketValues.high_conviction/totalValue*100).toFixed(0) : 0;
+  const hc3Pct   = totalValue>0 ? (bucketValues.hc_3/totalValue*100).toFixed(0) : 0;
   const hsPct2   = totalValue>0 ? (bucketValues.house_savings/totalValue*100).toFixed(0) : 0;
 
   const held = positions.map(p=>p.ticker);
@@ -2220,7 +2223,7 @@ function renderStrategy(positions, lifetime) {
   if (!totalValue) return;
 
   // ── Bucket allocation ──────────────────────────────────────────
-  const bucketValues = { retirement:0, growth:0, high_conviction:0, house_savings:0 };
+  const bucketValues = { retirement:0, growth:0, high_conviction:0, hc_3:0, house_savings:0 };
   positions.forEach(p => {
     const b = p.bucket || 'growth';
     bucketValues[b] = (bucketValues[b] || 0) + (p.current_value_eur || 0);
@@ -2276,6 +2279,7 @@ function renderStrategy(positions, lifetime) {
   const retPos = positions.filter(p => p.bucket === 'retirement');
   const growPos = positions.filter(p => p.bucket === 'growth');
   const hcPos  = positions.filter(p => p.bucket === 'high_conviction');
+  const hc3Pos = positions.filter(p => p.bucket === 'hc_3');
   // house_savings positions are parsed from portfolio but tracked separately in house section
 
   const retVal   = retPos.reduce((s,p)=>s+(p.current_value_eur||0),0);
@@ -2473,10 +2477,49 @@ function renderStrategy(positions, lifetime) {
   <div style="font-size:12px;color:var(--muted);margin-top:6px">${windowLabel}</div>
   <div style="font-size:11px;color:var(--muted);margin-top:4px">Position locked — no further additions. Need ${multNeededLow.toFixed(1)}× to hit €15k · ${multNeededHigh.toFixed(1)}× for €20k.</div>`;
 
+  // ── HC-3 card (Space / Defence / Lunar — 12-24 mo exit, 10-20× target) ──
+  const hc3Val    = hc3Pos.reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const hc3Cost   = hc3Pos.reduce((s,p)=>s+(p.total_cost_eur||0),0);
+  const hc3PnlAbs = hc3Pos.reduce((s,p)=>s+(p.pnl_eur||0),0);
+  const hc3PnlPct = hc3Cost > 0 ? hc3PnlAbs/hc3Cost*100 : 0;
+  const hc3Pct    = totalValue ? hc3Val/totalValue*100 : 0;
+  const HC3_EXIT_LOW = 10000, HC3_EXIT_HIGH = 20000;
+  const hc3Multi      = hc3Cost > 0 ? hc3Val/hc3Cost : 1;
+  const hc3MultLow    = hc3Cost > 0 ? HC3_EXIT_LOW/hc3Cost : 0;
+  const hc3MultHigh   = hc3Cost > 0 ? HC3_EXIT_HIGH/hc3Cost : 0;
+  const hc3BarColor   = hc3Val >= HC3_EXIT_LOW ? 'var(--green)' : hc3Val >= hc3Cost*1.5 ? '#fbbf24' : '#f87171';
+  const hc3BarPct     = Math.min(100, hc3Val/HC3_EXIT_HIGH*100);
+  const hc3Rows = hc3Pos.map(p => {
+    const pnl = p.pnl_pct || 0;
+    const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const notes = { RCAT:'Defence drones — margin recovery thesis, Q1 FY2026 12.7% gross margin', BKSY:'Satellite ISR — $345M backlog, H2 2026 revenue recognition', LUNR:'NASA lunar — conditional on Q2 earnings Aug 2026' };
+    const exits = { RCAT:'Exit: 2× within 12mo or margin reversal', BKSY:'Exit: revenue recognition confirmed or $1.5B mkt cap hit', LUNR:'Exit: post-Q2 earnings if thesis intact, or loss >40%' };
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff0f">
+      <div style="width:44px;font-weight:700;color:#f87171;flex-shrink:0">${p.ticker}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:var(--muted)">${notes[p.ticker]||''}</div>
+        <div style="font-size:10px;color:#f8717188;margin-top:2px">${exits[p.ticker]||''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0"><span style="color:${pnlColor};font-weight:700;font-size:12px">${(pnl>=0?'+':'')+pnl.toFixed(1)}%</span></div>
+    </div>`;
+  }).join('');
+  const hc3Action = `<div style="margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
+      <span>Progress to €${(HC3_EXIT_LOW/1000).toFixed(0)}k–€${(HC3_EXIT_HIGH/1000).toFixed(0)}k exit</span>
+      <span style="color:${hc3BarColor};font-weight:700">€${Math.round(hc3Val).toLocaleString()} · ${(hc3PnlPct>=0?'+':'')+hc3PnlPct.toFixed(1)}% · ${hc3Multi.toFixed(2)}×</span>
+    </div>
+    <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+      <div style="height:100%;width:${hc3BarPct.toFixed(1)}%;background:${hc3BarColor};border-radius:4px;transition:width 0.6s"></div>
+    </div>
+  </div>
+  ${hc3Rows}
+  <div style="font-size:11px;color:var(--muted);margin-top:6px">Exit window: Jul 2027 – Jun 2028 · Need ${hc3MultLow.toFixed(1)}× for €${(HC3_EXIT_LOW/1000).toFixed(0)}k · ${hc3MultHigh.toFixed(1)}× for €${(HC3_EXIT_HIGH/1000).toFixed(0)}k · No new additions.</div>`;
+
   E('strat-buckets').innerHTML = [
     { title:'🛡️ Retirement / Defensive', color:'#60a5fa', pct:retPct, tickers:retPos.map(p=>p.ticker).join(' · '), body:retAction },
     { title:'📈 Growth', color:'#34d399', pct:growPct, tickers:growPos.map(p=>p.ticker).join(' · '), body:growAction },
-    { title:'🚀 High Conviction', color:'#f472b6', pct:hcPct, tickers:hcPos.map(p=>p.ticker).join(' · '), body:hcAction },
+    { title:'🚀 HC-1 · AI Infra', color:'#f472b6', pct:hcPct, tickers:hcPos.map(p=>p.ticker).join(' · '), body:hcAction },
+    { title:'🛰️ HC-3 · Space/Defence', color:'#f87171', pct:hc3Pct, tickers:hc3Pos.map(p=>p.ticker).join(' · '), body:hc3Action },
   ].map(c => `<div class="strat-card" style="border-color:${c.color}20">
     <div class="strat-card-title" style="color:${c.color}">${c.title} <span style="float:right;font-size:13px;font-weight:700;color:${c.color}">${c.pct.toFixed(1)}%</span></div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${c.tickers}</div>
@@ -3172,8 +3215,8 @@ function renderStrategy(positions, lifetime) {
     house:   { label:'House Savings CORE', color:'#fb923c' },
   };
 
-  const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'growth' ? 'var(--yellow)' : b === 'house_savings' ? '#fb923c' : 'var(--cyan)';
-  const bucketLabel = b => b === 'high_conviction' ? 'HC Watch' : b === 'growth' ? 'Growth' : b === 'house_savings' ? 'House' : 'Retirement';
+  const bucketColor = b => b === 'high_conviction' ? 'var(--purple)' : b === 'hc_3' ? '#f87171' : b === 'growth' ? 'var(--yellow)' : b === 'house_savings' ? '#fb923c' : 'var(--cyan)';
+  const bucketLabel = b => b === 'high_conviction' ? 'HC-1' : b === 'hc_3' ? 'HC-3' : b === 'growth' ? 'Growth' : b === 'house_savings' ? 'House' : 'Retirement';
 
   const convictionBadge = c => {
     if (c && c.startsWith('HIGH')) return `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#4ade8022;color:#4ade80">HIGH</span>`;
