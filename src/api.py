@@ -73,8 +73,10 @@ WATCHLIST_BASE = [
     "ENEL.MI",                     # Regulated utility, β0.5
     "AXA.PA",                      # EUR insurance, 5.5% div
     "IBE.MC",                      # Iberdrola renewables
+    "GSK.L",                       # GSK GBP pharma, 4.5% div, SATELLITE tier
     "PYPL",                        # 60% below ATH, $5B buyback
     "ABNB",                        # Asset-light travel
+    "ROG.SW",                      # Roche CHF, CT-388 binary upside, GROWTH tier
 
     # ── SPECULATIVE: Moonshots (small size only) ─────────────────────
     "RKLB",                        # Rocket Lab — orbital launch, Neutron 2026
