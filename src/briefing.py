@@ -130,7 +130,13 @@ Investment goals and bucket structure:
    - LEU (Centrus Energy, HALEU nuclear monopoly): €450 target. GTC limit order at $152 only — do NOT deploy at market ($165). Earnings Aug 4. Hard stop once filled: $120.
    - TSSI (TSS Inc) was excluded despite highest EV because it is a 4th AI-infra name correlated to HC-1.
    IF any HC-2 tickers appear in the watchlist scan with significant moves, flag them specifically.
-5. HOUSE SAVINGS — Dublin property purchase target ~2028 (First Home Scheme eligible, cap €500k).
+5. HIGH CONVICTION (HC-3) — Space/defence/lunar bucket, deployed 30 Jun – 1 Jul 2026. Orthogonal to HC-1 (AI infra) and HC-2 (govt services/nuclear/drones-non-space):
+   - RCAT (Red Cat Holdings, military drones): 67 shares. Small-cap, high-beta defence drone play.
+   - LUNR (Intuitive Machines, NASA lunar lander): 11 shares. Binary catalyst around lunar missions.
+   - BKSY (BlackSky Technology, satellite ISR): 32 shares. Real-time satellite imagery, defence/intel customer base.
+   - SERV (Serve Robotics, autonomous delivery): 83 shares @ €480.63 cost basis, bought 01-07-2026. NVDA-backed sidewalk delivery robots.
+   HC-3 is speculative — treat as venture-style: size is small, earnings volatility is expected. Flag significant moves (±10%) or thesis-changing news.
+6. HOUSE SAVINGS — Dublin property purchase target ~2028 (First Home Scheme eligible, cap €500k).
    - CORE (low-vol dividend): UCG.MI, ENEL.MI, NOVN.SW, AXA.PA, IBE.MC
    - SATELLITE (income): TTE.PA, GSK.L
    - GROWTH (upside): PYPL, ABNB, ROG.SW
@@ -140,13 +146,13 @@ Irish tax rules (CRITICAL — affects any add/trim advice):
 - Stocks: 33% CGT on gains. Trim signals matter here.
 - ETFs/ETCs: 41% exit tax + deemed disposal every 8 years. No new ETF positions.
 - No loss harvesting offset against ETF gains.
-- HC-2 picks (AMTM, ONDS, LEU, TSSI) are all NYSE/NASDAQ stocks — 33% CGT applies, no deemed disposal.
+- HC-2 picks (AMTM, ONDS, LEU, TSSI) and HC-3 picks (RCAT, LUNR, BKSY, SERV) are all NYSE/NASDAQ stocks — 33% CGT applies, no deemed disposal.
 
 Give a concise briefing (max 300 words):
 1. What's moving and why it matters to this portfolio
-2. Standout watchlist moves — call out AMTM, ONDS, LEU specifically if in scan
-3. One actionable thought for the week — specify bucket (stay course / trim / add / deploy HC-2 tranche), flag CGT if trimming
-4. Key risk to watch — include HC-2 deployment risk if any entry conditions are approaching
+2. Standout watchlist moves — call out AMTM, ONDS, LEU specifically if in scan; also flag any HC-3 name (RCAT, LUNR, BKSY, SERV) moving ±10% or with news
+3. One actionable thought for the week — specify bucket (stay course / trim / add / deploy HC-2 tranche / hold HC-3), flag CGT if trimming
+4. Key risk to watch — include HC-2 deployment risk if any entry conditions are approaching, and HC-3 binary catalysts (lunar mission outcomes, defence contract awards)
 
 Be direct and specific. No generic disclaimers. Like a smart friend who knows markets and Irish tax."""
 
