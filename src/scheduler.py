@@ -515,8 +515,10 @@ class Scheduler:
     async def _run_scan(self, market: str):
         from src.quotes import day_change_pct
         from src.positions import TICKER_NAMES
-        from src.signals import get_rsi, rsi_signal, days_until_earnings
+        from src.signals import rsi_signal
+        loop = asyncio.get_event_loop()
         quotes = self.state.get("quotes_cache", {})
+        signals_cache = self.state.get("signals_cache", {})
 
         all_tickers = list(self.state.get("positions", {}).keys()) + self.state.get("watchlist", [])
         movers = []
@@ -531,17 +533,26 @@ class Scheduler:
 
         movers.sort(key=lambda x: abs(x[0]), reverse=True)
 
-        # Earnings warnings for holdings (within 7 days)
+        # Earnings warnings for holdings (within 7 days) — read from pre-built signals cache
         earn_warnings = []
+        from datetime import date, datetime as _dt
+        today = date.today()
         for ticker in self.state.get("positions", {}):
-            d = days_until_earnings(ticker)
-            if d is not None and 0 <= d <= 7:
-                earn_warnings.append(f"⚠️ {ticker} earnings in {d}d")
+            ed = signals_cache.get(ticker, {}).get("earnings_date")
+            if not ed:
+                continue
+            try:
+                d = (_dt.strptime(ed, "%d %b %Y").date() - today).days
+                if 0 <= d <= 7:
+                    earn_warnings.append(f"⚠️ {ticker} earnings in {d}d")
+            except Exception:
+                continue
 
-        # RSI extremes across all tickers
+        # RSI extremes across all tickers — read from pre-built signals cache
         rsi_alerts = []
-        for ticker in all_tickers[:20]:  # cap to avoid slow startup
-            rsi = get_rsi(ticker)
+        for ticker in all_tickers[:20]:  # cap to keep briefing short
+            sig_data = signals_cache.get(ticker, {})
+            rsi = sig_data.get("rsi")
             sig = rsi_signal(rsi)
             if sig and sig != "neutral":
                 rsi_alerts.append(f"RSI {ticker}: {rsi} ({sig})")
@@ -572,7 +583,8 @@ class Scheduler:
         watchlist = self.state.get("watchlist", [])
         signals = self.state.get("signals_cache", {})
         all_tickers = list(positions.keys()) + watchlist
-        quotes = fetch_quotes(all_tickers)
+        loop = asyncio.get_event_loop()
+        quotes = await loop.run_in_executor(None, fetch_quotes, all_tickers)
 
         portfolio_snapshot = []
         for ticker, pos in positions.items():
@@ -616,7 +628,7 @@ class Scheduler:
                 "year_return": sig.get("year_return"),
             })
 
-        briefing = generate_briefing(portfolio_snapshot, scanner_snapshot)
+        briefing = await loop.run_in_executor(None, generate_briefing, portfolio_snapshot, scanner_snapshot)
         self.state["latest_briefing"] = briefing
         notify("Investment Tracker — EOD Briefing", "Your daily briefing is ready. Open the dashboard.")
 
