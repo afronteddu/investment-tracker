@@ -100,10 +100,14 @@ class Scheduler:
                 asyncio.create_task(self._check_alerts())
 
     def _should_refresh(self, now: datetime) -> bool:
+        # Dublin BST (UTC+1) in summer.
+        # EU (Xetra/Euronext/LSE): 08:00-16:30 Dublin.
+        # NYSE: 14:30-21:00 UTC = 15:30-22:00 Dublin BST (+30min post-close for late tape).
         if now.weekday() >= 5:
             return False
-        eu_open = (7 <= now.hour < 15) or (now.hour == 15 and now.minute <= 30)
-        us_open = (15 <= now.hour < 22) or (now.hour == 14 and now.minute >= 30)
+        minutes = now.hour * 60 + now.minute
+        eu_open = 8 * 60 <= minutes <= 16 * 60 + 30
+        us_open = 15 * 60 + 30 <= minutes < 22 * 60
         return eu_open or us_open
 
     async def _reload_positions(self):
