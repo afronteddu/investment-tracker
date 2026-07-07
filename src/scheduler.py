@@ -639,15 +639,27 @@ class Scheduler:
     async def _check_alerts(self):
         from src.quotes import day_change_pct, to_eur
         from src.positions import TICKER_NAMES
-        from src.signals import get_rsi, rsi_signal, get_news, days_until_earnings
+        from src.signals import rsi_signal
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
 
         threshold = float(os.getenv("ALERT_THRESHOLD_PCT", "5"))
         extraordinary = float(os.getenv("SCANNER_GAINERS_PCT", "8"))
 
-        # Read from pre-built quotes cache — no new network calls
+        # Read entirely from pre-built caches — zero blocking yfinance calls
         portfolio_quotes = self.state.get("quotes_cache", {})
+        signals_cache = self.state.get("signals_cache", {})
+        from datetime import date, datetime as _dt
+        today = date.today()
+
+        def _earn_days_from_cache(t: str):
+            ed = signals_cache.get(t, {}).get("earnings_date")
+            if not ed:
+                return None
+            try:
+                return (_dt.strptime(ed, "%d %b %Y").date() - today).days
+            except Exception:
+                return None
 
         for ticker, pos in positions.items():
             q = portfolio_quotes.get(ticker, {})
@@ -664,16 +676,14 @@ class Scheduler:
             pnl_sign = "+" if pnl_eur and pnl_eur >= 0 else ""
             emoji = "🚀" if pct >= extraordinary else ("📈" if pct > 0 else ("💥" if pct <= -extraordinary else "📉"))
 
-            # RSI context
-            rsi = get_rsi(ticker)
+            sig = signals_cache.get(ticker, {})
+            rsi = sig.get("rsi")
             rsi_str = f"RSI: {rsi} ({rsi_signal(rsi)})" if rsi else ""
 
-            # Upcoming earnings
-            earn_days = days_until_earnings(ticker)
-            earn_str = f"⚠️ Earnings in {earn_days}d" if earn_days is not None and earn_days <= 7 else ""
+            earn_days = _earn_days_from_cache(ticker)
+            earn_str = f"⚠️ Earnings in {earn_days}d" if earn_days is not None and 0 <= earn_days <= 7 else ""
 
-            # Recent news
-            news = get_news(ticker, max_items=2)
+            news = sig.get("news", [])[:2]
             news_str = "\n".join(f"• {n['title']}" for n in news) if news else ""
 
             # 52-week context
@@ -721,11 +731,12 @@ class Scheduler:
             name = TICKER_NAMES.get(ticker, ticker)
             emoji = "🚀" if pct > 0 else "💥"
 
-            rsi = get_rsi(ticker)
+            sig = signals_cache.get(ticker, {})
+            rsi = sig.get("rsi")
             rsi_str = f"RSI: {rsi} ({rsi_signal(rsi)})" if rsi else ""
-            earn_days = days_until_earnings(ticker)
-            earn_str = f"⚠️ Earnings in {earn_days}d" if earn_days is not None and earn_days <= 7 else ""
-            news = get_news(ticker, max_items=2)
+            earn_days = _earn_days_from_cache(ticker)
+            earn_str = f"⚠️ Earnings in {earn_days}d" if earn_days is not None and 0 <= earn_days <= 7 else ""
+            news = sig.get("news", [])[:2]
             news_str = "\n".join(f"• {n['title']}" for n in news) if news else ""
             high_52w = q.get("high_52w")
             low_52w = q.get("low_52w")
