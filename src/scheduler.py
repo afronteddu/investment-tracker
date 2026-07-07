@@ -235,7 +235,21 @@ class Scheduler:
                 "monthly_flows": lifetime.get("monthly_flows", []),
             },
         }
-        self.state["ws_payload_cache"] = _json.dumps(payload)
+        try:
+            self.state["ws_payload_cache"] = _json.dumps(payload, allow_nan=False)
+        except ValueError:
+            # A NaN/inf sneaked in — sanitize and retry so browsers' JSON.parse doesn't choke.
+            import math as _math
+            def _clean(o):
+                if isinstance(o, float):
+                    return o if _math.isfinite(o) else None
+                if isinstance(o, dict):
+                    return {k: _clean(v) for k, v in o.items()}
+                if isinstance(o, list):
+                    return [_clean(v) for v in o]
+                return o
+            self.state["ws_payload_cache"] = _json.dumps(_clean(payload), allow_nan=False)
+            _log.warning("_refresh_quotes_sync: sanitized NaN/inf from ws payload")
 
     async def _refresh_hot_picks(self):
         loop = asyncio.get_event_loop()
