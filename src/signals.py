@@ -5,8 +5,22 @@ Cached aggressively to avoid rate limits.
 """
 from __future__ import annotations
 
+import math
 import time
 from typing import Optional
+
+
+def _finite_or_none(v):
+    """Coerce NaN/inf to None. Python's json module happily emits `NaN` which
+    then crashes browsers' JSON.parse() on the WebSocket payload."""
+    if v is None:
+        return None
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f if math.isfinite(f) else None
+
 
 _rsi_cache: dict[str, tuple[float | None, float]] = {}
 _news_cache: dict[str, tuple[list, float]] = {}
@@ -34,7 +48,9 @@ def get_rsi(ticker: str) -> Optional[float]:
             gain = delta.clip(lower=0).rolling(14).mean()
             loss = (-delta.clip(upper=0)).rolling(14).mean()
             rs = gain / loss
-            result = round(float((100 - (100 / (1 + rs))).iloc[-1]), 1)
+            raw = float((100 - (100 / (1 + rs))).iloc[-1])
+            f = _finite_or_none(raw)
+            result = round(f, 1) if f is not None else None
     except Exception:
         pass
     _rsi_cache[ticker] = (result, now)
@@ -42,7 +58,7 @@ def get_rsi(ticker: str) -> Optional[float]:
 
 
 def rsi_signal(rsi: Optional[float]) -> str:
-    if rsi is None:
+    if rsi is None or (isinstance(rsi, float) and not math.isfinite(rsi)):
         return ""
     if rsi >= 75:
         return "strongly overbought"
@@ -66,17 +82,23 @@ def get_earnings_date(ticker: str) -> Optional[str]:
         from datetime import date
         today = date.today()
         t = yf.Ticker(ticker)
-        # earnings_dates is a DataFrame indexed by datetime
+        # yfinance returns earnings_dates DESCENDING (newest→oldest). Iterating and
+        # breaking on the first ts >= today picks the FURTHEST future date, not the
+        # nearest — which then makes the 7-day earnings alert fire on the wrong quarter.
+        # Collect all future dates, then take the minimum.
         ed = t.earnings_dates
         if ed is not None and not ed.empty:
+            future = []
             for ts in ed.index:
                 try:
                     d = ts.date()
                     if d >= today:
-                        result = ts.strftime("%d %b %Y")
-                        break
+                        future.append((d, ts))
                 except Exception:
                     continue
+            if future:
+                future.sort(key=lambda x: x[0])
+                result = future[0][1].strftime("%d %b %Y")
     except Exception:
         pass
     _earnings_cache[ticker] = (result, now)
@@ -117,7 +139,9 @@ def get_year_return(ticker: str) -> Optional[float]:
             first_close = hist["Close"].iloc[0]
             last_close = hist["Close"].iloc[-1]
             if first_close and first_close > 0:
-                result = round((last_close - first_close) / first_close * 100, 1)
+                raw = (last_close - first_close) / first_close * 100
+                f = _finite_or_none(raw)
+                result = round(f, 1) if f is not None else None
     except Exception:
         pass
     _year_cache[ticker] = (result, now)
