@@ -277,6 +277,7 @@ def _build_portfolio_data() -> list[dict]:
             "rsi": sig.get("rsi"),
             "rsi_signal": sig.get("rsi_signal"),
             "earnings_date": sig.get("earnings_date"),
+            "year_return": sig.get("year_return"),
         })
 
     rows.sort(key=lambda x: (x["bucket"], x["ticker"]))

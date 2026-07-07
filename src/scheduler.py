@@ -186,6 +186,7 @@ class Scheduler:
                 "high_52w": q.get("high_52w"), "low_52w": q.get("low_52w"),
                 "current_value_eur": current_value, "pnl_eur": pnl_eur, "pnl_pct": pnl_pct,
                 "rsi": sig.get("rsi"), "rsi_signal": sig.get("rsi_signal"), "earnings_date": sig.get("earnings_date"),
+                "year_return": sig.get("year_return"),
             })
         portfolio_rows.sort(key=lambda x: (x["bucket"], x["ticker"]))
 
