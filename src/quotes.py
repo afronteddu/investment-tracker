@@ -84,14 +84,18 @@ def _yahoo_quote(ticker: str) -> dict:
         closes = [c for c in (quotes_data.get("close") or []) if c is not None]
         highs  = [h for h in (quotes_data.get("high")  or []) if h is not None]
         lows   = [l for l in (quotes_data.get("low")   or []) if l is not None]
+        # Yahoo daily candles: outside RTH the last candle is YESTERDAY. Using closes[-1]/closes[-2]
+        # then shows yesterday's day-change during pre-market and overnight. Prefer meta's
+        # regularMarketPrice + chartPreviousClose which are phase-correct across sessions.
+        meta_price = meta.get("regularMarketPrice")
+        meta_prev = meta.get("chartPreviousClose")
         if not closes:
-            # fallback to meta regularMarketPrice
-            price = meta.get("regularMarketPrice") or meta.get("chartPreviousClose")
+            price = meta_price or meta_prev
             if not price:
                 return {}
             return {
                 "price": price,
-                "prev_close": meta.get("chartPreviousClose") or price,
+                "prev_close": meta_prev or price,
                 "day_high": None, "day_low": None,
                 "currency": meta.get("currency", "?"),
                 "market_cap": None,
@@ -99,9 +103,18 @@ def _yahoo_quote(ticker: str) -> dict:
                 "low_52w":  meta.get("fiftyTwoWeekLow"),
                 "week_pct": None,
             }
+        price = meta_price if meta_price else closes[-1]
+        # prev_close: trust meta.chartPreviousClose (always yesterday's close). Fall back to
+        # closes[-2] only if meta is missing AND we have >=2 candles.
+        if meta_prev:
+            prev_close = meta_prev
+        elif len(closes) >= 2:
+            prev_close = closes[-2]
+        else:
+            prev_close = closes[-1]
         return {
-            "price": closes[-1],
-            "prev_close": closes[-2] if len(closes) >= 2 else meta.get("chartPreviousClose", closes[-1]),
+            "price": price,
+            "prev_close": prev_close,
             "day_high": highs[-1] if highs else None,
             "day_low":  lows[-1]  if lows  else None,
             "currency": meta.get("currency", "?"),
