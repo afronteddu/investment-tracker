@@ -654,7 +654,7 @@ class Scheduler:
 
     async def _check_alerts(self):
         from src.quotes import day_change_pct, to_eur
-        from src.positions import TICKER_NAMES
+        from src.positions import TICKER_NAMES, ETF_TICKERS
         from src.signals import rsi_signal
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
@@ -678,6 +678,10 @@ class Scheduler:
                 return None
 
         for ticker, pos in positions.items():
+            # ETFs/ETCs: Irish 41% exit tax + deemed disposal makes daily trim signals
+            # unactionable. Skip portfolio alerts (P&L display + charts still include them).
+            if ticker in ETF_TICKERS:
+                continue
             q = portfolio_quotes.get(ticker, {})
             pct = day_change_pct(q)
             if pct is None or abs(pct) < threshold:

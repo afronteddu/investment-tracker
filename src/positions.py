@@ -139,6 +139,16 @@ TICKER_NAMES = {
     "BKSY":  "BlackSky Technology",
 }
 
+# ETFs/ETCs — Irish 41% exit tax + deemed disposal every 8 years makes trimming
+# on daily moves punitive, so alerts on these are noise. Used by scheduler to
+# suppress portfolio day-move alerts (still counted in P&L, still charted).
+ETF_TICKERS = frozenset({
+    "IGLN.L", "ISLN.L",              # physical gold/silver ETCs
+    "IWDA.AS", "VUSA.AS", "IMAE.AS", # equity index ETFs
+    "AEME.PA", "IEAG.AS",            # EM ex-China, EUR govt bond ETF
+})
+
+
 BUCKET_MAP = {
     "APLD": "high_conviction",
     "VRT": "high_conviction",
