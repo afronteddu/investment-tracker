@@ -67,6 +67,11 @@ def _send_pushover(title: str, message: str):
 
 
 def _send_telegram(title: str, message: str):
+    # No parse_mode: Markdown 400s silently when the title/body contains
+    # unbalanced parens, underscores, or asterisks — which happens routinely
+    # (e.g. "🟢 LDO.MI (Leonardo SpA): +3.1%", "S&P 500 ETF", RSI lines with
+    # parens). Plain text is delivered reliably; boldness of the title is
+    # nice-to-have, deliverability is not.
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
     if not token or not chat_id:
@@ -75,7 +80,7 @@ def _send_telegram(title: str, message: str):
     try:
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": f"*{title}*\n{message}", "parse_mode": "Markdown"},
+            data={"chat_id": chat_id, "text": f"{title}\n\n{message}"},
             timeout=5,
         )
     except Exception:
