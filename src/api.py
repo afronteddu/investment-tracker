@@ -516,7 +516,8 @@ async def generate_briefing_now(request: Request):
     from src.briefing import generate_briefing
     portfolio_rows = _build_portfolio_data()
     scanner_rows = _build_scanner_data()
-    briefing_text = generate_briefing(portfolio_rows, scanner_rows)
+    loop = asyncio.get_event_loop()
+    briefing_text = await loop.run_in_executor(None, generate_briefing, portfolio_rows, scanner_rows)
     state["latest_briefing"] = briefing_text
     return {"briefing": briefing_text}
 
@@ -551,18 +552,27 @@ async def drilldown(ticker: str, request: Request):
         return r
     from src.briefing import generate_drilldown
     ticker = ticker.upper()
+    loop = asyncio.get_event_loop()
 
     # Build position context if we hold it
     portfolio_rows = _build_portfolio_data()
     position = next((r for r in portfolio_rows if r["ticker"] == ticker), None)
 
-    # Build quote context — enrich with 52W range + year return for watchlist drilldown
-    quotes = fetch_quotes([ticker])
-    q = quotes.get(ticker, {})
+    # Prefer cached quote first (avoids yfinance round-trip on every drilldown).
+    cached = state.get("quotes_cache", {})
+    q = cached.get(ticker) or {}
+    if not q.get("price"):
+        try:
+            fresh = await loop.run_in_executor(None, fetch_quotes, [ticker])
+            q = fresh.get(ticker, {}) or {}
+        except Exception:
+            q = {}
+
     quote_ctx = None
     if q.get("price"):
         from src.quotes import day_change_pct
         from src.signals import get_year_return
+        year_ret = await loop.run_in_executor(None, get_year_return, ticker)
         quote_ctx = {
             "price": q.get("price"),
             "currency": q.get("currency", ""),
@@ -571,12 +581,12 @@ async def drilldown(ticker: str, request: Request):
             "day_low": q.get("day_low"),
             "high_52w": q.get("high_52w"),
             "low_52w": q.get("low_52w"),
-            "year_return": get_year_return(ticker),
+            "year_return": year_ret,
         }
         if position:
             position["day_pct"] = quote_ctx["day_pct"]
 
-    analysis = generate_drilldown(ticker, position, quote_ctx)
+    analysis = await loop.run_in_executor(None, generate_drilldown, ticker, position, quote_ctx)
     return {"ticker": ticker, "analysis": analysis}
 
 
