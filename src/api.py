@@ -85,6 +85,8 @@ WATCHLIST_BASE = [
     "RGTI",                        # Quantum — trapped-ion
     "SERV",                        # Serve Robotics — sidewalk delivery (NVDA-backed)
     "RCAT",                        # Red Cat Holdings — military drones
+    "LUNR",                        # Intuitive Machines — NASA lunar lander (HC-3, held)
+    "BKSY",                        # BlackSky Technology — satellite ISR (HC-3, held)
     "ACHR",                        # Archer Aviation — eVTOL, Delta/Stellantis backing
     "OKLO",                        # Oklo — microreactor, Sam Altman board
     "BBAI",                        # BigBear.ai — defence AI analytics
@@ -271,6 +273,7 @@ def _build_portfolio_data() -> list[dict]:
             "day_low": q.get("day_low"),
             "high_52w": q.get("high_52w"),
             "low_52w": q.get("low_52w"),
+            "week_pct": q.get("week_pct"),
             "current_value_eur": current_value,
             "pnl_eur": pnl_eur,
             "pnl_pct": pnl_pct,
