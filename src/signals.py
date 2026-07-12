@@ -117,8 +117,9 @@ def get_news(ticker: str, max_items: int = 3) -> list[dict]:
         for item in raw[:max_items]:
             title = item.get("title", "")
             publisher = item.get("publisher", "")
+            link = item.get("link", "") or item.get("url", "")
             if title:
-                result.append({"title": title, "publisher": publisher})
+                result.append({"title": title, "publisher": publisher, "link": link})
     except Exception:
         pass
     _news_cache[ticker] = (result, now)
