@@ -73,8 +73,12 @@ class Scheduler:
             await self._reload_positions()
             await self._refresh_hot_picks()
 
-        # Also refresh hot picks at 08:00 (fresh data for EU open)
-        if now.hour == 8 and now.minute < 5 and self._last_midnight_reload == date_str:
+        # Also refresh hot picks at 08:00 (fresh data for EU open).
+        # Allow when midnight reload already ran today OR when it has never run
+        # (server started after midnight but before 08:00 — startup day cold start).
+        if now.hour == 8 and now.minute < 5 and (
+            self._last_midnight_reload == date_str or self._last_midnight_reload is None
+        ):
             await self._refresh_hot_picks()
 
         # EU market open briefing (08:05 Dublin)
