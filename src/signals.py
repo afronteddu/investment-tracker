@@ -27,10 +27,14 @@ _news_cache: dict[str, tuple[list, float]] = {}
 _earnings_cache: dict[str, tuple[str | None, float]] = {}
 _year_cache: dict[str, tuple[float | None, float]] = {}
 
-RSI_TTL = 900       # 15 min
-NEWS_TTL = 1800     # 30 min
-EARNINGS_TTL = 21600  # 6 hours
-YEAR_TTL = 21600    # 6 hours (52W return — slow-moving)
+RSI_TTL = 900           # 15 min
+NEWS_TTL = 1800         # 30 min
+EARNINGS_TTL = 21600    # 6 hours
+YEAR_TTL = 21600        # 6 hours (52W return — slow-moving)
+
+# Minimum weekly bars required to compute a valid 52W return.
+# 1y weekly = ~52 bars; require 40 to tolerate gaps/new listings.
+YEAR_MIN_BARS = 40
 
 
 def get_rsi(ticker: str) -> Optional[float]:
@@ -136,7 +140,7 @@ def get_year_return(ticker: str) -> Optional[float]:
     try:
         import yfinance as yf
         hist = yf.Ticker(ticker).history(period="1y", interval="1wk")
-        if len(hist) >= 40:
+        if len(hist) >= YEAR_MIN_BARS:
             first_close = hist["Close"].iloc[0]
             last_close = hist["Close"].iloc[-1]
             if first_close and first_close > 0:
