@@ -1,79 +1,145 @@
 # Investment Tracker — Portfolio Config
-# Fill in your actual positions. ticker must be the Yahoo Finance symbol.
-# For EU ETFs on Euronext/Xetra, append .AS (Amsterdam) or .DE (Frankfurt)
-# e.g. VWRL.AS, CNDX.AS
+# ticker must be the Yahoo Finance symbol.
+# cost_basis: average price per share in EUR (converted from transactions)
+# Last updated: 14 Jul 2026 — synced from DeGiro transaction history
 
 settings:
-  refresh_seconds: 60          # how often the dashboard refreshes
-  alert_threshold_pct: 5       # alert when any holding moves >X% in a session
-  scanner_gainers_pct: 8       # scanner flags tickers up >X% in a session
-  scanner_losers_pct: -8       # scanner flags tickers down >X% in a session
-  currency: EUR                # display currency (informational only)
+  refresh_seconds: 60
+  alert_threshold_pct: 5
+  scanner_gainers_pct: 8
+  scanner_losers_pct: -8
+  currency: EUR
 
-# --- YOUR POSITIONS ---
-# cost_basis: average price you paid per share (EUR or USD, match the ticker)
-# shares: number of shares held
-# target_price: your exit / take-profit level
-# stop_loss: optional — alert if price drops below this
-# bucket: retirement | growth | high_conviction | house_savings
-# notes: free text
+cash_eur: 500   # available cash as of 14 Jul 2026
 
+# --- POSITIONS (all cost_basis in EUR, derived from transaction history) ---
 positions:
-  - ticker: NBIS       # Neurobiological Sciences (US)
-    shares: 0          # fill in
-    cost_basis: 0      # fill in
-    target_price: 0    # fill in — your 6-12mo target
-    stop_loss: 0       # fill in
-    bucket: high_conviction
-    notes: "30% of 6-12mo bet. Deploying remaining tranches May 19 + May 26."
 
-  - ticker: VRT        # Vertiv Holdings
-    shares: 0
-    cost_basis: 0
+  # ── QUALITY / LONG-HOLD ─────────────────────────────────────────────────
+  - ticker: BRK-B
+    shares: 72
+    cost_basis: 411.58
     target_price: 0
-    stop_loss: 0
-    bucket: high_conviction
-    notes: "Part of AI infrastructure 6-12mo bet."
+    stop_loss: 350.00
+    bucket: retirement
+    notes: "Core compounder. DCA since Jan 2026."
 
-  - ticker: APLD       # Applied Digital
-    shares: 0
-    cost_basis: 0
+  - ticker: ASML
+    shares: 13
+    cost_basis: 1197.62
     target_price: 0
-    stop_loss: 0
-    bucket: high_conviction
-    notes: "Part of AI infrastructure 6-12mo bet."
+    stop_loss: 950.00
+    bucket: retirement
+    notes: "EUV monopoly. Long-hold."
 
-  # --- Add your ETFs / retirement positions below ---
-  # - ticker: VWRL.AS
-  #   shares: 10
-  #   cost_basis: 105.20
-  #   target_price: 0       # 0 = long-hold, no exit target
-  #   stop_loss: 0
-  #   bucket: retirement
-  #   notes: "Monthly DCA"
+  - ticker: NVDA
+    shares: 138
+    cost_basis: 121.74
+    target_price: 280.00
+    stop_loss: 140.00
+    bucket: growth
+    notes: "AI infra. +47% unrealised. Watch 280 target."
+
+  - ticker: SNDK
+    shares: 14
+    cost_basis: 982.86
+    target_price: 2200.00
+    stop_loss: 1200.00
+    bucket: growth
+    notes: "SanDisk Corp. +58% unrealised. Flash storage cycle recovery."
+
+  # ── HIGH CONVICTION / TIMED BETS ────────────────────────────────────────
+  - ticker: NBIS
+    shares: 74
+    cost_basis: 172.47
+    target_price: 350.00
+    stop_loss: 120.00
+    bucket: high_conviction
+    notes: "Nebius Group — AI cloud infra. 3-tranche entry complete (May 2026)."
+
+  - ticker: VRT
+    shares: 40
+    cost_basis: 294.84
+    target_price: 450.00
+    stop_loss: 220.00
+    bucket: high_conviction
+    notes: "Vertiv — AI data centre power. -9.5% vs entry. Thesis intact."
+
+  - ticker: APLD
+    shares: 163
+    cost_basis: 37.26
+    target_price: 65.00
+    stop_loss: 20.00
+    bucket: high_conviction
+    notes: "Applied Digital — HPC/AI cloud. -33% vs entry. Watch closely."
+
+  # ── SPECULATIVE / SMALL CAPS ─────────────────────────────────────────────
+  - ticker: RCAT
+    shares: 134
+    cost_basis: 9.33
+    target_price: 18.00
+    stop_loss: 6.00
+    bucket: growth
+    notes: "Red Cat Holdings — drone defence. -17% vs entry."
+
+  - ticker: BKSY
+    shares: 64
+    cost_basis: 25.10
+    target_price: 45.00
+    stop_loss: 17.00
+    bucket: growth
+    notes: "BlackSky Technology — geospatial intelligence. -8%."
+
+  - ticker: SERV
+    shares: 83
+    cost_basis: 5.79
+    target_price: 12.00
+    stop_loss: 3.50
+    bucket: growth
+    notes: "Serve Robotics — autonomous delivery. -11%. Small position."
+
+  - ticker: LUNR
+    shares: 22
+    cost_basis: 18.66
+    target_price: 35.00
+    stop_loss: 10.00
+    bucket: growth
+    notes: "Intuitive Machines — lunar logistics. -27% vs entry. Small position."
+
+  # ── COMMODITIES (ETCs — held only, no new purchases: 33% CGT applies) ───
+  - ticker: PPFB.DE
+    shares: 93
+    cost_basis: 82.22
+    target_price: 0
+    stop_loss: 55.00
+    bucket: retirement
+    notes: "iShares Physical Gold ETC (Xetra). -16% vs entry. Hold."
+
+  - ticker: ISLN.L
+    shares: 43
+    cost_basis: 68.93
+    target_price: 0
+    stop_loss: 45.00
+    bucket: retirement
+    notes: "iShares Physical Silver ETC (LSE, GBP). -4% vs entry. Hold."
 
 # --- WATCHLIST ---
-# Tickers you don't own but want the scanner to track
 watchlist:
-  # AI / data center theme
-  - SMCI
-  - NVDA
-  - AMD
+  - MSFT
+  - GOOGL
+  - META
+  - AMZN
   - PLTR
-  - IONQ
-  - RGTI
-  - QUBT
-  - TSM
+  - AMD
   - ARM
-  # Broad market / retirement
-  - SPY
-  - QQQ
-  - VWRL.AS
+  - TSM
+  - CEG
+  - LDO.MI
+  - RHM.DE
+  - NOVO-B.CO
+  - UCG.MI
 
 # --- DEPLOYMENT SCHEDULE ---
-# Reminder of planned buys — shows on dashboard header
 upcoming_deployments:
-  - date: "2026-05-19"
-    note: "Deploy 2nd tranche ~30% of 6-12mo bet (NBIS/VRT/APLD or new)"
-  - date: "2026-05-26"
-    note: "Deploy 3rd tranche ~33% of 6-12mo bet"
+  - date: "2026-07-14"
+    note: "€500 cash available — deploy to highest-conviction laggard (see signals)"
