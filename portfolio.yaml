@@ -1,7 +1,7 @@
 # Investment Tracker — Portfolio Config
 # ticker must be the Yahoo Finance symbol.
 # cost_basis: average price per share in EUR (converted from transactions)
-# Last updated: 14 Jul 2026 — synced from DeGiro transaction history
+# Last updated: 15 Jul 2026 — corrected from Transactions11.xlsx (single source of truth)
 
 settings:
   refresh_seconds: 60
@@ -17,23 +17,23 @@ positions:
 
   # ── QUALITY / LONG-HOLD ─────────────────────────────────────────────────
   - ticker: BRK-B
-    shares: 72
-    cost_basis: 411.58
+    shares: 12
+    cost_basis: 411.71
     target_price: 0
     stop_loss: 350.00
     bucket: retirement
     notes: "Core compounder. DCA since Jan 2026."
 
-  - ticker: ASML
-    shares: 13
-    cost_basis: 1197.62
+  - ticker: ASML.AS
+    shares: 2
+    cost_basis: 1196.60
     target_price: 0
     stop_loss: 950.00
     bucket: retirement
     notes: "EUV monopoly. Long-hold."
 
   - ticker: NVDA
-    shares: 138
+    shares: 23
     cost_basis: 121.74
     target_price: 280.00
     stop_loss: 140.00
@@ -41,7 +41,7 @@ positions:
     notes: "AI infra. +47% unrealised. Watch 280 target."
 
   - ticker: SNDK
-    shares: 14
+    shares: 2
     cost_basis: 982.86
     target_price: 2200.00
     stop_loss: 1200.00
@@ -50,24 +50,24 @@ positions:
 
   # ── HIGH CONVICTION / TIMED BETS ────────────────────────────────────────
   - ticker: NBIS
-    shares: 74
-    cost_basis: 172.47
+    shares: 11
+    cost_basis: 172.85
     target_price: 350.00
     stop_loss: 120.00
     bucket: high_conviction
     notes: "Nebius Group — AI cloud infra. 3-tranche entry complete (May 2026)."
 
   - ticker: VRT
-    shares: 40
-    cost_basis: 294.84
+    shares: 6
+    cost_basis: 294.27
     target_price: 450.00
     stop_loss: 220.00
     bucket: high_conviction
     notes: "Vertiv — AI data centre power. -9.5% vs entry. Thesis intact."
 
   - ticker: APLD
-    shares: 163
-    cost_basis: 37.26
+    shares: 24
+    cost_basis: 37.36
     target_price: 65.00
     stop_loss: 20.00
     bucket: high_conviction
@@ -75,7 +75,7 @@ positions:
 
   # ── SPECULATIVE / SMALL CAPS ─────────────────────────────────────────────
   - ticker: RCAT
-    shares: 134
+    shares: 67
     cost_basis: 9.33
     target_price: 18.00
     stop_loss: 6.00
@@ -83,7 +83,7 @@ positions:
     notes: "Red Cat Holdings — drone defence. -17% vs entry."
 
   - ticker: BKSY
-    shares: 64
+    shares: 32
     cost_basis: 25.10
     target_price: 45.00
     stop_loss: 17.00
@@ -99,7 +99,7 @@ positions:
     notes: "Serve Robotics — autonomous delivery. -11%. Small position."
 
   - ticker: LUNR
-    shares: 22
+    shares: 11
     cost_basis: 18.66
     target_price: 35.00
     stop_loss: 10.00
@@ -107,17 +107,17 @@ positions:
     notes: "Intuitive Machines — lunar logistics. -27% vs entry. Small position."
 
   # ── COMMODITIES (ETCs — held only, no new purchases: 33% CGT applies) ───
-  - ticker: PPFB.DE
-    shares: 93
-    cost_basis: 82.22
+  - ticker: IGLN.L
+    shares: 16
+    cost_basis: 81.90
     target_price: 0
     stop_loss: 55.00
     bucket: retirement
-    notes: "iShares Physical Gold ETC (Xetra). -16% vs entry. Hold."
+    notes: "iShares Physical Gold ETC (LSE, GBP). Hold."
 
   - ticker: ISLN.L
-    shares: 43
-    cost_basis: 68.93
+    shares: 8
+    cost_basis: 68.09
     target_price: 0
     stop_loss: 45.00
     bucket: retirement
