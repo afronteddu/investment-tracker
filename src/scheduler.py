@@ -17,7 +17,12 @@ from datetime import datetime, timezone, timedelta
 
 from src.notify import send as notify
 
-DUBLIN_TZ = timezone(timedelta(hours=1))  # BST (summer). Change to +0 in winter.
+try:
+    from zoneinfo import ZoneInfo
+    DUBLIN_TZ = ZoneInfo("Europe/Dublin")  # DST-aware: UTC+1 (summer) / UTC+0 (winter)
+except ImportError:
+    # Python < 3.9 fallback — assumes BST (summer). Change to timedelta(hours=0) in winter.
+    DUBLIN_TZ = timezone(timedelta(hours=1))  # type: ignore[assignment]
 
 
 def now_dublin() -> datetime:
