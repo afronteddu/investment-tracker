@@ -548,7 +548,7 @@ class Scheduler:
         quotes = self.state.get("quotes_cache", {})
         signals_cache = self.state.get("signals_cache", {})
 
-        all_tickers = list(self.state.get("positions", {}).keys()) + self.state.get("watchlist", [])
+        all_tickers = list(dict.fromkeys(list(self.state.get("positions", {}).keys()) + self.state.get("watchlist", [])))
         movers = []
         for ticker in all_tickers:
             q = quotes.get(ticker, {})
