@@ -78,6 +78,22 @@ WATCHLIST_BASE = [
     "ABNB",                        # Asset-light travel
     "ROG.SW",                      # Roche CHF, CT-388 binary upside, GROWTH tier
 
+    # ── RETIREMENT / DEFENSIVE: Quality compounders (Berkshire-parallel) ─
+    "KO",                          # Coca-Cola — consumer staples, 3.1% div
+    "PG",                          # Procter & Gamble — consumer staples, 2.4% div
+    "JNJ",                         # Johnson & Johnson — healthcare, 3.3% div
+    "ABT",                         # Abbott Labs — medtech + diagnostics, 1.9% div
+    "ELV",                         # Elevance Health — managed care, 1.4% div
+    "V",                           # Visa — payment network, 0.8% div, no credit risk
+    "MA",                          # Mastercard — payment duopoly, 0.6% div
+    "CB",                          # Chubb — P&C insurance, 1.4% div, Buffett bought $7B
+    "BLK",                         # BlackRock — asset management, 2.5% div
+    "NEE",                         # NextEra Energy — US #1 renewables + regulated utility
+    "WM",                          # Waste Management — monopoly local franchises, 1.5% div
+    "OTIS",                        # Otis Worldwide — elevator network, service moat
+    "NESN.SW",                     # Nestlé — Swiss consumer staples, 3.2% div, 150yr compounder
+    "UL",                          # Unilever ADR — FMCG, 3.3% div, 190 countries
+
     # ── SPECULATIVE: Moonshots (small size only) ─────────────────────
     "RKLB",                        # Rocket Lab — orbital launch, Neutron 2026
     "ASTS",                        # AST SpaceMobile — satellite broadband
@@ -358,12 +374,6 @@ async def property_tracker(request: Request):
     return templates.TemplateResponse("property.html", {"request": request})
 
 
-@app.get("/alyssa", response_class=HTMLResponse)
-async def alyssa_isa(request: Request):
-    if (r := _auth_required(request)):
-        return r
-    return templates.TemplateResponse("alyssa.html", {"request": request})
-
 
 @app.get("/api/fwrg-history")
 async def fwrg_history(request: Request):
@@ -603,6 +613,26 @@ async def drilldown(ticker: str, request: Request):
 
     analysis = await loop.run_in_executor(None, generate_drilldown, ticker, position, quote_ctx)
     return {"ticker": ticker, "analysis": analysis}
+
+
+@app.get("/api/price-chart/{ticker}")
+async def price_chart(ticker: str, request: Request):
+    if (r := _auth_required(request)):
+        return r
+    import yfinance as yf
+    loop = asyncio.get_event_loop()
+
+    def _fetch():
+        hist = yf.Ticker(ticker).history(period="1y", interval="1d", auto_adjust=True)
+        if hist.empty:
+            return []
+        return [
+            {"t": str(ts.date()), "c": round(float(row["Close"]), 4)}
+            for ts, row in hist.iterrows()
+        ]
+
+    data = await loop.run_in_executor(None, _fetch)
+    return {"ticker": ticker, "data": data}
 
 
 # WebSocket — pushes portfolio + scanner data to connected clients

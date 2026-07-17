@@ -315,6 +315,9 @@
     <div class="modal-ticker" id="modal-ticker">—</div>
     <div class="modal-meta" id="modal-meta"></div>
     <div id="modal-position"></div>
+    <div id="modal-price-chart-wrap" style="display:none;margin:16px 0 0;height:180px;position:relative">
+      <canvas id="modal-price-chart"></canvas>
+    </div>
     <div id="modal-body">
       <div class="modal-loading">
         <div class="spinner"></div>
@@ -331,8 +334,7 @@
   </div>
   <div class="header-right">
     <a href="/property" style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px;transition:all .15s" onmouseover="this.style.color='var(--orange)';this.style.borderColor='var(--orange)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">🏠 Property</a>
-    <a href="/alyssa" style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px;transition:all .15s" onmouseover="this.style.color='var(--purple)';this.style.borderColor='var(--purple)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">💜 Alyssa ISA</a>
-    <span class="update-time" id="update-time">connecting...</span>
+<span class="update-time" id="update-time">connecting...</span>
     <button class="btn btn-sm" id="briefing-btn" onclick="generateBriefing()">AI Briefing</button>
   </div>
 </header>
@@ -523,6 +525,7 @@
       <button class="btn-ghost btn-sm" onclick="filterScanner('DEFENCE',this)" style="color:#f472b6;border-color:#f472b644">Defence</button>
       <button class="btn-ghost btn-sm" onclick="filterScanner('HOUSE',this)" style="color:#fb923c;border-color:#fb923c44">House Fund</button>
       <button class="btn-ghost btn-sm" onclick="filterScanner('MOONSHOT',this)" style="color:#c084fc;border-color:#c084fc44">🚀 Moonshots</button>
+      <button class="btn-ghost btn-sm" onclick="filterScanner('RETIREMENT',this)" style="color:#34d399;border-color:#34d39944">Retirement</button>
     </div>
     <div class="table-wrap">
       <table>
@@ -1007,6 +1010,9 @@ function openDrilldown(ticker, positionData) {
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
 
+  // Fetch price chart (non-blocking, parallel with analysis)
+  _renderModalChart(ticker);
+
   // Use cache if we have it
   if (_drilldownCache[ticker]) {
     renderAnalysis(_drilldownCache[ticker]);
@@ -1024,6 +1030,58 @@ function openDrilldown(ticker, positionData) {
     .catch(() => {
       E('modal-body').innerHTML = '<p style="color:var(--red)">Error loading analysis. Check OPENAI_API_KEY in .env.</p>';
     });
+}
+
+let _modalChartInstance = null;
+let _chartCache = {};
+
+function _renderModalChart(ticker) {
+  const wrap = E('modal-price-chart-wrap');
+  wrap.style.display = 'none';
+  if (_modalChartInstance) { _modalChartInstance.destroy(); _modalChartInstance = null; }
+
+  const _draw = (data) => {
+    if (!data || !data.length) return;
+    wrap.style.display = 'block';
+    const labels = data.map(d => d.t);
+    const prices = data.map(d => d.c);
+    const first = prices[0], last = prices[prices.length - 1];
+    const up = last >= first;
+    const ctx = E('modal-price-chart').getContext('2d');
+    _modalChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: prices,
+          borderColor: up ? '#34d399' : '#f87171',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: true,
+          backgroundColor: up ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)',
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: { label: ctx => ctx.parsed.y.toFixed(2) }
+        }},
+        scales: {
+          x: { display: false },
+          y: { position: 'right', grid: { color: '#ffffff0a' }, ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 5 } }
+        }
+      }
+    });
+  };
+
+  if (_chartCache[ticker]) { _draw(_chartCache[ticker]); return; }
+
+  fetch(`/api/price-chart/${ticker}`)
+    .then(r => r.json())
+    .then(d => { _chartCache[ticker] = d.data; _draw(d.data); })
+    .catch(() => {});
 }
 
 function renderAnalysis(text) {
@@ -1767,6 +1825,8 @@ const TICKER_CCY = {
   'TTE.PA':'EUR','IBE.MC':'EUR','LDO.MI':'EUR','RHM.DE':'EUR',
   'SHEL':'USD','SHEL.L':'GBP','BP.L':'GBP','RIO.L':'GBP','BA.L':'GBP',
   'TSM':'USD','HDB':'USD','CEG':'USD','XOM':'USD','JNJ':'USD','WM':'USD',
+  'KO':'USD','PG':'USD','ABT':'USD','ELV':'USD','V':'USD','MA':'USD',
+  'CB':'USD','BLK':'USD','NEE':'USD','OTIS':'USD','UL':'USD','NESN.SW':'CHF',
   'GOOGL':'USD','MSFT':'USD',
   'UCG.MI':'EUR','ROG.SW':'CHF','ENEL.MI':'EUR','NOVN.SW':'CHF',
   'AXA.PA':'EUR','IBE.MC':'EUR','TTE.PA':'EUR','GSK.L':'GBP',
@@ -1954,6 +2014,50 @@ const SCANNER_META = {
   'BBAI':     { bucketTag:'MOONSHOT', yield_est:'0%',   timing:'MOONSHOT', beta:'~1.7',
     desc:'BigBear.ai — AI decision intelligence for US DoD. Computer vision + NLP analytics. Micro cap.',
     note:'BigBear.ai. Defence AI analytics. Micro cap. DoD contracts. High risk.' },
+
+  // ── RETIREMENT / DEFENSIVE: Quality compounders (Berkshire-parallel) ──
+  'KO':       { bucketTag:'RETIREMENT', yield_est:'~3.1%', timing:'LONG-RUN', beta:'~0.6',
+    desc:'Coca-Cola — 130-year consumer staples monopoly. 62 consecutive dividend increase years. Inflation pass-through pricing power.',
+    note:'KO. 62yr dividend streak. Pricing power. β0.6. Core compounder.' },
+  'PG':       { bucketTag:'RETIREMENT', yield_est:'~2.4%', timing:'LONG-RUN', beta:'~0.55',
+    desc:'Procter & Gamble — 67-year dividend aristocrat. Tide, Gillette, Pampers: category leaders in 180 countries.',
+    note:'PG. 67yr div aristocrat. Essential consumer brands. β0.55.' },
+  'JNJ':      { bucketTag:'RETIREMENT', yield_est:'~3.3%', timing:'LONG-RUN', beta:'~0.5',
+    desc:'Johnson & Johnson — pharma + medtech post-Kenvue spinoff. 61-year dividend streak. Pipeline: oncology, immunology.',
+    note:'JNJ. 61yr div streak. Post-Kenvue = clean pharma/medtech. β0.5.' },
+  'ABT':      { bucketTag:'RETIREMENT', yield_est:'~1.9%', timing:'LONG-RUN', beta:'~0.65',
+    desc:'Abbott Labs — FreeStyle Libre CGM + diagnostics + nutrition. Libre growth +15%/yr. Structural healthcare position.',
+    note:'ABT. FreeStyle Libre diabetes. Diagnostics + nutrition. 50yr div.' },
+  'ELV':      { bucketTag:'RETIREMENT', yield_est:'~1.4%', timing:'LONG-RUN', beta:'~0.6',
+    desc:'Elevance Health — US managed care (Anthem). 45M+ members. 14% EPS growth rate. Medicaid + Medicare expansion thesis.',
+    note:'ELV. Managed care. 45M members. 14% EPS growth. β0.6.' },
+  'V':        { bucketTag:'RETIREMENT', yield_est:'~0.8%', timing:'LONG-RUN', beta:'~0.9',
+    desc:'Visa — global payment network: 4.2B cards, $15T+ annual volume. Zero credit risk (toll road model). Duopoly with MA.',
+    note:'V. Payment toll road. Zero credit risk. 4.2B cards. LONG-RUN.' },
+  'MA':       { bucketTag:'RETIREMENT', yield_est:'~0.6%', timing:'LONG-RUN', beta:'~1.0',
+    desc:'Mastercard — payment duopoly with Visa. Cross-border transaction leverage (higher margin). Global middle-class rise beneficiary.',
+    note:'MA. Duopoly with V. Cross-border leverage. EM middle class.' },
+  'CB':       { bucketTag:'RETIREMENT', yield_est:'~1.4%', timing:'LONG-RUN', beta:'~0.55',
+    desc:'Chubb — world\'s largest publicly traded P&C insurer. Buffett bought $6.7B stake. Float + pricing power in hard market.',
+    note:'CB. Buffett bought $6.7B. P&C float + hard market pricing. β0.55.' },
+  'BLK':      { bucketTag:'RETIREMENT', yield_est:'~2.5%', timing:'LONG-RUN', beta:'~1.1',
+    desc:'BlackRock — $10T+ AUM, world\'s largest asset manager. Aladdin platform = structural fee income. ETF secular growth tailwind.',
+    note:'BLK. $10T AUM. Aladdin moat. ETF tailwind. 2.5% div.' },
+  'NEE':      { bucketTag:'RETIREMENT', yield_est:'~2.8%', timing:'LONG-RUN', beta:'~0.6',
+    desc:'NextEra Energy — US #1 renewable energy generator (wind + solar) + regulated FPL utility. AI power demand is a direct tailwind.',
+    note:'NEE. #1 US renewables + FPL regulated. AI power demand tailwind. β0.6.' },
+  'WM':       { bucketTag:'RETIREMENT', yield_est:'~1.5%', timing:'LONG-RUN', beta:'~0.7',
+    desc:'Waste Management — essential US waste/recycling monopoly. Local franchise = near-zero competition. 20-year compounder.',
+    note:'WM. Local monopoly waste. 20yr compounder. Recession-immune. β0.7.' },
+  'OTIS':     { bucketTag:'RETIREMENT', yield_est:'~1.3%', timing:'LONG-RUN', beta:'~0.7',
+    desc:'Otis Worldwide — 2.3M elevators under service contract. Recurring maintenance = 80%+ margins. Spinoff from UTC 2020.',
+    note:'OTIS. 2.3M elevators. 80%+ service margin. Recurring revenue compoundern.' },
+  'NESN.SW':  { bucketTag:'RETIREMENT', yield_est:'~3.2%', timing:'LONG-RUN', beta:'~0.4',
+    desc:'Nestlé — 150+ year Swiss consumer staples giant. Nespresso, Purina, KitKat, Maggi. Lowest beta in peer group.',
+    note:'NESN.SW. 150yr compounder. CHF denomination. β0.4. Essential brands.' },
+  'UL':       { bucketTag:'RETIREMENT', yield_est:'~3.3%', timing:'LONG-RUN', beta:'~0.45',
+    desc:'Unilever ADR — FMCG powerhouse (Dove, Hellmann\'s, Magnum, Knorr) in 190 countries. New CEO restructuring cycle.',
+    note:'UL. FMCG 190 countries. 3.3% div. New CEO restructuring upside. β0.45.' },
 };
 
 // Suggested additions — grounded in actual portfolio gaps.
