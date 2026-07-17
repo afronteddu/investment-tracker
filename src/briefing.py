@@ -229,7 +229,7 @@ def ai_health_check() -> dict:
         try:
             from google import genai
             client = genai.Client(api_key=google_key)
-            resp = client.models.generate_content(model="gemini-2.0-flash", contents="Reply OK")
+            resp = client.models.generate_content(model=_GEMINI_MODELS[0], contents="Reply OK")
             if resp.text:
                 result["gemini"] = True
                 result["active"] = "gemini"
