@@ -28,7 +28,7 @@ import hmac
 import secrets
 import time
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -484,6 +484,21 @@ async def reload(request: Request):
         return r
     state["positions"] = compute_positions()
     return {"status": "ok", "positions_loaded": len(state["positions"])}
+
+
+@app.post("/api/upload")
+async def upload_transactions(request: Request, file: UploadFile = File(...)):
+    """Upload a DeGiro transactions xlsx. Saved to data/transactions/, then reloads positions."""
+    if (r := _auth_required(request)):
+        return r
+    if not file.filename.endswith(".xlsx"):
+        return Response("Only .xlsx files accepted", status_code=400)
+    data_dir = Path("data/transactions")
+    data_dir.mkdir(parents=True, exist_ok=True)
+    dest = data_dir / file.filename
+    dest.write_bytes(await file.read())
+    state["positions"] = compute_positions()
+    return {"status": "ok", "saved": file.filename, "positions_loaded": len(state["positions"])}
 
 
 @app.get("/api/ws-token")
