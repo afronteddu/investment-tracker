@@ -109,7 +109,7 @@ def get_earnings_date(ticker: str) -> Optional[str]:
     return result
 
 
-def get_news(ticker: str, max_items: int = 3) -> list[dict]:
+def get_news(ticker: str, max_items: int = 4) -> list[dict]:
     now = time.time()
     cached = _news_cache.get(ticker)
     if cached and now - cached[1] < NEWS_TTL:
