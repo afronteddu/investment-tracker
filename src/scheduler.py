@@ -3,11 +3,16 @@ Market-aware scheduler. Runs continuously, triggers jobs based on market hours.
 Dublin is UTC+1 (BST) in summer.
 
 Schedule:
+- Every 60s (always, regardless of market hours): refresh quote/portfolio/scanner/WS cache
+- Every 30min (always): refresh signals cache (RSI, earnings date, news, 52W return)
+- Every 6h (always): refresh price history cache
+- Every 6h (always): run dashboard health check + notify on issues
+- Every 5min during market hours only: check price-move alerts
 - EU open  (08:05 Dublin = 07:05 UTC): EU scan + notification
 - US open  (15:35 Dublin = 14:35 UTC): US scan + notification
 - US close (22:05 Dublin = 21:05 UTC): EOD briefing via Claude
-- Every 5min during market hours: refresh quote cache + check alerts
-- Midnight: reload transaction files (picks up new exports automatically)
+- Midnight: reload transaction files + refresh hot-picks universe
+- 08:00 Dublin: refresh hot-picks universe again (fresh data ahead of EU open)
 """
 from __future__ import annotations
 
