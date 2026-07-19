@@ -209,42 +209,12 @@ def _valid_ws_token(token: str) -> bool:
     return secrets.compare_digest(token, _make_ws_token())
 
 
-# Hot-picks universe — scanned daily to surface biggest movers/momentum names
-# Only tickers with a positive 52W trend or strong structural thesis are eligible.
-_HOT_PICKS_UNIVERSE = [
-    # AI chips & infra
-    "NVDA", "AMD", "TSM", "ARM", "SMCI", "AVGO", "MRVL", "QCOM",
-    # AI software & data
-    "PLTR", "MSFT", "META", "GOOGL", "AMZN", "AAPL",
-    # Quantum
-    "IONQ", "RGTI",
-    # Defence
-    "RTX", "HII", "BAESY", "LDO.MI", "RHM.DE",
-    # Nuclear / energy
-    "CEG", "OKLO", "VRT", "VST",
-    # Moonshots
-    "RKLB", "ASTS", "ACHR", "SERV",
-]
-
-
-def _refresh_hot_picks():
-    """Pull yesterday's top movers from the universe and merge into watchlist."""
-    try:
-        quotes = fetch_quotes(_HOT_PICKS_UNIVERSE)
-        # Score by absolute day move
-        scored = []
-        for ticker, q in quotes.items():
-            pct = day_change_pct(q)
-            if pct is not None:
-                scored.append((abs(pct), ticker))
-        scored.sort(reverse=True)
-        # Top 8 movers always in watchlist
-        hot = [t for _, t in scored[:8]]
-        merged = list(dict.fromkeys(WATCHLIST_BASE + hot))  # deduplicate, base first
-        state["watchlist"] = merged
-        state["hot_picks"] = hot
-    except Exception:
-        state["watchlist"] = list(WATCHLIST_BASE)
+# NOTE: hot-picks universe scanning + refresh logic lives in
+# Scheduler._refresh_hot_picks_sync (scheduler.py), which is the only code path
+# actually invoked (midnight reload + 08:00 Dublin refresh). A duplicate
+# _HOT_PICKS_UNIVERSE list and _refresh_hot_picks() fork used to live here but
+# were never called by any route or by the scheduler — removed to avoid two
+# diverging copies of the same logic.
 
 try:
     app.mount("/static", StaticFiles(directory="static"), name="static")
