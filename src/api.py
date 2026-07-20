@@ -1,10 +1,21 @@
 """
 FastAPI backend. Serves the web dashboard and exposes:
-  GET  /api/portfolio     → positions + live prices
-  GET  /api/scan          → watchlist scanner
-  GET  /api/briefing      → latest AI briefing
-  POST /api/reload        → re-parse transaction files
-  WS   /ws               → push updates every 60s during market hours
+  GET  /, /public, /property          → dashboard pages (basic-auth gated)
+  GET  /api/portfolio                 → positions + live prices
+  GET  /api/scan                      → watchlist scanner
+  GET  /api/history                   → price history series for charts
+  GET  /api/briefing                  → latest AI briefing (cached)
+  POST /api/briefing/generate         → force-generate a fresh AI briefing
+  GET  /api/drilldown/{ticker}        → per-ticker AI deep dive
+  GET  /api/price-chart/{ticker}      → 1y daily price series for a ticker
+  POST /api/suggest/challenge         → AI response to a user challenge on a suggestion
+  GET  /api/quotes                    → live prices for a comma-separated ticker list
+  GET  /api/ai/health                 → probe which AI provider (Gemini/OpenAI) is live
+  GET  /api/fwrg-history              → proxy FWRG.L price history (avoids browser CORS)
+  POST /api/reload                    → re-parse transaction files
+  POST /api/upload                    → upload a DeGiro transactions xlsx
+  GET  /api/ws-token, /api/debug      → auth/debug helpers
+  WS   /ws                            → push cached portfolio/scanner payload every 60s
 """
 from __future__ import annotations
 
