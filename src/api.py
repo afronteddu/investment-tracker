@@ -679,7 +679,6 @@ async def websocket_endpoint(websocket: WebSocket):
     connected.append(websocket)
     try:
         while True:
-            import json
             # Everything reads from pre-built cache — instant, no yfinance calls here
             payload = state.get("ws_payload_cache")
             if payload:
