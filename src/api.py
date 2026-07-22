@@ -240,7 +240,6 @@ def _build_portfolio_data() -> list[dict]:
         return []
     quotes = state.get("quotes_cache", {})
     signals = state.get("signals_cache", {})
-    fx = state.get("fx_cache", {})
 
     rows = []
     for ticker, pos in positions.items():
