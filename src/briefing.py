@@ -121,7 +121,7 @@ Watchlist scan:
 {chr(10).join(scanner_lines)}
 
 Investment goals and bucket structure:
-1. RETIREMENT — DCA into diversified ETFs (IWDA, VUSA, IMAE, AEME, IEAG, BRK-B). Long-term hold, no active trading.
+1. RETIREMENT — DCA into diversified ETFs (IWDA, VUSA, IMAE, AEME, IEAG) and BRK-B (Berkshire Hathaway — stock, 33% CGT applies, NOT an ETF). Long-term hold, no active trading.
 2. GROWTH — Medium-term stock picks (NVDA, ASML, SNDK), 6-12 month horizon.
 3. HIGH CONVICTION (HC-1) — AI/tech bets (NBIS, VRT, APLD). All tranches fully deployed. Target €15–20k exit in 6–12 months. Position locked, no further additions.
 4. HIGH CONVICTION (HC-2) — NEW orthogonal bucket, €2,000 total. Deployment in progress (NOT correlated to HC-1 AI capex theme). Three picks from adversarial research (Jun 2026):
