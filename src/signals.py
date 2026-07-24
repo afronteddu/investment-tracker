@@ -37,6 +37,35 @@ YEAR_TTL = 21600        # 6 hours (52W return — slow-moving)
 YEAR_MIN_BARS = 40
 
 
+def _fetch_history_via_session(ticker: str, period_days: int, interval: str) -> list[float]:
+    """Fetch closing prices using the shared cookie+crumb session from quotes.py.
+    Falls back to yfinance if the session fetch fails (e.g. local dev)."""
+    from src.quotes import _session, _crumb, _ensure_session, _HEADERS
+    import datetime as _dt
+    _ensure_session()
+    end_ts = int(time.time()) + 86400
+    start_ts = int(time.time()) - period_days * 86400
+    params = {"interval": interval, "period1": start_ts, "period2": end_ts}
+    if _crumb:
+        params["crumb"] = _crumb
+    try:
+        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+        r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+        if r.status_code in (401, 403):
+            from src.quotes import _init_session
+            _init_session()
+            params["crumb"] = _crumb
+            r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+        if r.status_code != 200:
+            return []
+        data = r.json()
+        result = data["chart"]["result"][0]
+        closes = result.get("indicators", {}).get("quote", [{}])[0].get("close") or []
+        return [c for c in closes if c is not None]
+    except Exception:
+        return []
+
+
 def get_rsi(ticker: str) -> Optional[float]:
     now = time.time()
     cached = _rsi_cache.get(ticker)
@@ -44,11 +73,11 @@ def get_rsi(ticker: str) -> Optional[float]:
         return cached[0]
     result = None
     try:
-        import yfinance as yf
-        hist = yf.Ticker(ticker).history(period="3mo", interval="1d")
-        if len(hist) >= 15:
-            closes = hist["Close"]
-            delta = closes.diff()
+        closes = _fetch_history_via_session(ticker, period_days=95, interval="1d")
+        if len(closes) >= 15:
+            import pandas as _pd
+            s = _pd.Series(closes)
+            delta = s.diff()
             gain = delta.clip(lower=0).rolling(14).mean()
             loss = (-delta.clip(upper=0)).rolling(14).mean()
             rs = gain / loss
@@ -138,11 +167,10 @@ def get_year_return(ticker: str) -> Optional[float]:
         return cached[0]
     result = None
     try:
-        import yfinance as yf
-        hist = yf.Ticker(ticker).history(period="1y", interval="1wk")
-        if len(hist) >= YEAR_MIN_BARS:
-            first_close = hist["Close"].iloc[0]
-            last_close = hist["Close"].iloc[-1]
+        closes = _fetch_history_via_session(ticker, period_days=370, interval="1wk")
+        if len(closes) >= YEAR_MIN_BARS:
+            first_close = closes[0]
+            last_close = closes[-1]
             if first_close and first_close > 0:
                 raw = (last_close - first_close) / first_close * 100
                 f = _finite_or_none(raw)
