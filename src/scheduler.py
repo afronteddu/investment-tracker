@@ -42,6 +42,7 @@ class Scheduler:
         self._last_eod = None
         self._last_alert_check = None
         self._last_midnight_reload = None
+        self._last_hot_picks_08 = None
         self._last_signals_refresh = None
         self._last_quotes_refresh = None
         self._last_history_refresh = None
@@ -86,9 +87,10 @@ class Scheduler:
         # Also refresh hot picks at 08:00 (fresh data for EU open).
         # Allow when midnight reload already ran today OR when it has never run
         # (server started after midnight but before 08:00 — startup day cold start).
-        if now.hour == 8 and now.minute < 5 and (
+        if now.hour == 8 and now.minute < 5 and self._last_hot_picks_08 != date_str and (
             self._last_midnight_reload == date_str or self._last_midnight_reload is None
         ):
+            self._last_hot_picks_08 = date_str
             await self._refresh_hot_picks()
 
         # EU market open briefing (08:05 Dublin)
