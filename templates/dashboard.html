@@ -1821,7 +1821,7 @@ const TICKER_CCY = {
   'ASML.AS':'EUR','IMAE.AS':'EUR','IWDA.AS':'EUR','VUSA.AS':'EUR','AEME.PA':'EUR','IEAG.AS':'EUR',
   'IGLN.L':'GBP','ISLN.L':'GBP',
   // Watchlist / suggestions
-  'NOVO-B.CO':'DKK','SAP':'EUR','SAP.DE':'EUR','OR.PA':'EUR','AIR.PA':'EUR','SIE.DE':'EUR',
+  'NOVO-B.CO':'DKK','SAP':'EUR','SAP.DE':'EUR','OR.PA':'EUR','AIR.PA':'EUR','SIE.DE':'EUR','MUV2.DE':'EUR',
   'TTE.PA':'EUR','IBE.MC':'EUR','LDO.MI':'EUR','RHM.DE':'EUR',
   'SHEL':'USD','SHEL.L':'GBP','BP.L':'GBP','RIO.L':'GBP','BA.L':'GBP',
   'TSM':'USD','HDB':'USD','CEG':'USD','XOM':'USD','JNJ':'USD','WM':'USD',
@@ -1904,6 +1904,12 @@ const SCANNER_META = {
   'TSM':      { bucketTag:'QUALITY', yield_est:'~1.8%', timing:'LONG-RUN',    beta:'~1.1',
     desc:'Manufactures 90%+ of advanced chips (N3/N2). Sole fab for NVDA, AAPL, AMD, ARM.',
     note:'Only advanced fab (N3/N2). Geopolitical risk priced in.' },
+  'MUV2.DE':  { bucketTag:'RETIREMENT', yield_est:'~3.5%', timing:'LONG-RUN',  beta:'~0.6',
+    desc:'Munich Re — world\'s largest reinsurer. EUR-denominated, β0.6. Climate change = structural premium tailwind.',
+    note:'Munich Re. EUR. β0.6. Berkshire insurance equivalent. 140yr track record.' },
+  'NESN.SW':  { bucketTag:'RETIREMENT', yield_est:'~3.2%', timing:'LONG-RUN',  beta:'~0.4',
+    desc:'Nestlé — 150yr consumer staples compounder. Nespresso, Purina, KitKat. CHF hard-currency hedge.',
+    note:'Nestlé. CHF. β0.4. 190 countries. Lowest beta in suggestion pool.' },
   'SAP.DE':   { bucketTag:'QUALITY', yield_est:'~1.5%', timing:'LONG-RUN',    beta:'~0.9',
     desc:'Largest global ERP software vendor — 400,000+ enterprise clients migrating to cloud.',
     note:'ERP cloud monopoly. 30%→40%+ margin expansion. EUR.' },
@@ -2065,45 +2071,46 @@ const SCANNER_META = {
 //           'energy' = energy/power sector | 'hc2027' = next HC cycle | 'em' = EM growth
 const SUGGESTION_POOL = [
 
-  // ── BRK-B concentration fix: EUR/GBP compounders ──────────────
+  // ── BRK-B concentration fix: EUR/CHF Berkshire-equivalents ───────
+  // Criteria: non-USD, low beta, durable moat, dividend, 10yr+ hold, 33% CGT.
   {
-    ticker:'NOVO-B.CO', sector:'Healthcare / GLP-1', geo:'Europe (DK)', ccy:'DKK',
+    ticker:'MUV2.DE', sector:'Reinsurance / Insurance', geo:'Europe (DE)', ccy:'EUR',
     priority:'brk_fix', bucket:'retirement',
-    exchange:'Copenhagen (NOVO-B.CO)', degiro:'✓ Available',
-    buyGuide:'10 shares now, 10 more at 240 DKK if it dips',
-    diversifies:'First healthcare position. DKK-denominated — cuts USD concentration. Zero AI/tech cycle correlation. Defensive compounder.',
-    why:'~70% below 2024 ATH at 10× PE, 5.5% dividend yield. Bear case (Lilly competition, oral generics) is real but already priced. Manufacturing scale moat takes years to replicate. Adjacent pipeline: NASH, CKD, rare blood disorders. At 10× PE the dividend alone pays you to wait. Stock — 33% CGT.',
-    bearCase:'Lilly tirzepatide clinically superior. Oral GLP-1 generics from China/India in 3–5 years. CagriSema pipeline failure already damaged credibility.',
+    exchange:'Xetra (MUV2.DE)', degiro:'✓ Available',
+    buyGuide:'1–2 shares (~€450–900)',
+    diversifies:'EUR-denominated. Reinsurance business model is structurally identical to Berkshire\'s core. Negative correlation to tech/AI cycle. First insurance exposure in retirement bucket.',
+    why:'Munich Re — world\'s largest reinsurer. Climate change is a tailwind (more catastrophes = higher premiums). ~3.5% dividend, PE ~12×, β0.6. Pricing power locked in multi-year contracts. 140 years of operation. No USD exposure. Stock — 33% CGT.',
+    bearCase:'Major catastrophe cluster year dents reserves. Rising interest rates can reprice book value.',
     conviction:'HIGH',
   },
   {
-    ticker:'SAP.DE', sector:'Enterprise Software', geo:'Europe (DE)', ccy:'EUR',
+    ticker:'NESN.SW', sector:'Consumer Staples / FMCG', geo:'Europe (CH)', ccy:'CHF',
     priority:'brk_fix', bucket:'retirement',
-    exchange:'Xetra (SAP.DE)', degiro:'✓ Available',
-    buyGuide:'1 share (~€180–200)',
-    diversifies:'EUR-denominated — zero USD drag. European software monopoly uncorrelated to hardware/AI capex.',
-    why:'Cloud ERP transition just hit operating leverage inflection: revenue +8% YoY, earnings +129%. Next 3 years: margin expansion from 30% → 40%+ as SaaS mix rises. Only global ERP vendor — displacing SAP requires 5+ years of enterprise migration. Stock — 33% CGT.',
-    bearCase:'Premium valuation (PE ~24). Enterprise IT spend contracts in a recession.',
+    exchange:'SIX Swiss Exchange (NESN.SW)', degiro:'✓ Available',
+    buyGuide:'2–3 shares (~€200–300)',
+    diversifies:'CHF-denominated — hard currency hedge. First consumer staples. Essential brands sold in 190 countries. Zero AI/tech correlation. β0.4.',
+    why:'Nestlé — 150 years of compounding. Nespresso, Purina, KitKat, Maggi. ~3.2% dividend. Nes CEO restructuring (selling non-core brands, investing in premium categories) should accelerate margin recovery from 2025 lows. Priced at multi-year low. CHF is a natural FX hedge vs USD/EUR macro risk. Stock — 33% CGT.',
+    bearCase:'Consumer staples re-rating risk if rates stay high. Restructuring execution risk. Slower emerging market recovery.',
     conviction:'HIGH',
   },
   {
-    ticker:'OR.PA', sector:'Consumer Staples / Beauty', geo:'Europe (FR)', ccy:'EUR',
-    priority:'brk_fix', bucket:'retirement',
-    exchange:'Euronext Paris (OR.PA)', degiro:'✓ Available',
-    buyGuide:'1 share (~€380–420)',
-    diversifies:'First consumer staples. EUR-denominated. Pricing power through all macro cycles. EM distribution upside.',
-    why:"L'Oréal — 115 years of compounding at ~10%/yr. China drag (~25% revenue) is temporary, structural EM middle class growth is permanent. Recession-resilient (lipstick index). 2.1% dividend + buybacks. Stock — 33% CGT.",
-    bearCase:'China revenue recovery slower than expected. Prestige beauty faces Gen Z brand fragmentation.',
-    conviction:'MEDIUM',
-  },
-  {
-    ticker:'AIR.PA', sector:'Aerospace / Defence', geo:'Europe (FR)', ccy:'EUR',
+    ticker:'AIR.PA', sector:'Aerospace / Industrial', geo:'Europe (FR)', ccy:'EUR',
     priority:'brk_fix', bucket:'retirement',
     exchange:'Euronext Paris (AIR.PA)', degiro:'✓ Available',
     buyGuide:'1–2 shares (~€180–360)',
-    diversifies:'Aerospace/defence gap. EUR-denominated. Backlog gives revenue visibility regardless of macro.',
-    why:'Airbus — €1 trillion order backlog (8+ years of production). Boeing supply crisis is a gift. European defence ramp adds military aircraft upside. No USD risk. Stock — 33% CGT.',
-    bearCase:'Supply chain bottlenecks limiting delivery cadence. Labour disputes.',
+    diversifies:'Aerospace/industrial gap. EUR-denominated. €1T order backlog gives 8yr revenue visibility — structurally different from cyclical stocks.',
+    why:'Airbus — €1 trillion order backlog (8+ years of production). Boeing supply crisis is a structural gift: airlines have no alternative for narrowbody. European defence ramp adds military upside. PE ~22× justified by backlog certainty. β0.85. Stock — 33% CGT.',
+    bearCase:'Supply chain bottlenecks limiting delivery cadence. Labour cost inflation.',
+    conviction:'MEDIUM',
+  },
+  {
+    ticker:'TTE.PA', sector:'Integrated Energy / LNG', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Euronext Paris (TTE.PA)', degiro:'✓ Available',
+    buyGuide:'3–5 shares (~€165–275)',
+    diversifies:'EUR energy income. LNG is the 15-year bridge fuel for EU and Asia coal phase-out. ~4% dividend paid quarterly. Negative correlation to tech sector.',
+    why:'TotalEnergies — most diversified European energy major (LNG + solar + oil + wind). ~4% dividend, PE ~8–9×, β0.65. Energy is the only sector with negative AI-cycle correlation — it goes up when tech goes down. Stock — 33% CGT.',
+    bearCase:'Oil price collapse. Accelerated renewable transition undermines LNG demand.',
     conviction:'MEDIUM',
   },
 
@@ -2376,7 +2383,7 @@ function renderStrategy(positions, lifetime) {
   const usdWarn = usdPct > 70
     ? `<div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ ${usdPct.toFixed(0)}% USD exposure — a 10% EUR/USD move = €${Math.round(totalValue*usdPct/100*0.1).toLocaleString()} P&L with no stock change. Add EUR/GBP positions to reduce.</div>`
     : usdPct > 55
-    ? `<div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ ${usdPct.toFixed(0)}% USD — moderate FX concentration. Add NOVO-B, SAP.DE or TTE.PA to dilute.</div>`
+    ? `<div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ ${usdPct.toFixed(0)}% USD — moderate FX concentration. Add MUV2.DE (EUR) or NESN.SW (CHF) to dilute.</div>`
     : `<div style="font-size:11px;color:var(--green);margin-top:6px">✓ FX mix is reasonable.</div>`;
 
   E('strat-alloc').innerHTML = `
@@ -2438,20 +2445,21 @@ function renderStrategy(positions, lifetime) {
   const brkConcColor = brkConc > 70 ? 'var(--red)' : brkConc > 50 ? '#fbbf24' : 'var(--green)';
   const brkFill = Math.min(100, brkConc);
   const brkNote = brkConc > 70
-    ? `<span style="color:var(--red)">⚠ BRK-B is ${brkConc.toFixed(0)}% of retirement bucket — too concentrated. Next buys should diversify: NOVO-B, SAP.DE, OR.PA, TTE.PA.</span>`
+    ? `<span style="color:var(--red)">⚠ BRK-B is ${brkConc.toFixed(0)}% of retirement bucket — too concentrated. Next buys: MUV2.DE (EUR reinsurance, β0.6), NESN.SW (CHF staples, β0.4), or TTE.PA (EUR energy, ~4% div).</span>`
     : brkConc > 50
     ? `<span style="color:#fbbf24">BRK-B at ${brkConc.toFixed(0)}% — moderate concentration. Add 1 non-US stock to dilute.</span>`
     : `<span style="color:var(--green)">BRK-B concentration within bounds.</span>`;
 
   // Next buy guidance based on portfolio gaps
-  const hasHealthcare = positions.some(p => ['NOVO-B.CO','JNJ'].includes(p.ticker));
+  const hasInsurance = positions.some(p => ['MUV2.DE','AXA.PA','CB','BLK'].includes(p.ticker));
+  const hasStaples = positions.some(p => ['NESN.SW','UL','OR.PA'].includes(p.ticker));
   const hasEnergy = positions.some(p => ['TTE.PA','SHEL.L','CEG','XOM','BP.L'].includes(p.ticker));
   const hasEurStock = positions.filter(p => (TICKER_META[p.ticker]||{}).ccy === 'EUR' && !IE_TAX_41.has(p.ticker) && p.bucket === 'retirement').length > 0;
   const nextBuys = [];
-  if (!hasHealthcare) nextBuys.push('NOVO-B.CO (healthcare gap, 70% off ATH)');
-  if (brkConc > 60 && !hasEurStock) nextBuys.push('SAP.DE or OR.PA (EUR compounder, cuts USD concentration)');
-  if (!hasEnergy) nextBuys.push('TTE.PA or CEG (energy gap, AI data centre power thesis)');
-  if (!hasHealthcare && !nextBuys.includes('NOVO-B.CO')) nextBuys.push('NOVO-B.CO');
+  if (!hasInsurance) nextBuys.push('MUV2.DE (EUR reinsurance — Berkshire-equivalent, β0.6, ~3.5% div)');
+  if (!hasStaples) nextBuys.push('NESN.SW (CHF consumer staples — β0.4, hard currency hedge, ~3.2% div)');
+  if (brkConc > 60 && !hasEurStock) nextBuys.push('MUV2.DE or NESN.SW (EUR/CHF — cuts USD concentration)');
+  if (!hasEnergy) nextBuys.push('TTE.PA or CEG (energy gap, negative AI-cycle correlation)');
   const nextBuyStr = nextBuys.length ? nextBuys.slice(0,2).join(' · ') : 'BRK-B DCA if below cost';
 
   const retAction = `
@@ -2810,12 +2818,12 @@ function renderStrategy(positions, lifetime) {
 
     <div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-        <span style="color:#60a5fa;font-weight:700">🛡️ Retirement (BRK-B / NOVO-B / SAP.DE)</span>
+        <span style="color:#60a5fa;font-weight:700">🛡️ Retirement (BRK-B / MUV2.DE / NESN.SW)</span>
         <span id="split-ret-label" style="font-weight:700;color:#60a5fa">${_retSharePct}% · €${retAlloc.toLocaleString()}/mo</span>
       </div>
       <input type="range" id="split-ret-slider" min="5" max="60" step="5" value="${_retSharePct}"
         oninput="_onSplitSlide()" style="width:100%;accent-color:#60a5fa">
-      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ BRK-B every other month + alternate: NOVO-B.CO (DKK, healthcare) → SAP.DE (EUR, ERP) → OR.PA (EUR, staples). No USD-only exposure. No liquidation before 2030.</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">→ BRK-B every other month + alternate: MUV2.DE (EUR, reinsurance, β0.6) → NESN.SW (CHF, staples, β0.4) → AIR.PA (EUR, aerospace) → TTE.PA (EUR, energy ~4% div). No USD-only exposure. No liquidation before 2030.</div>
     </div>
 
     <div style="margin-bottom:10px">
@@ -2933,7 +2941,8 @@ function renderStrategy(positions, lifetime) {
   const daysToExitEnd   = Math.max(0, Math.round((new Date('2027-05-11') - new Date()) / 86400000));
 
   // Signal 5: Healthcare/Energy sector gaps
-  const hasHealthcareRisk = !positions.some(p => ['NOVO-B.CO','JNJ','NVO','SNY'].includes(p.ticker));
+  const hasInsuranceRisk = !positions.some(p => ['MUV2.DE','AXA.PA','CB'].includes(p.ticker) && p.bucket === 'retirement');
+  const hasHealthcareRisk = !positions.some(p => ['NOVO-B.CO','JNJ','NVO','SNY','NESN.SW'].includes(p.ticker));
   const hasEnergyRisk     = !positions.some(p => ['TTE.PA','SHEL.L','CEG','XOM','BP.L','IBE.MC'].includes(p.ticker));
 
   // Signal 6: Single largest position concentration
@@ -2965,7 +2974,7 @@ function renderStrategy(positions, lifetime) {
       level: usdConc > 72 ? 'danger' : usdConc > 55 ? 'warn' : 'ok',
       badge: usdConc > 72 ? 'HIGH' : usdConc > 55 ? 'MODERATE' : 'OK',
       note: usdConc > 55
-        ? `Add EUR-denominated stocks to dilute: NOVO-B.CO (DKK), SAP.DE (EUR), TTE.PA (EUR), OR.PA (EUR). Target <60% USD. No ETFs — 41% IE tax.`
+        ? `Add non-USD stocks to dilute: MUV2.DE (EUR reinsurance), NESN.SW (CHF staples), TTE.PA (EUR energy). Target <60% USD. No ETFs — 41% IE tax.`
         : 'FX mix is reasonable — USD/EUR/GBP spread is adequate.',
     },
     {
@@ -2974,7 +2983,7 @@ function renderStrategy(positions, lifetime) {
       level: aiConc > 55 ? 'danger' : aiConc > 40 ? 'warn' : 'ok',
       badge: aiConc > 55 ? 'VERY HIGH' : aiConc > 40 ? 'HIGH' : 'OK',
       note: aiConc > 40
-        ? `All 6 positions share the same macro risk: AI capex cycle reversal or hyperscaler spend cut. If any 2 of MSFT/AMZN/GOOGL/META trim capex >10%, all 6 re-rate together. Diversify with healthcare (NOVO-B), energy (CEG/TTE.PA), or consumer (OR.PA).`
+        ? `All 6 positions share the same macro risk: AI capex cycle reversal or hyperscaler spend cut. If any 2 of MSFT/AMZN/GOOGL/META trim capex >10%, all 6 re-rate together. Diversify with reinsurance (MUV2.DE), energy (CEG/TTE.PA), or consumer staples (NESN.SW).`
         : 'AI concentration within acceptable bounds.',
     },
     {
@@ -2983,7 +2992,7 @@ function renderStrategy(positions, lifetime) {
       level: brkConcRisk > 65 ? 'danger' : brkConcRisk > 45 ? 'warn' : 'ok',
       badge: brkConcRisk > 65 ? 'CONCENTRATED' : brkConcRisk > 45 ? 'WATCH' : 'OK',
       note: brkConcRisk > 45
-        ? `BRK-B is internally diversified (insurance, railroads, energy) but it's one USD name. Add: NOVO-B.CO for healthcare/DKK, SAP.DE for EUR software, TTE.PA for EUR energy. Target BRK-B below 40% of retirement bucket.`
+        ? `BRK-B is internally diversified (insurance, railroads, energy) but it's one USD name. Add: MUV2.DE (EUR reinsurance, β0.6 — structurally similar to BRK core), NESN.SW (CHF staples, β0.4), TTE.PA (EUR energy ~4% div). Target BRK-B below 40% of retirement bucket.`
         : 'BRK-B concentration within healthy range.',
     },
     {
@@ -2996,10 +3005,10 @@ function renderStrategy(positions, lifetime) {
     {
       icon: '🏥',
       label: `Healthcare: 0% allocation — entire portfolio has zero healthcare exposure`,
-      level: hasHealthcareRisk ? 'warn' : 'ok',
-      badge: hasHealthcareRisk ? 'MISSING' : 'OK',
-      note: hasHealthcareRisk
-        ? 'Healthcare is the most defensive sector in bear markets (negative AI cycle correlation). NOVO-B.CO is at 70% below 2024 ATH at 10× PE — the structural entry point for a 5–10yr hold. DKK-denominated, 5.5% dividend, 33% CGT.'
+      level: hasInsuranceRisk ? 'warn' : 'ok',
+      badge: hasInsuranceRisk ? 'MISSING' : 'OK',
+      note: hasInsuranceRisk
+        ? 'No insurance/reinsurance in retirement bucket. MUV2.DE (Munich Re) is the EUR equivalent of Berkshire\'s insurance core: β0.6, ~3.5% dividend, PE ~12×, climate tailwind (higher premiums). NESN.SW (Nestlé, β0.4) covers consumer staples gap. Both 33% CGT.'
         : 'Healthcare exposure present.',
     },
     {
@@ -3342,7 +3351,7 @@ function renderStrategy(positions, lifetime) {
     const gapBanners = [];
     if (needsBrkFix) gapBanners.push(`<span>🏛️ BRK-B ${brkConcRisk.toFixed(0)}% of retirement — add EUR/GBP compounders</span>`);
     if (needsFX)     gapBanners.push(`<span>💱 ${usdConc.toFixed(0)}% USD — add non-USD names</span>`);
-    if (needsHealth) gapBanners.push(`<span>🏥 Zero healthcare — NOVO-B.CO is highest priority</span>`);
+    if (hasInsuranceRisk) gapBanners.push(`<span>🏦 No insurance/reinsurance — MUV2.DE or NESN.SW is highest priority for retirement</span>`);
     if (needsEnergy) gapBanners.push(`<span>⚡ Zero energy — CEG or TTE.PA</span>`);
     const bannerHtml = gapBanners.length
       ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${gapBanners.map(b=>`<div style="font-size:11px;color:#fbbf24;background:#fbbf2415;padding:3px 8px;border-radius:4px;border:1px solid #fbbf2430">${b}</div>`).join('')}</div>`

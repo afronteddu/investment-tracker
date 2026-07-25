@@ -54,13 +54,12 @@ WATCHLIST_BASE = [
     # ── QUALITY: Mag-7 + EUR compounders (LONG-RUN) ─────────────────
     "MSFT", "GOOGL", "META", "AMZN", "AAPL",
     "ASML.AS",                     # EUV monopoly
-    "SAP.DE",                      # ERP cloud, EUR-denom
-    "NOVO-B.CO",                   # GLP-1 compounder, 70% off ATH
+    "MUV2.DE",                     # Munich Re — EUR reinsurance, β0.6, Berkshire-equivalent
+    "NESN.SW",                     # Nestlé — CHF staples, β0.4, hard currency
     "AIR.PA",                      # Airbus €1T backlog
-    "OR.PA",                       # L'Oréal 115yr compounder
+    "TTE.PA",                      # LNG + solar, 4% div, PE ~8
 
     # ── QUALITY: Retirement income (LONG-RUN) ───────────────────────
-    "TTE.PA",                      # LNG + solar, 4% div, PE ~8
     "SHEL.L",                      # Shell GBP LNG, 3.5% div
     "HDB",                         # India HDFC Bank ADR
     "CEG",                         # Nuclear PPA (AI power)
@@ -599,17 +598,39 @@ async def drilldown(ticker: str, request: Request):
 async def price_chart(ticker: str, request: Request):
     if (r := _auth_required(request)):
         return r
-    import yfinance as yf
     loop = asyncio.get_event_loop()
 
     def _fetch():
-        hist = yf.Ticker(ticker).history(period="1y", interval="1d", auto_adjust=True)
-        if hist.empty:
+        from src.quotes import _session, _crumb, _ensure_session, _HEADERS
+        import datetime as _dt
+        _ensure_session()
+        end_ts = int(time.time()) + 86400
+        start_ts = int(time.time()) - 370 * 86400
+        params = {"interval": "1d", "period1": start_ts, "period2": end_ts}
+        if _crumb:
+            params["crumb"] = _crumb
+        try:
+            url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+            r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+            if r.status_code in (401, 403):
+                from src.quotes import _init_session
+                _init_session()
+                params["crumb"] = _crumb
+                r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+            if r.status_code != 200:
+                return []
+            data = r.json()
+            result = data["chart"]["result"][0]
+            timestamps = result.get("timestamp", [])
+            closes = result.get("indicators", {}).get("quote", [{}])[0].get("close") or []
+            out = []
+            for ts, c in zip(timestamps, closes):
+                if c is None:
+                    continue
+                out.append({"t": _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d"), "c": round(float(c), 4)})
+            return out
+        except Exception:
             return []
-        return [
-            {"t": str(ts.date()), "c": round(float(row["Close"]), 4)}
-            for ts, row in hist.iterrows()
-        ]
 
     data = await loop.run_in_executor(None, _fetch)
     return {"ticker": ticker, "data": data}

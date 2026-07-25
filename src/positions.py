@@ -143,6 +143,7 @@ TICKER_NAMES = {
     "WM":      "Waste Management Inc",
     "OTIS":    "Otis Worldwide",
     "NESN.SW": "Nestlé SA",
+    "MUV2.DE": "Munich Re",
     "UL":      "Unilever ADR",
     # Biotech HC — adversarial deep scan Jun 2026
     "COGT":  "Cogent Biosciences",
