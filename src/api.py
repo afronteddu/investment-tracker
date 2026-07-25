@@ -65,10 +65,22 @@ WATCHLIST_BASE = [
     "CEG",                         # Nuclear PPA (AI power)
     "TSM",                         # Only advanced fab, LONG-RUN despite geopolitical
 
+    # ── QUALITY: EUR/CHF compounders — gaps filled ───────────────────
+    "MC.PA",                       # LVMH — EUR luxury, 115yr pricing power, β0.9
+    "RMS.PA",                      # Hermès — EUR ultra-luxury, tightest moat on earth, β0.7
+    "SAP.DE",                      # SAP — EUR ERP cloud monopoly, 400k enterprise clients
+    "OR.PA",                       # L'Oréal — EUR cosmetics #1, 115yr compounder, β0.7
+    "NOVO-B.CO",                   # Novo Nordisk — DKK GLP-1 leader, Ozempic, PE 10× off ATH
+    "IFX.DE",                      # Infineon — EUR auto/industrial chips, no US equivalent
+    "VIE.PA",                      # Veolia — EUR water/waste infrastructure, 4.2% div, β0.8
+    "FER.MC",                      # Ferrovial — EUR toll roads/airports, 30yr concession moat
+
     # ── GROWTH: AI cycle names (TIMED-AI) ───────────────────────────
     "NVDA", "AMD", "ARM",
     "PLTR",                        # AI/defence analytics
     "AVGO",                        # AI networking chips
+    "CRWD",                        # CrowdStrike — cybersecurity, no non-USD equivalent
+    "PANW",                        # Palo Alto Networks — SASE/XDR, subscription moat
 
     # ── GROWTH: Defence structural (TIMED-HC-2027) ──────────────────
     "LDO.MI",                      # Leonardo IT aerospace, NATO cycle
@@ -101,8 +113,9 @@ WATCHLIST_BASE = [
     "NEE",                         # NextEra Energy — US #1 renewables + regulated utility
     "WM",                          # Waste Management — monopoly local franchises, 1.5% div
     "OTIS",                        # Otis Worldwide — elevator network, service moat
-    "NESN.SW",                     # Nestlé — Swiss consumer staples, 3.2% div, 150yr compounder
     "UL",                          # Unilever ADR — FMCG, 3.3% div, 190 countries
+    "ITUB",                        # Itaú Unibanco ADR — Brazil best-run bank, 30yr compounder
+    "VALE",                        # Vale ADR — Brazil iron ore, 6% div, EM commodity
 
     # ── SPECULATIVE: Moonshots (small size only) ─────────────────────
     "RKLB",                        # Rocket Lab — orbital launch, Neutron 2026

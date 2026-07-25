@@ -518,7 +518,7 @@
       <span class="section-title">Watchlist Scanner</span>
       <span class="muted" style="font-size:11px">quality-first · bucket-labelled · moonshots marked · 52W verified</span>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="scanner-bucket-filters">
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap" id="scanner-bucket-filters">
       <button class="btn-ghost btn-sm active-period" onclick="filterScanner('all',this)">All</button>
       <button class="btn-ghost btn-sm" onclick="filterScanner('QUALITY',this)" style="color:#22d3ee;border-color:#22d3ee44">Quality</button>
       <button class="btn-ghost btn-sm" onclick="filterScanner('GROWTH',this)" style="color:#fbbf24;border-color:#fbbf2444">Growth</button>
@@ -527,6 +527,7 @@
       <button class="btn-ghost btn-sm" onclick="filterScanner('MOONSHOT',this)" style="color:#c084fc;border-color:#c084fc44">🚀 Moonshots</button>
       <button class="btn-ghost btn-sm" onclick="filterScanner('RETIREMENT',this)" style="color:#34d399;border-color:#34d39944">Retirement</button>
     </div>
+    <div id="scanner-fx-bar" style="margin-bottom:10px;font-size:11px;color:var(--muted)"></div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -1643,9 +1644,34 @@ function _renderScannerRows() {
   tbody.innerHTML = rows.join('');
 }
 
+function _renderScannerFxBar(scanner) {
+  const el = E('scanner-fx-bar');
+  if (!el) return;
+  // Count tickers by currency using TICKER_CCY
+  const counts = {};
+  let total = 0;
+  scanner.forEach(s => {
+    const ccy = TICKER_CCY[s.ticker] || s.currency || 'USD';
+    counts[ccy] = (counts[ccy] || 0) + 1;
+    total++;
+  });
+  if (!total) { el.textContent = ''; return; }
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const ccyColor = c => c === 'USD' ? '#f87171' : c === 'EUR' ? '#60a5fa' : c === 'GBP' ? '#a78bfa' : c === 'CHF' ? '#34d399' : c === 'DKK' ? '#fbbf24' : '#94a3b8';
+  const chips = sorted.map(([ccy, n]) => {
+    const pct = (n / total * 100).toFixed(0);
+    const col = ccyColor(ccy);
+    return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;border:1px solid ${col}33;background:${col}12;color:${col};font-weight:700">${ccy} <span style="font-weight:400;opacity:0.8">${pct}%</span></span>`;
+  }).join('');
+  const usdPct = (counts['USD'] || 0) / total * 100;
+  const warn = usdPct > 60 ? `<span style="color:#fbbf24;margin-left:8px">⚠ ${usdPct.toFixed(0)}% USD in watchlist — prioritise EUR/CHF/GBP entries</span>` : '';
+  el.innerHTML = `<span style="color:var(--muted);margin-right:6px">Watchlist currency mix:</span>${chips}${warn}`;
+}
+
 function renderScanner(scanner) {
   _scannerData = scanner;
   _renderScannerRows();
+  _renderScannerFxBar(scanner);
 
   // News feed — most recent headlines from all tickers with news
   const allNews = [];
@@ -1846,6 +1872,18 @@ const TICKER_CCY = {
   'UCG.MI':'EUR','ROG.SW':'CHF','ENEL.MI':'EUR','NOVN.SW':'CHF',
   'AXA.PA':'EUR','IBE.MC':'EUR','TTE.PA':'EUR','GSK.L':'GBP',
   'PYPL':'USD','ABNB':'USD',
+  // New 2026 additions — closing geo/sector gaps
+  'MC.PA':'EUR','RMS.PA':'EUR','IFX.DE':'EUR','VIE.PA':'EUR','FER.MC':'EUR',
+  'CRWD':'USD','PANW':'USD',
+  'ITUB':'USD','VALE':'USD',
+  'HII':'USD','RTX':'USD','BAESY':'USD',
+  'RKLB':'USD','ASTS':'USD','IONQ':'USD','RGTI':'USD',
+  'ACHR':'USD','OKLO':'USD','BBAI':'USD',
+  'COGT':'USD','BLTE':'USD','ABVX':'USD',
+  'LDO.MI':'EUR','HDB':'USD','CEG':'USD',
+  'KO':'USD','PG':'USD','JNJ':'USD','ABT':'USD','ELV':'USD',
+  'V':'USD','MA':'USD','CB':'USD','BLK':'USD','NEE':'USD',
+  'WM':'USD','OTIS':'USD','UL':'USD',
 };
 
 // Sector/geography metadata for held tickers
@@ -2079,6 +2117,48 @@ const SCANNER_META = {
   'UL':       { bucketTag:'RETIREMENT', yield_est:'~3.3%', timing:'LONG-RUN', beta:'~0.45',
     desc:'Unilever ADR — FMCG powerhouse (Dove, Hellmann\'s, Magnum, Knorr) in 190 countries. New CEO restructuring cycle.',
     note:'UL. FMCG 190 countries. 3.3% div. New CEO restructuring upside. β0.45.' },
+
+  // ── QUALITY: EUR/CHF — 30yr geo/sector gap fill ──────────────────
+  'MC.PA':    { bucketTag:'QUALITY', yield_est:'~2.1%', timing:'LONG-RUN', beta:'~0.9',
+    desc:'LVMH — 75 luxury houses (Louis Vuitton, Dior, Moët, Hennessy). EUR. Aspirational middle-class structural tailwind over 30yr.',
+    note:'LVMH. EUR. 30yr luxury compounder. China recovery + EM middle class. β0.9. CAGR ~12%.' },
+  'RMS.PA':   { bucketTag:'QUALITY', yield_est:'~0.5%', timing:'LONG-RUN', beta:'~0.7',
+    desc:'Hermès — intentionally supply-constrained luxury (Birkin bags: 2yr waitlist). EUR. Highest gross margin (~45%) of any consumer company.',
+    note:'Hermès. EUR. β0.7. Tightest moat on earth — waitlists, not discounts. CAGR ~15%.' },
+  'SAP.DE':   { bucketTag:'QUALITY', yield_est:'~1.5%', timing:'LONG-RUN', beta:'~0.9',
+    desc:'SAP — world\'s largest ERP vendor. 400,000+ enterprise clients locked in 5–10yr migration cycles to SAP S/4HANA cloud.',
+    note:'SAP. EUR ERP cloud monopoly. 30%→40%+ margin expansion. Sticky enterprise.' },
+  'OR.PA':    { bucketTag:'QUALITY', yield_est:'~2.1%', timing:'LONG-RUN', beta:'~0.7',
+    desc:'L\'Oréal — world #1 cosmetics: Lancôme, Maybelline, CeraVe, Kiehl\'s. 115yr compounder on EM middle-class rise.',
+    note:"L'Oréal. EUR. 115yr compounder. EM middle-class structural tailwind. β0.7." },
+  'NOVO-B.CO':{ bucketTag:'QUALITY', yield_est:'~5.5%', timing:'LONG-RUN', beta:'~0.5',
+    desc:'Novo Nordisk — GLP-1 obesity/diabetes leader (Ozempic, Wegovy). 70% off ATH. DKK denomination. PE ~10× vs peak 40×.',
+    note:'Novo. DKK. GLP-1 compounder. 70% off ATH, PE 10×. Obesity is a 30yr structural market.' },
+  'IFX.DE':   { bucketTag:'QUALITY', yield_est:'~1.5%', timing:'LONG-RUN', beta:'~1.2',
+    desc:'Infineon — EUR automotive/industrial chip leader (power semiconductors, SiC, microcontrollers). EV + renewables structural demand.',
+    note:'Infineon. EUR. Auto/industrial chips. SiC EV structural. No direct US equivalent. CAGR ~10%.' },
+  'VIE.PA':   { bucketTag:'QUALITY', yield_est:'~4.2%', timing:'LONG-RUN', beta:'~0.8',
+    desc:'Veolia — world #1 water/waste/energy services. EUR. 4.2% dividend. Municipal contracts locked 20–30yr. Essential infrastructure monopoly.',
+    note:'Veolia. EUR. Water/waste monopoly. 4.2% div. 20-30yr contracts. β0.8. CAGR ~8%.' },
+  'FER.MC':   { bucketTag:'QUALITY', yield_est:'~0.9%', timing:'LONG-RUN', beta:'~0.8',
+    desc:'Ferrovial — EUR toll roads + airports (Heathrow 25%, NTO Dallas, 407 ETR Toronto). 30yr concession contracts. EUR-denominated.',
+    note:'Ferrovial. EUR. Toll roads + Heathrow. 30yr concession moat. Inflation pass-through. β0.8.' },
+
+  // ── GROWTH: Cybersecurity (USD-only gap — no EUR equivalent) ──────
+  'CRWD':     { bucketTag:'GROWTH',  yield_est:'0%',   timing:'TIMED-AI', beta:'~1.2',
+    desc:'CrowdStrike — AI-native endpoint security platform. 65%+ gross margin. ~30,000 enterprise customers. Falcon platform stickiness.',
+    note:'CRWD. Cybersecurity leader. Falcon platform. AI-native. No non-USD equivalent exists.' },
+  'PANW':     { bucketTag:'GROWTH',  yield_est:'0%',   timing:'TIMED-AI', beta:'~1.1',
+    desc:'Palo Alto Networks — SASE/XSIAM platform consolidating 10+ security tools per enterprise. Subscription flywheel.',
+    note:'PANW. SASE consolidation. $15B+ ARR target. Platform stickiness vs point solutions.' },
+
+  // ── EM ex-India: Latin America compounders ───────────────────────
+  'ITUB':     { bucketTag:'RETIREMENT', yield_est:'~4.0%', timing:'LONG-RUN', beta:'~1.0',
+    desc:'Itaú Unibanco — Brazil\'s best-capitalised bank. 30yr dividend compounder. 38M+ customers. EM growth + fintech moat.',
+    note:'ITUB ADR. Brazil best-run bank. 4% div. 30yr compounder. EM financial inclusion story.' },
+  'VALE':     { bucketTag:'RETIREMENT', yield_est:'~6.0%', timing:'LONG-RUN', beta:'~1.4',
+    desc:'Vale — world\'s largest iron ore and nickel producer. Brazil ADR. 6% dividend. EV battery materials structural demand.',
+    note:'VALE ADR. Iron ore + nickel. 6% div. EV structural. EM commodity diversification.' },
 };
 
 // Suggested additions — grounded in actual portfolio gaps.
@@ -2254,6 +2334,74 @@ const SUGGESTION_POOL = [
     diversifies:'Healthcare sector gap. USD but different cycle from BRK-B. Medtech + pharma = recession-proof. ~3.3% dividend.',
     why:'Johnson & Johnson — 62yr dividend growth streak. Post-Kenvue spinoff = pure pharma+medtech. Oncology (Darzalex, Stelara) driving growth. PE ~13× post-talc litigation settlement. Healthcare is the only sector that grows regardless of economic cycle. Stock — 33% CGT.',
     bearCase:'Talc litigation tail risk (ongoing settlement). Patent cliffs on top drugs 2025–28.',
+    conviction:'MEDIUM',
+  },
+
+  // ── 30yr gap fill: EUR luxury — zero USD, structural pricing power ──
+  {
+    ticker:'MC.PA', sector:'Luxury Goods', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Euronext Paris (MC.PA)', degiro:'✓ Available',
+    buyGuide:'0.2–0.5 shares (~€140–360 via fractional) or wait for €600 entry',
+    diversifies:'Luxury goods — zero representation in portfolio. EUR-denominated. Completely uncorrelated to AI/tech cycle. China + EM middle-class structural demand over 30yr.',
+    why:'LVMH — 75 luxury houses (Louis Vuitton, Dior, Moët, Hennessy). Revenue and earnings doubled every 7yr for 30 years. PE ~20× at current prices (multi-year low). Luxury is structurally inflation-proof: price increases never reduce demand for aspirational goods. β0.9, ~2.1% dividend. 30yr CAGR ~12%. Stock — 33% CGT.',
+    bearCase:'China luxury slowdown (30% of revenue). Arnault succession risk. Premium consumer backlash.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'RMS.PA', sector:'Luxury Goods / Ultra-Premium', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Euronext Paris (RMS.PA)', degiro:'✓ Available',
+    buyGuide:'0.1–0.3 shares via fractional (~€200–600) — expensive but worth fractional exposure',
+    diversifies:'Ultra-luxury tier: Hermès is the only consumer company that intentionally limits supply to protect brand. Different mechanism from LVMH. No USD risk.',
+    why:'Hermès — Birkin bags have a 2-year waitlist. Gross margin ~45%. Never discounts. Revenue grew every single year including 2009 and 2020. β0.7. 30yr CAGR ~15% — the best risk-adjusted return of any consumer brand. No equivalent exists. Stock — 33% CGT.',
+    bearCase:'Family ownership dilution risk. Luxury backlash in hyper-inflationary environment.',
+    conviction:'HIGH',
+  },
+
+  // ── 30yr gap fill: EUR infrastructure — water/transport monopolies ──
+  {
+    ticker:'VIE.PA', sector:'Water / Essential Infrastructure', geo:'Europe (FR)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Euronext Paris (VIE.PA)', degiro:'✓ Available',
+    buyGuide:'10–20 shares (~€300–600) — income from day 1',
+    diversifies:'Water infrastructure — a true monopoly sector with zero current representation. EUR-denominated. Municipal contracts locked 20–30yr. Essential: cities cannot switch water providers.',
+    why:'Veolia — world #1 water, waste and energy services. 4.2% dividend yield. Contracts guaranteed by municipal governments for 20–30 years. Inflation pass-through written into contracts. β0.8. Climate change is a structural tailwind (water scarcity). Stock — 33% CGT.',
+    bearCase:'Regulatory price cap risk in France. Rising rates compress utility multiples.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'FER.MC', sector:'Infrastructure / Toll Roads', geo:'Europe (ES)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'BME (FER.MC) or LSE (FGP.L) — both DEGIRO accessible',
+    buyGuide:'10–20 shares (~€300–600)',
+    diversifies:'Toll road infrastructure — 30yr concession contracts, inflation-linked tariffs. EUR-denominated. Zero tech/AI correlation. Heathrow 25% stake = airport infrastructure diversification.',
+    why:'Ferrovial — Heathrow (25%), NTO Dallas, 407 ETR Toronto. Toll revenues are contractually inflation-linked. β0.8, concession expiry dates 2050+. Growing US infrastructure pipeline from IIJA. Stock — 33% CGT.',
+    bearCase:'Traffic volume sensitivity to recessions. Long-dated debt at fixed rates hurt by rate spikes.',
+    conviction:'MEDIUM',
+  },
+
+  // ── 30yr gap fill: EUR semiconductors — IFX fills the non-USD gap ──
+  {
+    ticker:'IFX.DE', sector:'Semiconductors / Industrial', geo:'Europe (DE)', ccy:'EUR',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Xetra (IFX.DE)', degiro:'✓ Available',
+    buyGuide:'20–40 shares (~€500–1,000) — DCA on any dip below €35',
+    diversifies:'EUR-denominated semiconductor — the ONLY major chip company in Europe. Auto/industrial chips (SiC, microcontrollers, power management). Zero USD exposure in semis. Completely different cycle from NVDA/AMD.',
+    why:'Infineon — power semiconductors for EVs, solar inverters, wind turbines. SiC (silicon carbide) is the key EV traction chip: every EV needs 48–100 of them. Market growing 25%/yr. β1.2, ~1.5% dividend. EU Chips Act beneficiary. Stock — 33% CGT.',
+    bearCase:'EV adoption slowdown delays SiC demand ramp. Cyclical semis downturn in industrial end markets.',
+    conviction:'MEDIUM',
+  },
+
+  // ── 30yr gap fill: EM ex-India — Latin America compounders ──────
+  {
+    ticker:'ITUB', sector:'Banking / EM', geo:'Brazil', ccy:'USD (ADR)',
+    priority:'em', bucket:'retirement',
+    exchange:'NYSE ADR (ITUB)', degiro:'✓ Available',
+    buyGuide:'30–50 shares (~€150–250) — cheap entry, high yield',
+    diversifies:'Latin America exposure — zero current EM coverage outside India (HDB). Brazil is the 9th largest economy. Different cycle from US/Europe financials.',
+    why:'Itaú Unibanco — Brazil\'s best-run bank for 30 years. 4% dividend yield. 38M+ retail customers. Digital banking leader in LatAm. PE ~9×. Brazil credit penetration still low vs developed markets = structural growth runway. Stock — 33% CGT.',
+    bearCase:'BRL currency risk (ADR in USD but earnings in BRL). Brazil political/fiscal instability.',
     conviction:'MEDIUM',
   },
 ];
