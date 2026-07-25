@@ -1019,16 +1019,21 @@ function openDrilldown(ticker, positionData) {
     return;
   }
 
-  E('modal-body').innerHTML = `<div class="modal-loading"><div class="spinner"></div>Asking GPT-4o for a Buffett-style analysis…</div>`;
+  E('modal-body').innerHTML = `<div class="modal-loading"><div class="spinner"></div>Loading AI analysis…</div>`;
 
   fetch(`/api/drilldown/${ticker}`)
     .then(r => r.json())
     .then(d => {
-      _drilldownCache[ticker] = d.analysis;
-      renderAnalysis(d.analysis);
+      const text = d.analysis || '';
+      _drilldownCache[ticker] = text;
+      if (text.toLowerCase().includes('quota') || text.toLowerCase().includes('quota reached') || text.toLowerCase().includes('resource_exhausted')) {
+        E('modal-body').innerHTML = '<p style="color:#fbbf24">⚠ AI quota reached. Gemini free tier resets daily; OpenAI needs billing credits. Analysis will resume automatically once quota resets.</p>';
+      } else {
+        renderAnalysis(text);
+      }
     })
     .catch(() => {
-      E('modal-body').innerHTML = '<p style="color:var(--red)">Error loading analysis. Check OPENAI_API_KEY in .env.</p>';
+      E('modal-body').innerHTML = '<p style="color:var(--red)">Network error loading analysis. Check server logs.</p>';
     });
 }
 
@@ -1041,7 +1046,17 @@ function _renderModalChart(ticker) {
   if (_modalChartInstance) { _modalChartInstance.destroy(); _modalChartInstance = null; }
 
   const _draw = (data) => {
-    if (!data || !data.length) return;
+    if (!data || !data.length) {
+      wrap.style.display = 'block';
+      const msg = document.createElement('div');
+      msg.textContent = 'Chart unavailable — Yahoo rate limit. Try again in a minute.';
+      msg.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--muted)';
+      wrap.replaceChildren(msg);
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.id = 'modal-price-chart';
+    wrap.replaceChildren(canvas);
     wrap.style.display = 'block';
     const labels = data.map(d => d.t);
     const prices = data.map(d => d.c);
@@ -2198,6 +2213,48 @@ const SUGGESTION_POOL = [
     why:'Novartis — ~4% dividend yield in CHF, β0.4 (lowest-beta CHF name available). Post-Sandoz spinoff the remaining business has higher margins and a cleaner pipeline. Preferred over Roche (ROG.SW has binary CT-388 Phase 2 risk in 2026–27). A miss there re-rates ROG down hard inside the 3yr house savings window. NOVN avoids that. Stock — 33% CGT.',
     bearCase:'CHF/EUR appreciation reduces EUR return on dividends. Biosimilar competition on blockbusters (Entresto, Cosentyx).',
     conviction:'HIGH — house savings CORE. Preferred CHF pharma over ROG.SW.',
+  },
+
+  // ── Retirement quality compounders: dilute BRK-B USD and bulk retirement ──
+  {
+    ticker:'V', sector:'Payments / Financials', geo:'US', ccy:'USD',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'NYSE (V)', degiro:'✓ Available',
+    buyGuide:'1–2 shares (~€270–540) — DCA alongside BRK-B',
+    diversifies:'Payments network — not a bank, zero credit risk. Different mechanism from BRK-B\'s insurance/railroad core. Complements without doubling up on financials thesis.',
+    why:'Visa — toll road on 4.2B cards. Revenue grows with every transaction globally. ~0.8% dividend but 20%+ EPS growth. No consumer default risk (Visa never lends). Recession-resilient: even in downturns people still transact. PE ~28× justified by double-digit compounder track record. Stock — 33% CGT.',
+    bearCase:'Regulatory fee caps in EU/US. Stablecoin/CBDC disintermediation risk over 10yr horizon.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'MA', sector:'Payments / Financials', geo:'US', ccy:'USD',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'NYSE (MA)', degiro:'✓ Available',
+    buyGuide:'1 share (~€570) — strong pair with V for payment duopoly',
+    diversifies:'Mastercard — duopoly with Visa, different contract mix (more EM exposure). Adds cross-border transaction revenue stream absent from BRK-B.',
+    why:'Mastercard — higher EM growth exposure than Visa (more revenue from cross-border). ~0.6% dividend, 20%+ EPS growth, PE ~32×. Visa+Mastercard together own 90%+ of global card network. Pricing power locked in. Stock — 33% CGT.',
+    bearCase:'Same regulatory risk as Visa. PE is higher — more sensitive to rate shock.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'KO', sector:'Consumer Staples', geo:'US', ccy:'USD',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'NYSE (KO)', degiro:'✓ Available',
+    buyGuide:'5–10 shares (~€320–640) — classic BRK-B parallel (Buffett\'s top holding)',
+    diversifies:'Consumer staples — negative correlation to tech/AI cycle. Dividend income stream. 200+ countries distribution moat. Pairs with Nestlé (NESN.SW) for staples bucket.',
+    why:'Coca-Cola — 62 consecutive years of dividend growth. ~3.1% yield. Buffett holds $25B. Pricing power: raised prices during 2022–24 inflation and kept volume. Brand moat is irreplaceable. β0.6. Stock — 33% CGT.',
+    bearCase:'Health-conscious consumer shift to no-sugar/water. Emerging market FX headwinds.',
+    conviction:'HIGH',
+  },
+  {
+    ticker:'JNJ', sector:'Healthcare / Pharma', geo:'US', ccy:'USD',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'NYSE (JNJ)', degiro:'✓ Available',
+    buyGuide:'3–5 shares (~€480–800) — fills healthcare gap in retirement bucket',
+    diversifies:'Healthcare sector gap. USD but different cycle from BRK-B. Medtech + pharma = recession-proof. ~3.3% dividend.',
+    why:'Johnson & Johnson — 62yr dividend growth streak. Post-Kenvue spinoff = pure pharma+medtech. Oncology (Darzalex, Stelara) driving growth. PE ~13× post-talc litigation settlement. Healthcare is the only sector that grows regardless of economic cycle. Stock — 33% CGT.',
+    bearCase:'Talc litigation tail risk (ongoing settlement). Patent cliffs on top drugs 2025–28.',
+    conviction:'MEDIUM',
   },
 ];
 
