@@ -190,7 +190,7 @@ def _fetch_fundamentals(ticker: str) -> dict:
             "currency": info.get("currency", "USD"),
             "52w_high": info.get("fiftyTwoWeekHigh"),
             "52w_low": info.get("fiftyTwoWeekLow"),
-            "52w_change": fmt_pct(info.get("52WeekChange")),
+            "52w_change": fmt_pct(info.get("fiftyTwoWeekChange")),
             "beta": fmt_x(info.get("beta"), ""),
             "trailing_pe": fmt_x(info.get("trailingPE")),
             "forward_pe": fmt_x(info.get("forwardPE")),
