@@ -829,11 +829,11 @@ class Scheduler:
             tickers = list(positions.keys())
             quotes = fetch_quotes(tickers)
             missing_price = [t for t in tickers if quotes.get(t, {}).get("price") is None]
-            stale_price = [t for t in tickers if quotes.get(t, {}).get("price") is not None]
+            live_price = [t for t in tickers if quotes.get(t, {}).get("price") is not None]
             if missing_price:
                 issues.append(f"❌ No price for: {', '.join(missing_price)}")
-            if stale_price:
-                ok.append(f"✅ Prices OK: {', '.join(stale_price)}")
+            if live_price:
+                ok.append(f"✅ Prices OK: {', '.join(live_price)}")
 
         # 3. FX rates
         fx = self.state.get("fx_cache", {})
