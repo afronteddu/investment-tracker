@@ -54,7 +54,8 @@ def _fetch_history_via_session(ticker: str, period_days: int, interval: str) -> 
         if r.status_code in (401, 403):
             from src.quotes import _init_session
             _init_session()
-            params["crumb"] = _crumb
+            import src.quotes as _q
+            params["crumb"] = _q._crumb
             r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
         if r.status_code != 200:
             return []
