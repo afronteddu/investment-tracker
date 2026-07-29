@@ -597,7 +597,8 @@ class Scheduler:
         if movers:
             for pct, ticker, name, price, currency in movers[:6]:
                 arrow = "🟢" if pct >= 0 else "🔴"
-                lines.append(f"{arrow} {ticker} ({name}): {pct:+.1f}% @ {price:.2f} {currency}")
+                price_str = f"{price:.2f}" if price is not None else "N/A"
+                lines.append(f"{arrow} {ticker} ({name}): {pct:+.1f}% @ {price_str} {currency}")
         else:
             lines.append("No significant moves (all within ±3%).")
 
