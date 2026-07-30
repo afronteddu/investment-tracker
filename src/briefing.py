@@ -5,7 +5,13 @@ Uses Gemini (free) if GOOGLE_API_KEY is set, falls back to OpenAI.
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+_DUBLIN_TZ = timezone(timedelta(hours=1))  # BST (UTC+1 summer); close enough for date context in AI prompts
+
+
+def _now_dublin() -> datetime:
+    return datetime.now(_DUBLIN_TZ)
 
 
 _GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
@@ -112,7 +118,7 @@ def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dic
         scanner_lines.append(f"- {s['ticker']}: {s['day_pct']:+.2f}% today{week_str}, price {price_str} {s.get('currency','')}{extra_str}")
 
     prompt = f"""You are a personal investment advisor for a retail investor based in Dublin, Ireland.
-Today is {datetime.now().strftime('%A %d %B %Y')}.
+Today is {_now_dublin().strftime('%A %d %B %Y')}.
 
 Portfolio:
 {chr(10).join(portfolio_lines)}
@@ -275,7 +281,7 @@ def generate_challenge(
         price_str = f"Live: {live_quote['price']:.2f} {live_quote.get('currency','')} ({day_pct:+.1f}% today)"
 
     prompt = f"""You are a rigorous investment analyst with a contrarian mindset.
-Today is {datetime.now().strftime('%A %d %B %Y')}. Investor is in Dublin, Ireland.
+Today is {_now_dublin().strftime('%A %d %B %Y')}. Investor is in Dublin, Ireland.
 
 PORTFOLIO CONTEXT (total €{total_value:,.0f} | P&L {total_pnl_pct:+.1f}%):
 {positions_text}
@@ -327,7 +333,7 @@ def generate_drilldown(ticker: str, position: dict | None, quote: dict | None) -
         analyst_target = fundamentals.get("analyst_target")
         upside = f"{((analyst_target/price)-1)*100:+.1f}%" if price and analyst_target else "N/A"
         fundamentals_block = f"""
-LIVE MARKET DATA (as of {datetime.now().strftime('%d %b %Y')}):
+LIVE MARKET DATA (as of {_now_dublin().strftime('%d %b %Y')}):
 - Sector: {fundamentals['sector']} | Industry: {fundamentals['industry']}
 - Market Cap: {fundamentals['market_cap']} | Price: {price} {currency}
 - 52-week range: {fundamentals['52w_low']} – {fundamentals['52w_high']} | 52w change: {fundamentals['52w_change']}
@@ -419,7 +425,7 @@ HOUSE (capital preservation 2028-2029, Dublin FTB purchase ~€500k), MOONSHOT (
 Irish tax: 33% CGT on stocks (stocks only — never ETFs due to 41% exit tax + deemed disposal)."""
 
     prompt = f"""You are a senior equity analyst briefing a retail investor in Dublin, Ireland on a watchlist stock they are considering buying.
-Today is {datetime.now().strftime('%d %b %Y')}.
+Today is {_now_dublin().strftime('%d %b %Y')}.
 
 TICKER: {ticker} ({live_name})
 {fundamentals_block}
