@@ -7,7 +7,11 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone, timedelta
 
-_DUBLIN_TZ = timezone(timedelta(hours=1))  # BST (UTC+1 summer); close enough for date context in AI prompts
+try:
+    from zoneinfo import ZoneInfo
+    _DUBLIN_TZ = ZoneInfo("Europe/Dublin")  # DST-aware: UTC+1 (summer) / UTC+0 (winter)
+except ImportError:
+    _DUBLIN_TZ = timezone(timedelta(hours=1))  # type: ignore[assignment]  # Python < 3.9 fallback (BST)
 
 
 def _now_dublin() -> datetime:
