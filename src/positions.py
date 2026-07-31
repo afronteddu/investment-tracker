@@ -162,6 +162,12 @@ TICKER_NAMES = {
 # ETFs/ETCs — Irish 41% exit tax + deemed disposal every 8 years makes trimming
 # on daily moves punitive, so alerts on these are noise. Used by scheduler to
 # suppress portfolio day-move alerts (still counted in P&L, still charted).
+# Ticker overrides for Yahoo Finance fetch — display ticker → fetch ticker
+# INVEB.ST is not recognised by Yahoo; INVE-B.ST is the working symbol.
+YAHOO_FETCH_TICKER = {
+    "INVEB.ST": "INVE-B.ST",
+}
+
 ETF_TICKERS = frozenset({
     "IGLN.L", "ISLN.L",              # physical gold/silver ETCs
     "IWDA.AS", "VUSA.AS", "IMAE.AS", # equity index ETFs
