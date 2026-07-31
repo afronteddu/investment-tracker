@@ -62,8 +62,10 @@ def _ensure_session():
 
 
 def _yahoo_quote(ticker: str) -> dict:
+    from src.positions import YAHOO_FETCH_TICKER
     _ensure_session()
-    url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+    fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
+    url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
     params = {"interval": "1d", "range": "5d"}
     if _crumb:
         params["crumb"] = _crumb
