@@ -841,7 +841,7 @@ class Scheduler:
         if not fx or "USD" not in fx:
             issues.append("❌ FX rates missing (USD/EUR unavailable)")
         else:
-            ok.append(f"✅ FX OK: 1 USD = {fx.get('USD', '?')} EUR⁻¹")
+            ok.append(f"✅ FX OK: 1 USD = {fx.get('USD', '?')} EUR")
 
         # 4. History cache populated
         history = self.state.get("history_cache")
