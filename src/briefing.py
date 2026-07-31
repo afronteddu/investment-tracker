@@ -131,7 +131,7 @@ Watchlist scan:
 {chr(10).join(scanner_lines)}
 
 Investment goals and bucket structure:
-1. RETIREMENT — Existing ETF holdings (IWDA, VUSA, IMAE, AEME, IEAG) are held but NO new ETF/ETC purchases — Irish 41% exit tax + 8yr deemed disposal makes them tax-inefficient vs stocks (33% CGT). BRK-B (Berkshire Hathaway) is a stock (33% CGT, NOT an ETF). Long-term hold, no active trading.
+1. RETIREMENT — Existing ETF holdings (IWDA, VUSA, IMAE, AEME, IEAG) are held but NO new ETF/ETC purchases — Irish 41% exit tax + 8yr deemed disposal makes them tax-inefficient vs stocks (33% CGT). BRK-B and INVEB.ST are stocks (33% CGT, NOT ETFs). Long-term hold, monthly DCA. INVEB.ST (Investor AB B, Wallenberg family holding company, Stockholm) is the non-USD BRK-B pair: 24-company portfolio across EU industrials/healthcare/defence/tech, 110yr family stewardship, 16.5% self-reported 20yr CAGR. First position: 13 shares @ €37.48 bought 31 Jul 2026 via Tradegate (IVSD). Monthly DCA target alongside BRK-B.
 2. GROWTH — Medium-term stock picks (NVDA, ASML, SNDK), 6-12 month horizon.
 3. HIGH CONVICTION (HC-1) — AI/tech bets (NBIS, VRT, APLD). All tranches fully deployed. Target €15–20k exit in 6–12 months. Position locked, no further additions.
 4. HIGH CONVICTION (HC-2) — NEW orthogonal bucket, €2,000 total. Deployment in progress (NOT correlated to HC-1 AI capex theme). Three picks from adversarial research (Jun 2026):

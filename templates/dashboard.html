@@ -1862,6 +1862,7 @@ const TICKER_CCY = {
   'ASML.AS':'EUR','IMAE.AS':'EUR','IWDA.AS':'EUR','VUSA.AS':'EUR','AEME.PA':'EUR','IEAG.AS':'EUR',
   'IGLN.L':'GBP','ISLN.L':'GBP',
   // Watchlist / suggestions
+  'INVEB.ST':'SEK',
   'NOVO-B.CO':'DKK','SAP':'EUR','SAP.DE':'EUR','OR.PA':'EUR','AIR.PA':'EUR','SIE.DE':'EUR','MUV2.DE':'EUR',
   'TTE.PA':'EUR','IBE.MC':'EUR','LDO.MI':'EUR','RHM.DE':'EUR',
   'SHEL':'USD','SHEL.L':'GBP','BP.L':'GBP','RIO.L':'GBP','BA.L':'GBP',
@@ -2293,6 +2294,18 @@ const SUGGESTION_POOL = [
     why:'Novartis — ~4% dividend yield in CHF, β0.4 (lowest-beta CHF name available). Post-Sandoz spinoff the remaining business has higher margins and a cleaner pipeline. Preferred over Roche (ROG.SW has binary CT-388 Phase 2 risk in 2026–27). A miss there re-rates ROG down hard inside the 3yr house savings window. NOVN avoids that. Stock — 33% CGT.',
     bearCase:'CHF/EUR appreciation reduces EUR return on dividends. Biosimilar competition on blockbusters (Entresto, Cosentyx).',
     conviction:'HIGH — house savings CORE. Preferred CHF pharma over ROG.SW.',
+  },
+
+  // ── #1 RETIREMENT DCA PAIR — BRK-B non-USD compounder (109-agent adversarial research Jul 2026) ──
+  {
+    ticker:'INVEB.ST', sector:'Diversified Holding Company', geo:'EU/Sweden', ccy:'SEK',
+    priority:'brk_fix', bucket:'retirement',
+    exchange:'Nasdaq Stockholm (INVEB.ST) / Tradegate EUR (IVSD)', degiro:'✓ IVSD on Tradegate — €3.90, no handling fee, no FX cost',
+    buyGuide:'Monthly DCA €500 alongside BRK-B — ALREADY STARTED: 13 shares bought 31 Jul 2026 @ €37.48',
+    diversifies:'SEK-denominated. 24-company portfolio: EU industrials (ABB, Atlas Copco, Epiroc), healthcare (AstraZeneca, Sobi), defence (Saab), financials (SEB, Nasdaq Inc.), PE (EQT). Fills every gap BRK-B leaves: non-USD, EU, healthcare, defence, industrial automation.',
+    why:'Investor AB — Wallenberg family holding since 1916, 110yr continuous stewardship. 23% equity / 50%+ voting (dual-class). Self-reported 20yr average annual return 16.5%. +55% YTD 2026, +34% in 3m. Structurally identical to BRK-B: family-controlled, multi-vertical, no dividend pressure, permanent capital. The non-USD BRK-B equivalent for a 20-30yr Irish retirement compounder. 33% CGT on disposal only.',
+    bearCase:'SEK/EUR FX risk over decades (minor for long DCA). Premium to NAV compressed — was 20% discount, now ~6-8% (Jan 2026). Sweden macro exposure. Self-reported return methodology not independently verified.',
+    conviction:'HIGHEST — primary retirement DCA target alongside BRK-B',
   },
 
   // ── Retirement quality compounders: dilute BRK-B USD and bulk retirement ──

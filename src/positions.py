@@ -32,6 +32,8 @@ ISIN_TO_TICKER = {
     "US46125A1007": "LUNR",       # Intuitive Machines (NASA lunar)
     "US09263B2079": "BKSY",       # BlackSky Technology (satellite ISR)
     "US81758H1068": "SERV",       # Serve Robotics (autonomous delivery)
+    # Retirement compounder — 109-agent adversarial deep research Jul 2026
+    "SE0015811963": "INVEB.ST",   # Investor AB B (Wallenberg, Stockholm) — BRK-B non-USD pair
 }
 
 TICKER_NAMES = {
@@ -153,6 +155,8 @@ TICKER_NAMES = {
     "RCAT":  "Red Cat Holdings",
     "LUNR":  "Intuitive Machines",
     "BKSY":  "BlackSky Technology",
+    # Retirement compounder — DCA pair to BRK-B, started Jul 2026
+    "INVEB.ST": "Investor AB B",
 }
 
 # ETFs/ETCs — Irish 41% exit tax + deemed disposal every 8 years makes trimming
@@ -173,6 +177,7 @@ BUCKET_MAP = {
     "NVDA": "growth",
     "ASML.AS": "growth",
     "BRK-B": "retirement",
+    "INVEB.ST": "retirement",
     "RCAT": "hc_3",
     "LUNR": "hc_3",
     "BKSY": "hc_3",
