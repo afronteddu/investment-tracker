@@ -165,7 +165,8 @@ TICKER_NAMES = {
 # Ticker overrides for Yahoo Finance fetch — display ticker → fetch ticker
 # INVEB.ST is not recognised by Yahoo; INVE-B.ST is the working symbol.
 YAHOO_FETCH_TICKER = {
-    "INVEB.ST": "IVSD.F",
+    "INVEB.ST": "IVSD.F",   # bought Tradegate EUR — Frankfurt EUR listing
+    "NVDA":     "NVD.DE",   # bought Xetra EUR — use Xetra EUR quote, not USD + FX
 }
 
 ETF_TICKERS = frozenset({
