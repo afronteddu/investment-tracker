@@ -49,7 +49,9 @@ def _fetch_history_via_session(ticker: str, period_days: int, interval: str) -> 
     if _crumb:
         params["crumb"] = _crumb
     try:
-        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+        from src.positions import YAHOO_FETCH_TICKER
+        fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
+        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
         r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
         if r.status_code in (401, 403):
             from src.quotes import _init_session
