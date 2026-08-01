@@ -149,7 +149,13 @@ def get_fx_rates() -> dict[str, float]:
     if now - _fx_cache_time < FX_TTL and _fx_cache:
         return dict(_fx_cache)
 
-    for pair, key, invert in [("EURUSD=X", "USD", True), ("GBPEUR=X", "GBP", False), ("CHFEUR=X", "CHF", False), ("DKKEUR=X", "DKK", False)]:
+    for pair, key, invert in [
+        ("EURUSD=X", "USD", True),
+        ("GBPEUR=X", "GBP", False),
+        ("CHFEUR=X", "CHF", False),
+        ("DKKEUR=X", "DKK", False),
+        ("SEKEUR=X", "SEK", False),
+    ]:
         q = _yahoo_quote(pair)
         price = q.get("price")
         if price:
@@ -159,6 +165,7 @@ def get_fx_rates() -> dict[str, float]:
     _fx_cache.setdefault("GBP", 1.15)
     _fx_cache.setdefault("CHF", 1.05)
     _fx_cache.setdefault("DKK", 0.134)
+    _fx_cache.setdefault("SEK", 0.0907)
     _fx_cache["EUR"] = 1.0
     _fx_cache_time = now
     return dict(_fx_cache)
