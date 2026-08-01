@@ -157,6 +157,7 @@ async def lifespan(app: FastAPI):
     state["scanner_cache"] = []
     state["ws_payload_cache"] = None
     state["history_cache"] = None
+    state["bucket_strategy_cache"] = {}   # bucket → {text, ts}
     # All network fetches happen in scheduler background tasks
     scheduler = Scheduler(state)
     task = asyncio.create_task(scheduler.run())
@@ -661,6 +662,35 @@ async def ai_health(request: Request):
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(None, ai_health_check)
     return result
+
+
+@app.get("/api/suggestions/bucket")
+async def bucket_strategy(bucket: str, request: Request):
+    """AI strategy analysis for a specific bucket. Cached; refreshed on demand or weekly."""
+    if (r := _auth_required(request)):
+        return r
+    valid_buckets = {"retirement", "growth", "high_conviction", "hc_3"}
+    if bucket not in valid_buckets:
+        return {"error": f"Unknown bucket. Valid: {', '.join(valid_buckets)}"}
+
+    cache = state.get("bucket_strategy_cache", {})
+    cached = cache.get(bucket)
+    force = request.query_params.get("force", "0") == "1"
+
+    if cached and not force:
+        return {"bucket": bucket, "analysis": cached["text"], "ts": cached["ts"], "cached": True}
+
+    from src.briefing import generate_bucket_strategy
+    portfolio_rows = _build_portfolio_data()
+    loop = asyncio.get_event_loop()
+    text = await loop.run_in_executor(None, generate_bucket_strategy, bucket, portfolio_rows)
+
+    import time as _t
+    ts = int(_t.time())
+    if "bucket_strategy_cache" not in state:
+        state["bucket_strategy_cache"] = {}
+    state["bucket_strategy_cache"][bucket] = {"text": text, "ts": ts}
+    return {"bucket": bucket, "analysis": text, "ts": ts, "cached": False}
 
 
 @app.post("/api/suggest/challenge")

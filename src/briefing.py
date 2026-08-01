@@ -322,6 +322,240 @@ Max 400 words total. No disclaimers. Be direct."""
     return _ask(prompt, max_tokens=600)
 
 
+def generate_bucket_strategy(bucket: str, portfolio_rows: list[dict]) -> str:
+    """Deep, adversarially-tested strategy analysis for a specific portfolio bucket.
+
+    Each bucket gets a fully tailored prompt with:
+    - Current positions, P&L, cost basis
+    - Timeline and exit strategy
+    - Cautious multi-hypothesis analysis (bull/bear/base)
+    - Specific action guidance for each position
+    - Irish tax rules applied throughout
+    """
+
+    bucket_rows = [p for p in portfolio_rows if p.get("bucket") == bucket]
+    all_rows = portfolio_rows
+
+    total_portfolio = sum(p.get("current_value_eur", 0) or 0 for p in all_rows)
+    bucket_value = sum(p.get("current_value_eur", 0) or 0 for p in bucket_rows)
+    bucket_cost = sum(p.get("total_cost_eur", 0) or 0 for p in bucket_rows)
+    bucket_pnl_pct = (bucket_value - bucket_cost) / bucket_cost * 100 if bucket_cost else 0
+    bucket_pct_of_portfolio = bucket_value / total_portfolio * 100 if total_portfolio else 0
+
+    positions_text = "\n".join(
+        f"  • {p['ticker']} ({p.get('name','')}) — {p['shares']:.1f}sh @ avg €{p['avg_cost_eur']:.2f},"
+        f" value €{p.get('current_value_eur', 0):,.0f},"
+        f" P&L {p.get('pnl_pct', 0):+.1f}%,"
+        f" RSI {p.get('rsi') or 'N/A'} ({p.get('rsi_signal','') or 'N/A'}),"
+        f" first buy {p.get('first_buy_date','?')}"
+        for p in bucket_rows
+    )
+
+    all_text = "\n".join(
+        f"  {p['ticker']} ({p['bucket']}) €{p.get('current_value_eur',0):,.0f} {p.get('pnl_pct',0):+.1f}%"
+        for p in all_rows
+    )
+
+    today_str = _now_dublin().strftime("%A %d %B %Y")
+
+    # Per-bucket tailored prompt
+    if bucket == "retirement":
+        prompt = f"""Today is {today_str}. You are a seasoned retirement portfolio strategist for a Dublin, Ireland investor.
+
+RETIREMENT BUCKET CONTEXT:
+- Value: €{bucket_value:,.0f} ({bucket_pct_of_portfolio:.1f}% of total portfolio €{total_portfolio:,.0f})
+- Cost: €{bucket_cost:,.0f} | Unrealised P&L: {bucket_pnl_pct:+.1f}%
+- Goal: €100,000 by December 2030 via monthly DCA
+- Strategy: 20-30 year wealth compounding, capital preservation, no leverage
+
+POSITIONS IN THIS BUCKET:
+{positions_text}
+
+FULL PORTFOLIO (all buckets):
+{all_text}
+
+CRITICAL RULES (Ireland):
+- Stocks only: 33% CGT on gains, only on disposal. ETFs = 41% exit tax + 8yr deemed disposal. NEVER buy new ETFs.
+- Legacy UCITS ETFs (IWDA, VUSA, IMAE, AEME, IEAG): HOLD — do not sell, 41% would crystallise.
+- BRK-B and INVEB.ST are STOCKS, NOT ETFs — 33% CGT applies, no deemed disposal.
+- INVEB.ST = Investor AB B (Wallenberg family, Sweden): started DCA 31 Jul 2026, target pair with BRK-B monthly.
+
+Run THREE independent hypotheses and stress-test the bucket:
+
+HYPOTHESIS 1 (Bull): What is the base case — does the retirement bucket reach €100k by Dec 2030?
+HYPOTHESIS 2 (Bear): What is the worst-case scenario — market correction, BRK-B concentration blowup, SEK collapse vs EUR?
+HYPOTHESIS 3 (Cautious): Is the bucket too concentrated in USD and legacy ETFs? What would a cautious Vanguard-trained advisor say?
+
+Then give your synthesis.
+
+Respond using EXACTLY these sections:
+
+## Bucket Status
+One paragraph: current value, P&L, % of portfolio, on-track vs goal, critical concentrations.
+
+## Position-by-Position Guidance
+For EACH position in the bucket: one line — HOLD/DCA/TRIM/REVIEW and one specific reason based on live data.
+
+## Hypothesis Test
+3 bullets: Bull / Bear / Cautious — each in one concise sentence with a specific number.
+
+## #1 Priority Action
+The single most important action to take in the next 30 days. Be specific: ticker, amount, trigger.
+
+## Next Addition
+Based on gaps (FX concentration, sector, geography), what is the best next stock to add? Give a specific buy guide. Must be a stock (33% CGT), not an ETF. Consider: MUV2.DE, NESN.SW, TTE.PA, AIR.PA, KO, V, JNJ, MC.PA, RMS.PA.
+
+Max 450 words total. No disclaimers. Be direct and specific."""
+
+    elif bucket == "growth":
+        prompt = f"""Today is {today_str}. You are a growth equity strategist for a Dublin, Ireland investor.
+
+GROWTH BUCKET CONTEXT:
+- Value: €{bucket_value:,.0f} ({bucket_pct_of_portfolio:.1f}% of total portfolio €{total_portfolio:,.0f})
+- Cost: €{bucket_cost:,.0f} | Unrealised P&L: {bucket_pnl_pct:+.1f}%
+- Goal: €30k realistic / €50k aspirational by December 2028
+- Strategy: 6-18 month horizon, AI-cycle timed, trim on extended valuations
+
+POSITIONS IN THIS BUCKET:
+{positions_text}
+
+FULL PORTFOLIO (all buckets):
+{all_text}
+
+CRITICAL RULES (Ireland): 33% CGT on any sale. Each trim triggers a taxable event. Plan trims efficiently.
+
+Run THREE independent hypotheses:
+
+HYPOTHESIS 1 (Bull): AI capex supercycle continues — NVDA, ASML hold and grind higher. How much upside is left?
+HYPOTHESIS 2 (Bear): Multiple compression — P/E normalises to 20-25×. What is the downside to each position?
+HYPOTHESIS 3 (Cautiou): Is the growth bucket too correlated? NVDA, ASML, SNDK are all semiconductor-adjacent — if semis roll over, all three fall together.
+
+Then give your synthesis.
+
+Respond using EXACTLY these sections:
+
+## Bucket Status
+Current P&L, concentration risks, AI-cycle positioning.
+
+## Position-by-Position Guidance
+For EACH growth position: HOLD/ADD DIP/TRIM/LET RUN — with the specific trigger price or RSI condition.
+
+## Hypothesis Test
+3 bullets: Bull / Bear / Cautious — each one sentence with a specific number or percentage.
+
+## #1 Priority Action
+Most important action in the next 30 days. Ticker, size, trigger.
+
+## Trim Strategy
+If any position is extended (RSI > 70 or P&L > 50%), give the specific trim plan: % to trim, at what price, CGT note.
+
+Max 400 words. Direct and specific. No disclaimers."""
+
+    elif bucket == "high_conviction":
+        prompt = f"""Today is {today_str}. You are a high-conviction technology equity analyst for a Dublin, Ireland investor.
+
+HC-1 BUCKET CONTEXT:
+- Value: €{bucket_value:,.0f} ({bucket_pct_of_portfolio:.1f}% of total portfolio €{total_portfolio:,.0f})
+- Cost: €{bucket_cost:,.0f} | Unrealised P&L: {bucket_pnl_pct:+.1f}%
+- Exit target: €15,000–€20,000 (Nov 2026 – May 2027 exit window)
+- Strategy: Position LOCKED — no further additions. Thesis: AI infrastructure buildout.
+- NBIS (Nebius Group, GPU cloud), VRT (Vertiv, data centre power), APLD (Applied Digital, AI hosting)
+
+POSITIONS IN THIS BUCKET:
+{positions_text}
+
+FULL PORTFOLIO (all buckets):
+{all_text}
+
+CRITICAL RULES (Ireland): 33% CGT on any sale. Exit window: Nov 2026 – May 2027. Each position should be exited in one tranche unless there is a strong reason to stagger.
+
+Run THREE independent hypotheses:
+
+HYPOTHESIS 1 (Bull): AI capex continues through 2027 — Microsoft/Google/Meta/Amazon data centre spend doesn't slow. All 3 positions hit price targets. What is the P&L outcome?
+HYPOTHESIS 2 (Bear): AI capex bubble — hyperscalers cut CAPEX 30%+ in H1 2027. Revenue misses across HC-1. What is the maximum drawdown from here?
+HYPOTHESIS 3 (Thesis-broken): At what specific event does the HC-1 thesis break for each name (NBIS, VRT, APLD)? What is the signal?
+
+Then synthesise.
+
+Respond using EXACTLY these sections:
+
+## Bucket Status
+Exit window countdown, current multiplier vs cost, gap to €15k/€20k targets.
+
+## Position-by-Position Guidance
+For each HC-1 position: current thesis status (INTACT/WEAKENING/BROKEN), specific exit trigger (price, event, or date).
+
+## Hypothesis Test
+3 bullets: Bull / Bear / Thesis-broken — each one sentence with a specific number.
+
+## Exit Plan
+Specific exit plan for each position: recommended exit price, exit window (by month), what to do if price is below cost at Nov 2026.
+
+## Risk Flag
+The single biggest risk to this bucket over the next 6 months. One sentence, specific.
+
+Max 400 words. Direct. No disclaimers."""
+
+    elif bucket == "hc_3":
+        prompt = f"""Today is {today_str}. You are a speculative deep-tech equity analyst for a Dublin, Ireland investor.
+
+HC-3 BUCKET CONTEXT (Space / Defence / Robotics — venture-style):
+- Value: €{bucket_value:,.0f} ({bucket_pct_of_portfolio:.1f}% of total portfolio €{total_portfolio:,.0f})
+- Cost: €{bucket_cost:,.0f} | Unrealised P&L: {bucket_pnl_pct:+.1f}%
+- Exit target: €10,000–€20,000 (Jul 2027 – Jun 2028 exit window)
+- Strategy: HIGH RISK, binary catalysts, small size. NO new additions.
+- RCAT (Red Cat Holdings, military drones), LUNR (Intuitive Machines, NASA lunar), BKSY (BlackSky, satellite ISR), SERV (Serve Robotics, NVDA-backed delivery)
+- Context: ALL four names are in drawdown (-20% to -42%)
+
+POSITIONS IN THIS BUCKET:
+{positions_text}
+
+CRITICAL RULES (Ireland): 33% CGT on any gain. These are speculative — treat as venture capital: either hold to target or cut losses at thesis break.
+
+Run THREE independent hypotheses — be especially cautious given current drawdowns:
+
+HYPOTHESIS 1 (Recovery): What would need to happen for each position to recover to cost basis? Specific catalyst per ticker.
+HYPOTHESIS 2 (Total loss): What is the scenario where one or more of these goes to zero? Assign a probability per ticker.
+HYPOTHESIS 3 (Partial exit): Given the drawdowns, should any position be cut now to stop the bleeding — or does the thesis remain intact?
+
+Then synthesise with maximum caution.
+
+Respond using EXACTLY these sections:
+
+## Bucket Status
+Current drawdown severity, distance to targets, most vulnerable position.
+
+## Position-by-Position Guidance
+For each HC-3 position: HOLD/CUT/AVERAGE DOWN — with specific thesis status and the catalyst to watch.
+
+## Hypothesis Test
+3 bullets: Recovery / Total-loss / Partial-exit — each one sentence with specific numbers.
+
+## Hardest Cut Decision
+Is any single position a strong candidate for cutting now (thesis broken, stop hit, capital better deployed elsewhere)? Be direct — state the ticker and the reason.
+
+## Catalyst Calendar
+List the most important upcoming binary catalysts for each HC-3 position (earnings dates, mission dates, contract awards). Any within 60 days?
+
+Max 400 words. Direct and cautious. No false hope."""
+
+    else:
+        prompt = f"""Today is {today_str}. You are analysing the '{bucket}' bucket of a Dublin Ireland investor's portfolio.
+
+BUCKET CONTEXT:
+- Value: €{bucket_value:,.0f} ({bucket_pct_of_portfolio:.1f}% of total portfolio)
+- Cost: €{bucket_cost:,.0f} | P&L: {bucket_pnl_pct:+.1f}%
+
+POSITIONS:
+{positions_text}
+
+Irish tax rules: 33% CGT on stocks. ETFs 41% exit tax — no new ETF purchases.
+
+Give a brief status (3 bullet points: status, top risk, top action). Max 150 words."""
+
+    return _ask(prompt, max_tokens=800)
+
+
 def generate_drilldown(ticker: str, position: dict | None, quote: dict | None) -> str:
     name = position.get("name", ticker) if position else ticker
     bucket = position.get("bucket", "watchlist") if position else "watchlist"

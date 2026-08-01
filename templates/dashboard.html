@@ -667,7 +667,8 @@
     <div class="section-header" style="margin-top:0">
       <span class="section-title">Suggested Additions</span>
       <span class="muted" style="font-size:11px">to improve diversification</span>
-      <span id="ai-health-badge" style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:#ffffff10;color:var(--muted)">AI ···</span>
+      <button onclick="_loadAllBucketStrategies(true)" style="margin-left:auto;font-size:10px;padding:3px 10px;background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:5px;cursor:pointer;font-weight:700">Refresh AI ↻</button>
+      <span id="ai-health-badge" style="margin-left:8px;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:#ffffff10;color:var(--muted)">AI ···</span>
     </div>
     <div id="strat-suggestions"></div>
   </div>
@@ -2851,16 +2852,35 @@ function renderStrategy(positions, lifetime) {
   ${hc3Rows}
   <div style="font-size:11px;color:var(--muted);margin-top:6px">Exit window: Jul 2027 – Jun 2028 · Need ${hc3MultLow.toFixed(1)}× for €${(HC3_EXIT_LOW/1000).toFixed(0)}k · ${hc3MultHigh.toFixed(1)}× for €${(HC3_EXIT_HIGH/1000).toFixed(0)}k · No new additions.</div>`;
 
-  E('strat-buckets').innerHTML = [
-    { title:'🛡️ Retirement / Defensive', color:'#60a5fa', pct:retPct, tickers:retPos.map(p=>p.ticker).join(' · '), body:retAction },
-    { title:'📈 Growth', color:'#34d399', pct:growPct, tickers:growPos.map(p=>p.ticker).join(' · '), body:growAction },
-    { title:'🚀 HC-1 · AI Infra', color:'#f472b6', pct:hcPct, tickers:hcPos.map(p=>p.ticker).join(' · '), body:hcAction },
-    { title:'🛰️ HC-3 · Space/Defence', color:'#f87171', pct:hc3Pct, tickers:hc3Pos.map(p=>p.ticker).join(' · '), body:hc3Action },
-  ].map(c => `<div class="strat-card" style="border-color:${c.color}20">
+  const _bucketCards = [
+    { title:'🛡️ Retirement / Defensive', color:'#60a5fa', pct:retPct, bucket:'retirement', tickers:retPos.map(p=>p.ticker).join(' · '), body:retAction },
+    { title:'📈 Growth', color:'#34d399', pct:growPct, bucket:'growth', tickers:growPos.map(p=>p.ticker).join(' · '), body:growAction },
+    { title:'🚀 HC-1 · AI Infra', color:'#f472b6', pct:hcPct, bucket:'high_conviction', tickers:hcPos.map(p=>p.ticker).join(' · '), body:hcAction },
+    { title:'🛰️ HC-3 · Space/Defence', color:'#f87171', pct:hc3Pct, bucket:'hc_3', tickers:hc3Pos.map(p=>p.ticker).join(' · '), body:hc3Action },
+  ];
+
+  E('strat-buckets').innerHTML = _bucketCards.map(c => `<div class="strat-card" style="border-color:${c.color}20">
     <div class="strat-card-title" style="color:${c.color}">${c.title} <span style="float:right;font-size:13px;font-weight:700;color:${c.color}">${c.pct.toFixed(1)}%</span></div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${c.tickers}</div>
     <div class="strat-card-body">${c.body}</div>
+    <div id="bucket-ai-${c.bucket}" style="margin-top:10px;padding-top:10px;border-top:1px solid ${c.color}20">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:10px;font-weight:700;color:${c.color};text-transform:uppercase;letter-spacing:.05em">AI Analysis</span>
+        <button onclick="_loadBucketStrategy('${c.bucket}',false)"
+          style="font-size:10px;padding:3px 9px;background:${c.color}18;color:${c.color};border:1px solid ${c.color}40;border-radius:4px;cursor:pointer;font-weight:700">
+          Get AI ▶
+        </button>
+      </div>
+      <div id="bucket-ai-text-${c.bucket}" style="font-size:11px;color:var(--muted)">Click "Get AI" for a deep adversarial analysis of this bucket.</div>
+    </div>
   </div>`).join('');
+
+  // Auto-load cached bucket strategies if already stored
+  ['retirement','growth','high_conviction','hc_3'].forEach(b => {
+    if (window._bucketStrategyCache && window._bucketStrategyCache[b]) {
+      _renderBucketStrategy(b, window._bucketStrategyCache[b].text, window._bucketStrategyCache[b].ts);
+    }
+  });
 
   // ── House Fund goal tracker + Monthly Split Planner ────────────
   // Target: €57k (€45k deposit + €12k costs on a €450k home)
@@ -3661,6 +3681,80 @@ function renderStrategy(positions, lifetime) {
     .then(r => r.json())
     .then(priceMap => _renderSuggestions(priceMap))
     .catch(() => {});
+}
+
+// ── Bucket AI Strategy ────────────────────────────────────────────────────────
+window._bucketStrategyCache = window._bucketStrategyCache || {};
+
+function _renderBucketStrategy(bucket, text, ts) {
+  const el = document.getElementById(`bucket-ai-text-${bucket}`);
+  if (!el) return;
+  const ago = ts ? Math.round((Date.now()/1000 - ts) / 3600) : null;
+  const agoStr = ago !== null ? (ago < 1 ? 'just now' : ago < 24 ? `${ago}h ago` : `${Math.round(ago/24)}d ago`) : '';
+
+  // Format markdown → HTML (sections, bold, bullets)
+  const sectionColors = {
+    'Bucket Status': '#60a5fa',
+    'Position-by-Position Guidance': '#a78bfa',
+    'Hypothesis Test': '#fbbf24',
+    '#1 Priority Action': '#4ade80',
+    'Next Addition': '#34d399',
+    'Trim Strategy': '#fbbf24',
+    'Exit Plan': '#fb923c',
+    'Risk Flag': '#f87171',
+    'Hardest Cut Decision': '#f87171',
+    'Catalyst Calendar': '#fbbf24',
+  };
+
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>');
+
+  Object.entries(sectionColors).forEach(([title, color]) => {
+    const esc = title.replace(/[.*+?^${}()|[\]#\\]/g,'\\$&');
+    html = html.replace(
+      new RegExp(`## ${esc}`, 'g'),
+      `</div><div class="bai-section" style="border-left:2px solid ${color};padding:5px 10px;margin-top:6px;background:${color}0d">` +
+      `<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${title}</div>`
+    );
+  });
+  html = html.replace(/\n- /g, '<br>• ').replace(/\n\n/g,'<br>').replace(/\n/g,'<br>');
+  html = html.replace(/^<\/div>/, '');
+  html += '</div>';
+
+  el.innerHTML = `
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${agoStr ? `Updated ${agoStr} · ` : ''}Refresh weekly or on demand</div>
+    <div style="font-size:11px;color:#cbd5e1;line-height:1.6;border-radius:6px;overflow:hidden;border:1px solid #1e293b">${html}</div>`;
+  window._bucketStrategyCache[bucket] = { text, ts };
+}
+
+async function _loadBucketStrategy(bucket, force) {
+  const el = document.getElementById(`bucket-ai-text-${bucket}`);
+  if (!el) return;
+
+  // Show cached if available and not force-refresh
+  if (!force && window._bucketStrategyCache[bucket]) {
+    _renderBucketStrategy(bucket, window._bucketStrategyCache[bucket].text, window._bucketStrategyCache[bucket].ts);
+    return;
+  }
+
+  el.innerHTML = '<div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:12px;height:12px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>Running adversarial analysis…</div>';
+
+  try {
+    const url = `/api/suggestions/bucket?bucket=${encodeURIComponent(bucket)}${force ? '&force=1' : ''}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    _renderBucketStrategy(bucket, data.analysis, data.ts);
+  } catch (e) {
+    el.innerHTML = `<div style="font-size:11px;color:#f87171">AI analysis failed: ${e.message}</div>`;
+  }
+}
+
+function _loadAllBucketStrategies(force) {
+  ['retirement','growth','high_conviction','hc_3'].forEach(b => _loadBucketStrategy(b, force));
 }
 
 // ── AI Challenge (Suggested Additions) ───────────────────────────────────────

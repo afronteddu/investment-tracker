@@ -47,6 +47,7 @@ class Scheduler:
         self._last_quotes_refresh = None
         self._last_history_refresh = None
         self._last_health_check = None
+        self._last_bucket_strategy = None  # weekly refresh (Sunday 10:00)
 
     async def run(self):
         await asyncio.sleep(5)  # let uvicorn finish startup before any fetches
@@ -92,6 +93,12 @@ class Scheduler:
         ):
             self._last_hot_picks_08 = date_str
             await self._refresh_hot_picks()
+
+        # Weekly bucket strategy refresh — Sunday 10:00 Dublin
+        week_str = now.strftime("%Y-W%W")
+        if now.weekday() == 6 and now.hour == 10 and now.minute < 5 and self._last_bucket_strategy != week_str:
+            self._last_bucket_strategy = week_str
+            asyncio.create_task(self._refresh_bucket_strategies())
 
         # EU market open briefing (08:05 Dublin)
         if now.hour == 8 and now.minute >= 5 and self._last_eu_open != date_str and now.weekday() < 5:
@@ -893,3 +900,65 @@ class Scheduler:
             body = "\n".join(ok)
 
         notify(title, body, alert_key=f"health_{now_dublin().strftime('%Y-%m-%d-%H')}")
+
+    async def _refresh_bucket_strategies(self):
+        """Generate AI strategy analysis for all four buckets. Runs weekly on Sunday 10:00 Dublin.
+        Each bucket gets a separate adversarial deep prompt via briefing.generate_bucket_strategy().
+        Results cached in state['bucket_strategy_cache'] and served by /api/suggestions/bucket.
+        """
+        import logging
+        import time as _t
+        _log = logging.getLogger(__name__)
+        _log.info("Weekly bucket strategy refresh starting")
+        loop = asyncio.get_event_loop()
+
+        from src.briefing import generate_bucket_strategy
+        from src.quotes import day_change_pct, currency_to_eur_rate
+        from src.positions import TICKER_NAMES
+
+        positions = self.state.get("positions", {})
+        quotes = self.state.get("quotes_cache", {})
+        signals = self.state.get("signals_cache", {})
+        from src.positions import BUCKET_MAP
+
+        # Build portfolio_rows (same shape as _build_portfolio_data in api.py)
+        portfolio_rows = []
+        for ticker, pos in positions.items():
+            q = quotes.get(ticker, {})
+            price = q.get("price")
+            sig = signals.get(ticker, {})
+            currency = q.get("currency", "EUR")
+            current_value = None
+            pnl_pct = None
+            if price is not None:
+                price_eur = price * currency_to_eur_rate(currency)
+                current_value = round(pos.shares * price_eur, 2)
+                if pos.total_cost_eur > 0:
+                    pnl_pct = round((current_value - pos.total_cost_eur) / pos.total_cost_eur * 100, 2)
+            portfolio_rows.append({
+                **pos.to_dict(),
+                "name": TICKER_NAMES.get(ticker, pos.name),
+                "price": price,
+                "currency": currency,
+                "current_value_eur": current_value,
+                "pnl_pct": pnl_pct,
+                "rsi": sig.get("rsi"),
+                "rsi_signal": sig.get("rsi_signal"),
+            })
+
+        if "bucket_strategy_cache" not in self.state:
+            self.state["bucket_strategy_cache"] = {}
+
+        for bucket in ("retirement", "growth", "high_conviction", "hc_3"):
+            try:
+                text = await loop.run_in_executor(None, generate_bucket_strategy, bucket, portfolio_rows)
+                self.state["bucket_strategy_cache"][bucket] = {"text": text, "ts": int(_t.time())}
+                _log.info("Bucket strategy refreshed: %s (%d chars)", bucket, len(text))
+            except Exception as e:
+                _log.error("Bucket strategy failed for %s: %s", bucket, e)
+
+        notify(
+            f"📊 Weekly bucket strategies refreshed",
+            f"All 4 buckets analysed — retirement, growth, HC-1, HC-3. View in Strategy → Suggested Additions.",
+            alert_key=f"bucket_strategy_{now_dublin().strftime('%Y-W%W')}",
+        )
