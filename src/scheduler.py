@@ -467,14 +467,17 @@ class Scheduler:
         # ── Open positions — parallel fetch ───────────────────────────
         with ThreadPoolExecutor(max_workers=6) as ex:
             futs = {ex.submit(_process_open, t, p): t for t, p in positions.items()}
-            for fut in _as_completed(futs, timeout=90):
-                try:
-                    ticker, entry, val_by_date = fut.result()
-                    if entry:
-                        result.append(entry)
-                        ticker_value_series[ticker] = val_by_date
-                except Exception as e:
-                    print(f"[history] open fut error: {e}")
+            try:
+                for fut in _as_completed(futs, timeout=90):
+                    try:
+                        ticker, entry, val_by_date = fut.result()
+                        if entry:
+                            result.append(entry)
+                            ticker_value_series[ticker] = val_by_date
+                    except Exception as e:
+                        print(f"[history] open fut error: {e}")
+            except Exception as e:
+                print(f"[history] open pool timeout/error: {e} — saving partial results")
 
         # ── Closed positions — parallel fetch ─────────────────────────
         closed_value_series: dict[str, dict[str, float]] = {}
@@ -523,14 +526,17 @@ class Scheduler:
         valid_closed = [cp for cp in closed if cp.get("first_buy_date") and cp.get("last_sell_date")]
         with ThreadPoolExecutor(max_workers=6) as ex:
             futs = {ex.submit(_process_closed, cp): cp["ticker"] for cp in valid_closed}
-            for fut in _as_completed(futs, timeout=90):
-                try:
-                    ticker, entry, val_by_date = fut.result()
-                    if entry:
-                        result.append(entry)
-                        closed_value_series[ticker] = val_by_date
-                except Exception as e:
-                    print(f"[history] closed fut error: {e}")
+            try:
+                for fut in _as_completed(futs, timeout=90):
+                    try:
+                        ticker, entry, val_by_date = fut.result()
+                        if entry:
+                            result.append(entry)
+                            closed_value_series[ticker] = val_by_date
+                    except Exception as e:
+                        print(f"[history] closed fut error: {e}")
+            except Exception as e:
+                print(f"[history] closed pool timeout/error: {e} — saving partial results")
 
         # Build portfolio total (open positions only, forward-filled)
         all_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
