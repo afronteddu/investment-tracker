@@ -419,8 +419,9 @@ class Scheduler:
         result = []
         ticker_value_series: dict[str, dict[str, float]] = {}
 
-        # ── Open positions ────────────────────────────────────────────
-        for ticker, pos in positions.items():
+        from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
+
+        def _process_open(ticker, pos):
             try:
                 print(f"[history] fetching {ticker}")
                 raw = self._fetch_history_series(ticker, earliest.isoformat(), daily_start)
@@ -434,14 +435,11 @@ class Scheduler:
                         continue
                     close = p["close"]
                     close_eur = close * currency_to_eur_rate(currency)
-                    # pct anchored to avg cost — never rebased on period filter
                     pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
                     val = pos.shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
                     val_by_date[p["date"]] = val
-                # Newly bought tickers may have no Yahoo history yet (bought today/yesterday,
-                # Yahoo last non-None close is before buy_date). Synthesise a single point
-                # from the live quote so the ticker appears in charts.
+                # Newly bought tickers may have no Yahoo history yet — synthesise from live quote
                 if not points:
                     from src.quotes import fetch_quotes
                     live = fetch_quotes([ticker]).get(ticker, {})
@@ -454,7 +452,7 @@ class Scheduler:
                         points = [{"date": today_str, "pct": round(pct, 2), "price": round(live_price, 2), "value_eur": round(val, 2)}]
                         val_by_date[today_str] = val
                 if points:
-                    result.append({
+                    return ticker, {
                         "ticker": ticker,
                         "name": TICKER_NAMES.get(ticker, ticker),
                         "bucket": pos.bucket,
@@ -462,26 +460,36 @@ class Scheduler:
                         "first_buy_date": pos.first_buy_date,
                         "closed": False,
                         "points": points,
-                    })
-                    ticker_value_series[ticker] = val_by_date
-            except Exception:
-                continue
+                    }, val_by_date
+            except Exception as e:
+                print(f"[history] {ticker} error: {e}")
+            return ticker, None, {}
 
-        # ── Closed positions — history only between first buy and last sell ──
+        # ── Open positions — parallel fetch ───────────────────────────
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            futs = {ex.submit(_process_open, t, p): t for t, p in positions.items()}
+            for fut in _as_completed(futs, timeout=90):
+                try:
+                    ticker, entry, val_by_date = fut.result()
+                    if entry:
+                        result.append(entry)
+                        ticker_value_series[ticker] = val_by_date
+                except Exception as e:
+                    print(f"[history] open fut error: {e}")
+
+        # ── Closed positions — parallel fetch ─────────────────────────
         closed_value_series: dict[str, dict[str, float]] = {}
-        for cp in closed:
+
+        def _process_closed(cp):
             ticker = cp["ticker"]
-            if not cp["first_buy_date"] or not cp["last_sell_date"]:
-                continue
             try:
                 raw = self._fetch_history_series(ticker, cp["first_buy_date"], cp["last_sell_date"])
                 if not raw:
-                    continue
+                    return ticker, None, {}
                 currency = raw[0]["currency"]
                 peak_shares = cp.get("peak_shares", 0)
                 buy_date = datetime.strptime(cp["first_buy_date"], "%Y-%m-%d").date()
                 sell_date = datetime.strptime(cp["last_sell_date"], "%Y-%m-%d").date()
-                # avg_cost_eur per share = total_cost / peak_shares
                 avg_cost_per_share = cp["total_cost_eur"] / peak_shares if peak_shares else 0
                 first_close_eur = None
                 points = []
@@ -494,15 +502,12 @@ class Scheduler:
                     close_eur = close * currency_to_eur_rate(currency)
                     if first_close_eur is None:
                         first_close_eur = close_eur
-                    # % anchored to first yahoo close in holding period — transaction
-                    # cost can't be used because Yahoo adjusts historical prices after
-                    # fund restructuring/consolidation, causing fake returns.
                     pct = (close_eur - first_close_eur) / first_close_eur * 100 if first_close_eur else 0
                     val = peak_shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
                     val_by_date[p["date"]] = val
                 if points:
-                    result.append({
+                    return ticker, {
                         "ticker": ticker,
                         "name": TICKER_NAMES.get(ticker, ticker),
                         "bucket": cp["bucket"],
@@ -511,10 +516,22 @@ class Scheduler:
                         "last_sell_date": cp["last_sell_date"],
                         "closed": True,
                         "points": points,
-                    })
-                    closed_value_series[ticker] = val_by_date
-            except Exception:
-                continue
+                    }, val_by_date
+            except Exception as e:
+                print(f"[history] closed {ticker} error: {e}")
+            return ticker, None, {}
+
+        valid_closed = [cp for cp in closed if cp.get("first_buy_date") and cp.get("last_sell_date")]
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            futs = {ex.submit(_process_closed, cp): cp["ticker"] for cp in valid_closed}
+            for fut in _as_completed(futs, timeout=90):
+                try:
+                    ticker, entry, val_by_date = fut.result()
+                    if entry:
+                        result.append(entry)
+                        closed_value_series[ticker] = val_by_date
+                except Exception as e:
+                    print(f"[history] closed fut error: {e}")
 
         # Build portfolio total (open positions only, forward-filled)
         all_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
