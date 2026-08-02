@@ -321,56 +321,57 @@ class Scheduler:
         loop = asyncio.get_event_loop()
         try:
             await loop.run_in_executor(None, self._refresh_history_sync)
-        except Exception as e:
-            print(f"[history] refresh error: {e}")
+        except Exception:
+            pass
 
     def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
-        """Fetch history via yfinance (uses curl_cffi Chrome impersonation — bypasses Render IP blocks).
-        Runs in a daemon thread with hard timeout so a Yahoo hang never blocks the scheduler."""
-        import threading
-        import datetime as _dt
-        from src.positions import YAHOO_FETCH_TICKER
+        """Fetch weekly+daily history via Yahoo cookie session. Returns list of {date, close, currency}."""
+        import requests as _req
+        from datetime import date, timedelta
+        from src.quotes import _session, _crumb, _ensure_session, _HEADERS
+        _ensure_session()
 
-        fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
         points_raw = []
-        _result: list = []
-        _done = threading.Event()
-
-        def _fetch():
+        for interval, range_start, range_end in [
+            ("1wk", start, end_daily),
+            ("1d",  end_daily, tomorrow),
+        ]:
+            params = {
+                "interval": interval,
+                "period1": self._to_ts(range_start),
+                "period2": self._to_ts(range_end),
+            }
+            if _crumb:
+                params["crumb"] = _crumb
             try:
-                import yfinance as yf
-                t = yf.Ticker(fetch_ticker)
-                # weekly for full history, daily for last 90d
-                for period, interval in [("max", "1wk"), ("3mo", "1d")]:
-                    try:
-                        h = t.history(period=period, interval=interval, auto_adjust=True)
-                        if h.empty:
-                            continue
-                        # yfinance returns timezone-aware index
-                        currency = t.fast_info.currency if hasattr(t, "fast_info") else "?"
-                        for idx, row in h.iterrows():
-                            close = row.get("Close")
-                            if close is None or (hasattr(close, "__float__") and close != close):  # NaN check
-                                continue
-                            date_str = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
-                            if date_str >= start:
-                                _result.append({"date": date_str, "close": float(close), "currency": currency or "?"})
-                    except Exception:
+                from src.positions import YAHOO_FETCH_TICKER
+                fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
+                url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
+                r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+                if r.status_code == 401:
+                    _ensure_session()
+                    params["crumb"] = _crumb
+                    r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+                if r.status_code != 200:
+                    continue
+                data = r.json()
+                result = data["chart"]["result"][0]
+                meta = result["meta"]
+                currency = meta.get("currency", "?")
+                timestamps = result.get("timestamp", [])
+                closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+                import datetime as _dt
+                for ts, c in zip(timestamps, closes):
+                    if c is None:
                         continue
-            except Exception as e:
-                print(f"[history] yfinance {ticker} error: {e}")
-            finally:
-                _done.set()
-
-        t = threading.Thread(target=_fetch, daemon=True)
-        t.start()
-        _done.wait(timeout=25)  # hard 25s wall-clock deadline — daemon thread abandoned if hung
-        if not _done.is_set():
-            print(f"[history] {ticker} timed out after 25s — skipping")
-
+                    date_str = _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
+                    points_raw.append({"date": date_str, "close": c, "currency": currency})
+            except Exception:
+                continue
         # Deduplicate by date, keep last
         seen = {}
-        for p in _result:
+        for p in points_raw:
             seen[p["date"]] = p
         return sorted(seen.values(), key=lambda x: x["date"])
 
@@ -380,17 +381,6 @@ class Scheduler:
         return int(datetime.strptime(date_str, "%Y-%m-%d").timestamp())
 
     def _refresh_history_sync(self):
-        try:
-            self._refresh_history_sync_inner()
-        except Exception as e:
-            import traceback
-            print(f"[history] CRASH in sync: {e}")
-            traceback.print_exc()
-            # Write empty cache so the endpoint stops returning loading:True
-            if not self.state.get("history_cache"):
-                self.state["history_cache"] = {"series": [], "portfolio": [], "portfolio_historic": []}
-
-    def _refresh_history_sync_inner(self):
         from datetime import date, datetime, timedelta
         from src.quotes import get_fx_rates, currency_to_eur_rate
         from src.positions import TICKER_NAMES, compute_closed_positions
@@ -424,11 +414,9 @@ class Scheduler:
         result = []
         ticker_value_series: dict[str, dict[str, float]] = {}
 
-        from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
-
-        def _process_open(ticker, pos):
+        # ── Open positions ────────────────────────────────────────────
+        for ticker, pos in positions.items():
             try:
-                print(f"[history] fetching {ticker}")
                 raw = self._fetch_history_series(ticker, earliest.isoformat(), daily_start)
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
@@ -440,11 +428,14 @@ class Scheduler:
                         continue
                     close = p["close"]
                     close_eur = close * currency_to_eur_rate(currency)
+                    # pct anchored to avg cost — never rebased on period filter
                     pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
                     val = pos.shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
                     val_by_date[p["date"]] = val
-                # Newly bought tickers may have no Yahoo history yet — synthesise from live quote
+                # Newly bought tickers may have no Yahoo history yet (bought today/yesterday,
+                # Yahoo last non-None close is before buy_date). Synthesise a single point
+                # from the live quote so the ticker appears in charts.
                 if not points:
                     from src.quotes import fetch_quotes
                     live = fetch_quotes([ticker]).get(ticker, {})
@@ -457,7 +448,7 @@ class Scheduler:
                         points = [{"date": today_str, "pct": round(pct, 2), "price": round(live_price, 2), "value_eur": round(val, 2)}]
                         val_by_date[today_str] = val
                 if points:
-                    return ticker, {
+                    result.append({
                         "ticker": ticker,
                         "name": TICKER_NAMES.get(ticker, ticker),
                         "bucket": pos.bucket,
@@ -465,39 +456,26 @@ class Scheduler:
                         "first_buy_date": pos.first_buy_date,
                         "closed": False,
                         "points": points,
-                    }, val_by_date
-            except Exception as e:
-                print(f"[history] {ticker} error: {e}")
-            return ticker, None, {}
+                    })
+                    ticker_value_series[ticker] = val_by_date
+            except Exception:
+                continue
 
-        # ── Open positions — parallel fetch ───────────────────────────
-        with ThreadPoolExecutor(max_workers=6) as ex:
-            futs = {ex.submit(_process_open, t, p): t for t, p in positions.items()}
-            try:
-                for fut in _as_completed(futs, timeout=90):
-                    try:
-                        ticker, entry, val_by_date = fut.result()
-                        if entry:
-                            result.append(entry)
-                            ticker_value_series[ticker] = val_by_date
-                    except Exception as e:
-                        print(f"[history] open fut error: {e}")
-            except Exception as e:
-                print(f"[history] open pool timeout/error: {e} — saving partial results")
-
-        # ── Closed positions — parallel fetch ─────────────────────────
+        # ── Closed positions — history only between first buy and last sell ──
         closed_value_series: dict[str, dict[str, float]] = {}
-
-        def _process_closed(cp):
+        for cp in closed:
             ticker = cp["ticker"]
+            if not cp["first_buy_date"] or not cp["last_sell_date"]:
+                continue
             try:
                 raw = self._fetch_history_series(ticker, cp["first_buy_date"], cp["last_sell_date"])
                 if not raw:
-                    return ticker, None, {}
+                    continue
                 currency = raw[0]["currency"]
                 peak_shares = cp.get("peak_shares", 0)
                 buy_date = datetime.strptime(cp["first_buy_date"], "%Y-%m-%d").date()
                 sell_date = datetime.strptime(cp["last_sell_date"], "%Y-%m-%d").date()
+                # avg_cost_eur per share = total_cost / peak_shares
                 avg_cost_per_share = cp["total_cost_eur"] / peak_shares if peak_shares else 0
                 first_close_eur = None
                 points = []
@@ -510,12 +488,15 @@ class Scheduler:
                     close_eur = close * currency_to_eur_rate(currency)
                     if first_close_eur is None:
                         first_close_eur = close_eur
+                    # % anchored to first yahoo close in holding period — transaction
+                    # cost can't be used because Yahoo adjusts historical prices after
+                    # fund restructuring/consolidation, causing fake returns.
                     pct = (close_eur - first_close_eur) / first_close_eur * 100 if first_close_eur else 0
                     val = peak_shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
                     val_by_date[p["date"]] = val
                 if points:
-                    return ticker, {
+                    result.append({
                         "ticker": ticker,
                         "name": TICKER_NAMES.get(ticker, ticker),
                         "bucket": cp["bucket"],
@@ -524,43 +505,10 @@ class Scheduler:
                         "last_sell_date": cp["last_sell_date"],
                         "closed": True,
                         "points": points,
-                    }, val_by_date
-            except Exception as e:
-                print(f"[history] closed {ticker} error: {e}")
-            return ticker, None, {}
-
-        # Write partial cache now so charts show open positions even if closed fetch is slow
-        _partial_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
-        _partial_portfolio = {}
-        for d in _partial_dates:
-            _partial_portfolio[d] = 0.0
-        for vs in ticker_value_series.values():
-            last_val = 0.0
-            for d in _partial_dates:
-                if d in vs:
-                    last_val = vs[d]
-                _partial_portfolio[d] += last_val
-        self.state["history_cache"] = {
-            "series": sorted(result, key=lambda x: x["first_buy_date"] or ""),
-            "portfolio": [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(_partial_portfolio.items())],
-            "portfolio_historic": [],
-        }
-        print(f"[history] partial cache written — {len(result)} open tickers")
-
-        valid_closed = [cp for cp in closed if cp.get("first_buy_date") and cp.get("last_sell_date")]
-        with ThreadPoolExecutor(max_workers=6) as ex:
-            futs = {ex.submit(_process_closed, cp): cp["ticker"] for cp in valid_closed}
-            try:
-                for fut in _as_completed(futs, timeout=90):
-                    try:
-                        ticker, entry, val_by_date = fut.result()
-                        if entry:
-                            result.append(entry)
-                            closed_value_series[ticker] = val_by_date
-                    except Exception as e:
-                        print(f"[history] closed fut error: {e}")
-            except Exception as e:
-                print(f"[history] closed pool timeout/error: {e} — saving partial results")
+                    })
+                    closed_value_series[ticker] = val_by_date
+            except Exception:
+                continue
 
         # Build portfolio total (open positions only, forward-filled)
         all_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
@@ -598,7 +546,6 @@ class Scheduler:
         result.sort(key=lambda x: x["first_buy_date"] or "")
         portfolio_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_by_date.items())]
         portfolio_historic_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_historic.items())]
-        print(f"[history] done — {len(result)} series, {len(portfolio_points)} portfolio points")
         self.state["history_cache"] = {
             "series": result,
             "portfolio": portfolio_points,
