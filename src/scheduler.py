@@ -320,12 +320,7 @@ class Scheduler:
     async def _refresh_history(self):
         loop = asyncio.get_event_loop()
         try:
-            await asyncio.wait_for(
-                loop.run_in_executor(None, self._refresh_history_sync),
-                timeout=120,
-            )
-        except asyncio.TimeoutError:
-            print("[history] refresh timed out after 120s — cache left as-is")
+            await loop.run_in_executor(None, self._refresh_history_sync)
         except Exception as e:
             print(f"[history] refresh error: {e}")
 
@@ -523,6 +518,24 @@ class Scheduler:
                 print(f"[history] closed {ticker} error: {e}")
             return ticker, None, {}
 
+        # Write partial cache now so charts show open positions even if closed fetch is slow
+        _partial_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
+        _partial_portfolio = {}
+        for d in _partial_dates:
+            _partial_portfolio[d] = 0.0
+        for vs in ticker_value_series.values():
+            last_val = 0.0
+            for d in _partial_dates:
+                if d in vs:
+                    last_val = vs[d]
+                _partial_portfolio[d] += last_val
+        self.state["history_cache"] = {
+            "series": sorted(result, key=lambda x: x["first_buy_date"] or ""),
+            "portfolio": [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(_partial_portfolio.items())],
+            "portfolio_historic": [],
+        }
+        print(f"[history] partial cache written — {len(result)} open tickers")
+
         valid_closed = [cp for cp in closed if cp.get("first_buy_date") and cp.get("last_sell_date")]
         with ThreadPoolExecutor(max_workers=6) as ex:
             futs = {ex.submit(_process_closed, cp): cp["ticker"] for cp in valid_closed}
@@ -574,6 +587,7 @@ class Scheduler:
         result.sort(key=lambda x: x["first_buy_date"] or "")
         portfolio_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_by_date.items())]
         portfolio_historic_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_historic.items())]
+        print(f"[history] done — {len(result)} series, {len(portfolio_points)} portfolio points")
         self.state["history_cache"] = {
             "series": result,
             "portfolio": portfolio_points,
