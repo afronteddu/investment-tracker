@@ -325,9 +325,10 @@ class Scheduler:
             print(f"[history] refresh error: {e}")
 
     def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
-        """Fetch weekly+daily history via curl_cffi (Chrome impersonation bypasses datacenter IP blocks)."""
+        """Fetch weekly+daily history via curl_cffi with hard per-request deadline."""
         from datetime import date, timedelta
         import datetime as _dt
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
         from src.positions import YAHOO_FETCH_TICKER
 
         try:
@@ -350,9 +351,15 @@ class Scheduler:
                 "period1": self._to_ts(range_start),
                 "period2": self._to_ts(range_end),
             }
+            url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
             try:
-                url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
-                r = _get(url, params=params, timeout=20)
+                with ThreadPoolExecutor(max_workers=1) as _ex:
+                    fut = _ex.submit(_get, url, params=params, timeout=15)
+                    try:
+                        r = fut.result(timeout=20)  # hard wall-clock deadline
+                    except FuturesTimeout:
+                        print(f"[history] {ticker} {interval} timed out — skipping")
+                        continue
                 if r.status_code != 200:
                     continue
                 data = r.json()
@@ -366,7 +373,8 @@ class Scheduler:
                         continue
                     date_str = _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
                     points_raw.append({"date": date_str, "close": c, "currency": currency})
-            except Exception:
+            except Exception as e:
+                print(f"[history] {ticker} {interval} error: {e}")
                 continue
         # Deduplicate by date, keep last
         seen = {}
