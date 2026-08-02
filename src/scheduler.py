@@ -318,11 +318,13 @@ class Scheduler:
             pass
 
     async def _refresh_history(self):
+        import traceback
         loop = asyncio.get_event_loop()
         try:
             await loop.run_in_executor(None, self._refresh_history_sync)
-        except Exception:
-            pass
+        except Exception as e:
+            self.state["history_error"] = traceback.format_exc()
+            print(f"[history] ERROR: {e}\n{traceback.format_exc()}")
 
     def _refresh_history_sync(self):
         import yfinance as yf

@@ -466,7 +466,8 @@ async def history(request: Request):
     cached = state.get("history_cache")
     if cached:
         return cached
-    return {"series": [], "portfolio": [], "loading": True}
+    error = state.get("history_error")
+    return {"series": [], "portfolio": [], "loading": True, "error": error}
 
 
 @app.get("/api/scan")
