@@ -325,41 +325,31 @@ class Scheduler:
             print(f"[history] refresh error: {e}")
 
     def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
-        """Fetch weekly+daily history via curl_cffi with hard per-request deadline."""
-        from datetime import date, timedelta
+        """Fetch daily history using Yahoo's short-range endpoint (same as quotes — not rate-limited).
+        Uses 'max' range but 1d interval, then filters to start date client-side.
+        The 3yr weekly endpoint is rate-limited on cloud IPs."""
         import datetime as _dt
-        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
         from src.positions import YAHOO_FETCH_TICKER
+        from src.quotes import _session, _ensure_session, _HEADERS
 
-        try:
-            from curl_cffi import requests as cffi_requests
-            _get = lambda url, **kw: cffi_requests.get(url, impersonate="chrome", **kw)
-        except ImportError:
-            import requests as _req
-            _get = _req.get
-
+        _ensure_session()
         fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
-        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
         points_raw = []
 
-        for interval, range_start, range_end in [
-            ("1wk", start, end_daily),
-            ("1d",  end_daily, tomorrow),
-        ]:
-            params = {
-                "interval": interval,
-                "period1": self._to_ts(range_start),
-                "period2": self._to_ts(range_end),
-            }
-            url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
+        # Use 'max' range with 1wk interval — short enough not to be blocked
+        for interval, range_param in [("1wk", "max"), ("1d", "3mo")]:
+            from src.quotes import _crumb
+            params = {"interval": interval, "range": range_param}
+            if _crumb:
+                params["crumb"] = _crumb
             try:
-                with ThreadPoolExecutor(max_workers=1) as _ex:
-                    fut = _ex.submit(_get, url, params=params, timeout=15)
-                    try:
-                        r = fut.result(timeout=20)  # hard wall-clock deadline
-                    except FuturesTimeout:
-                        print(f"[history] {ticker} {interval} timed out — skipping")
-                        continue
+                r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+                if r.status_code == 401:
+                    _ensure_session()
+                    from src.quotes import _crumb
+                    params["crumb"] = _crumb
+                    r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
                 if r.status_code != 200:
                     continue
                 data = r.json()
@@ -372,10 +362,12 @@ class Scheduler:
                     if c is None:
                         continue
                     date_str = _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
-                    points_raw.append({"date": date_str, "close": c, "currency": currency})
+                    if date_str >= start:
+                        points_raw.append({"date": date_str, "close": c, "currency": currency})
             except Exception as e:
                 print(f"[history] {ticker} {interval} error: {e}")
                 continue
+
         # Deduplicate by date, keep last
         seen = {}
         for p in points_raw:
