@@ -418,12 +418,10 @@ class Scheduler:
         for ticker, pos in positions.items():
             try:
                 raw = self._fetch_history_series(ticker, earliest.isoformat(), daily_start)
-                if not raw:
-                    continue
-                currency = raw[0]["currency"]
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
                 val_by_date: dict[str, float] = {}
+                currency = raw[0]["currency"] if raw else "EUR"
                 for p in raw:
                     row_date = datetime.strptime(p["date"], "%Y-%m-%d").date()
                     if row_date < buy_date:
@@ -435,6 +433,20 @@ class Scheduler:
                     val = pos.shares * close_eur
                     points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
                     val_by_date[p["date"]] = val
+                # Newly bought tickers may have no Yahoo history yet (bought today/yesterday,
+                # Yahoo last non-None close is before buy_date). Synthesise a single point
+                # from the live quote so the ticker appears in charts.
+                if not points:
+                    from src.quotes import fetch_quotes
+                    live = fetch_quotes([ticker]).get(ticker, {})
+                    live_price = live.get("price")
+                    if live_price and pos.avg_cost_eur:
+                        live_eur = live_price * currency_to_eur_rate(live.get("currency", currency))
+                        pct = (live_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100
+                        val = pos.shares * live_eur
+                        today_str = date.today().isoformat()
+                        points = [{"date": today_str, "pct": round(pct, 2), "price": round(live_price, 2), "value_eur": round(val, 2)}]
+                        val_by_date[today_str] = val
                 if points:
                     result.append({
                         "ticker": ticker,
