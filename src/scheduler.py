@@ -325,52 +325,52 @@ class Scheduler:
             print(f"[history] refresh error: {e}")
 
     def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
-        """Fetch daily history using Yahoo's short-range endpoint (same as quotes — not rate-limited).
-        Uses 'max' range but 1d interval, then filters to start date client-side.
-        The 3yr weekly endpoint is rate-limited on cloud IPs."""
+        """Fetch history via yfinance (uses curl_cffi Chrome impersonation — bypasses Render IP blocks).
+        Runs in a daemon thread with hard timeout so a Yahoo hang never blocks the scheduler."""
+        import threading
         import datetime as _dt
         from src.positions import YAHOO_FETCH_TICKER
-        from src.quotes import _session, _ensure_session, _HEADERS
 
-        _ensure_session()
         fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
-        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
         points_raw = []
+        _result: list = []
+        _done = threading.Event()
 
-        # Use 'max' range with 1wk interval — short enough not to be blocked
-        for interval, range_param in [("1wk", "max"), ("1d", "3mo")]:
-            from src.quotes import _crumb
-            params = {"interval": interval, "range": range_param}
-            if _crumb:
-                params["crumb"] = _crumb
+        def _fetch():
             try:
-                r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
-                if r.status_code == 401:
-                    _ensure_session()
-                    from src.quotes import _crumb
-                    params["crumb"] = _crumb
-                    r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
-                if r.status_code != 200:
-                    continue
-                data = r.json()
-                result = data["chart"]["result"][0]
-                meta = result["meta"]
-                currency = meta.get("currency", "?")
-                timestamps = result.get("timestamp", [])
-                closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
-                for ts, c in zip(timestamps, closes):
-                    if c is None:
+                import yfinance as yf
+                t = yf.Ticker(fetch_ticker)
+                # weekly for full history, daily for last 90d
+                for period, interval in [("max", "1wk"), ("3mo", "1d")]:
+                    try:
+                        h = t.history(period=period, interval=interval, auto_adjust=True)
+                        if h.empty:
+                            continue
+                        # yfinance returns timezone-aware index
+                        currency = t.fast_info.currency if hasattr(t, "fast_info") else "?"
+                        for idx, row in h.iterrows():
+                            close = row.get("Close")
+                            if close is None or (hasattr(close, "__float__") and close != close):  # NaN check
+                                continue
+                            date_str = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
+                            if date_str >= start:
+                                _result.append({"date": date_str, "close": float(close), "currency": currency or "?"})
+                    except Exception:
                         continue
-                    date_str = _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
-                    if date_str >= start:
-                        points_raw.append({"date": date_str, "close": c, "currency": currency})
             except Exception as e:
-                print(f"[history] {ticker} {interval} error: {e}")
-                continue
+                print(f"[history] yfinance {ticker} error: {e}")
+            finally:
+                _done.set()
+
+        t = threading.Thread(target=_fetch, daemon=True)
+        t.start()
+        _done.wait(timeout=25)  # hard 25s wall-clock deadline — daemon thread abandoned if hung
+        if not _done.is_set():
+            print(f"[history] {ticker} timed out after 25s — skipping")
 
         # Deduplicate by date, keep last
         seen = {}
-        for p in points_raw:
+        for p in _result:
             seen[p["date"]] = p
         return sorted(seen.values(), key=lambda x: x["date"])
 
