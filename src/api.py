@@ -140,6 +140,7 @@ DEPLOYMENTS = []
 
 # Shared state — mutated by scheduler, read by API handlers
 state: dict = {}
+_scheduler: "Scheduler | None" = None
 
 
 @asynccontextmanager
@@ -159,8 +160,9 @@ async def lifespan(app: FastAPI):
     state["history_cache"] = None
     state["bucket_strategy_cache"] = {}   # bucket → {text, ts}
     # All network fetches happen in scheduler background tasks
-    scheduler = Scheduler(state)
-    task = asyncio.create_task(scheduler.run())
+    global _scheduler
+    _scheduler = Scheduler(state)
+    task = asyncio.create_task(_scheduler.run())
     yield
     task.cancel()
 
@@ -491,11 +493,14 @@ async def reload(request: Request):
 
 @app.post("/api/reload-history")
 async def reload_history(request: Request):
-    """Force-clear history cache so the next /api/history call triggers a fresh fetch."""
+    """Force history refresh immediately."""
     if (r := _auth_required(request)):
         return r
     state["history_cache"] = None
-    return {"status": "ok", "message": "History cache cleared — refresh the Charts tab in ~30s"}
+    if _scheduler:
+        _scheduler._last_history_refresh = None  # reset so next tick re-triggers
+        asyncio.create_task(_scheduler._refresh_history())
+    return {"status": "ok", "message": "History refresh triggered — check Charts tab in ~60s"}
 
 
 @app.post("/api/upload")
