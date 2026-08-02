@@ -333,7 +333,9 @@ class Scheduler:
         from src.positions import TICKER_NAMES, YAHOO_FETCH_TICKER, compute_closed_positions
 
         positions = self.state.get("positions", {})
+        print(f"[history] positions count: {len(positions)}, keys: {list(positions.keys())[:5]}")
         if not positions:
+            self.state["history_error"] = "positions dict is empty"
             return
 
         fx = get_fx_rates()
@@ -370,7 +372,9 @@ class Scheduler:
             try:
                 fetch_ticker = fetch_map[ticker]
                 t_obj = batch.tickers[fetch_ticker] if batch else yf.Ticker(fetch_ticker)
+                print(f"[history] fetching {ticker} (as {fetch_ticker}) start={earliest.isoformat()}")
                 hist = t_obj.history(start=earliest.isoformat(), interval="1wk", auto_adjust=True)
+                print(f"[history] {ticker}: {len(hist)} rows")
                 currency = getattr(t_obj.fast_info, "currency", None) or "EUR"
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
@@ -411,9 +415,12 @@ class Scheduler:
                         "points": points,
                     })
                     ticker_value_series[ticker] = val_by_date
-            except Exception:
+            except Exception as e:
+                import traceback
+                print(f"[history] {ticker} FAILED: {e}\n{traceback.format_exc()}")
                 continue
 
+        print(f"[history] open positions done: {len(result)} series built")
         # ── Closed positions ──────────────────────────────────────────
         closed_value_series: dict[str, dict[str, float]] = {}
         for cp in closed:
