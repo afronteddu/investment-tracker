@@ -330,14 +330,22 @@ class Scheduler:
             print(f"[history] refresh error: {e}")
 
     def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
-        """Fetch weekly+daily history via Yahoo cookie session. Returns list of {date, close, currency}."""
-        import requests as _req
+        """Fetch weekly+daily history via curl_cffi (Chrome impersonation bypasses datacenter IP blocks)."""
         from datetime import date, timedelta
-        from src.quotes import _session, _crumb, _ensure_session, _HEADERS
-        _ensure_session()
+        import datetime as _dt
+        from src.positions import YAHOO_FETCH_TICKER
 
+        try:
+            from curl_cffi import requests as cffi_requests
+            _get = lambda url, **kw: cffi_requests.get(url, impersonate="chrome", **kw)
+        except ImportError:
+            import requests as _req
+            _get = _req.get
+
+        fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
         tomorrow = (date.today() + timedelta(days=1)).isoformat()
         points_raw = []
+
         for interval, range_start, range_end in [
             ("1wk", start, end_daily),
             ("1d",  end_daily, tomorrow),
@@ -347,17 +355,9 @@ class Scheduler:
                 "period1": self._to_ts(range_start),
                 "period2": self._to_ts(range_end),
             }
-            if _crumb:
-                params["crumb"] = _crumb
             try:
-                from src.positions import YAHOO_FETCH_TICKER
-                fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
                 url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
-                r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
-                if r.status_code == 401:
-                    _ensure_session()
-                    params["crumb"] = _crumb
-                    r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
+                r = _get(url, params=params, timeout=20)
                 if r.status_code != 200:
                     continue
                 data = r.json()
@@ -366,7 +366,6 @@ class Scheduler:
                 currency = meta.get("currency", "?")
                 timestamps = result.get("timestamp", [])
                 closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
-                import datetime as _dt
                 for ts, c in zip(timestamps, closes):
                     if c is None:
                         continue
