@@ -19,6 +19,12 @@ def _now_dublin() -> datetime:
 
 
 _GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
+_OPENROUTER_FREE_MODELS = [
+    "openrouter/free",
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+]
 
 
 def _ask(prompt: str, max_tokens: int = 900) -> str:
@@ -42,20 +48,22 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
         # all Gemini models exhausted, fall through to Groq
 
     if groq_key:
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
-            resp = client.chat.completions.create(
-                model="google/gemma-4-31b-it:free",
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            err = str(e)
-            if "rate_limit" not in err and "429" not in err:
-                return f"OpenRouter error: {err[:200]}"
-            # rate limited — fall through to OpenAI
+        from openai import OpenAI
+        client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
+        for or_model in _OPENROUTER_FREE_MODELS:
+            try:
+                resp = client.chat.completions.create(
+                    model=or_model,
+                    max_tokens=max_tokens,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                return resp.choices[0].message.content.strip()
+            except Exception as e:
+                err = str(e).lower()
+                if any(x in err for x in ("404", "unavailable", "rate_limit", "429")):
+                    continue
+                return f"OpenRouter error ({or_model}): {str(e)[:200]}"
+        # all OpenRouter models exhausted, fall through to OpenAI
 
     if openai_key:
         try:
@@ -279,18 +287,20 @@ def ai_health_check() -> dict:
         except Exception:
             pass
     if groq_key and not result["active"]:
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
-            resp = client.chat.completions.create(
-                model="google/gemma-4-31b-it:free", max_tokens=5,
-                messages=[{"role": "user", "content": "Reply OK"}],
-            )
-            if resp.choices[0].message.content:
-                result["groq"] = True
-                result["active"] = "openrouter"
-        except Exception:
-            pass
+        from openai import OpenAI
+        client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
+        for or_model in _OPENROUTER_FREE_MODELS:
+            try:
+                resp = client.chat.completions.create(
+                    model=or_model, max_tokens=5,
+                    messages=[{"role": "user", "content": "Reply OK"}],
+                )
+                if resp.choices[0].message.content:
+                    result["groq"] = True
+                    result["active"] = f"openrouter/{or_model}"
+                    break
+            except Exception:
+                continue
     if openai_key and not result["active"]:
         try:
             from openai import OpenAI
