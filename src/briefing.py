@@ -44,9 +44,9 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
     if groq_key:
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+            client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
             resp = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="meta-llama/llama-3.3-70b-instruct:free",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -54,7 +54,7 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
         except Exception as e:
             err = str(e)
             if "rate_limit" not in err and "429" not in err:
-                return f"Groq error: {err[:200]}"
+                return f"OpenRouter error: {err[:200]}"
             # rate limited — fall through to OpenAI
 
     if openai_key:
@@ -281,14 +281,14 @@ def ai_health_check() -> dict:
     if groq_key and not result["active"]:
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+            client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
             resp = client.chat.completions.create(
-                model="llama-3.3-70b-versatile", max_tokens=5,
+                model="meta-llama/llama-3.3-70b-instruct:free", max_tokens=5,
                 messages=[{"role": "user", "content": "Reply OK"}],
             )
             if resp.choices[0].message.content:
                 result["groq"] = True
-                result["active"] = "groq"
+                result["active"] = "openrouter"
         except Exception:
             pass
     if openai_key and not result["active"]:
