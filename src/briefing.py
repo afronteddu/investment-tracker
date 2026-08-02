@@ -428,7 +428,7 @@ Run THREE independent hypotheses:
 
 HYPOTHESIS 1 (Bull): AI capex supercycle continues — NVDA, ASML hold and grind higher. How much upside is left?
 HYPOTHESIS 2 (Bear): Multiple compression — P/E normalises to 20-25×. What is the downside to each position?
-HYPOTHESIS 3 (Cautiou): Is the growth bucket too correlated? NVDA, ASML, SNDK are all semiconductor-adjacent — if semis roll over, all three fall together.
+HYPOTHESIS 3 (Cautious): Is the growth bucket too correlated? NVDA, ASML, SNDK are all semiconductor-adjacent — if semis roll over, all three fall together.
 
 Then give your synthesis.
 
