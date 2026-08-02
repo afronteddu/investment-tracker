@@ -489,6 +489,15 @@ async def reload(request: Request):
     return {"status": "ok", "positions_loaded": len(state["positions"])}
 
 
+@app.post("/api/reload-history")
+async def reload_history(request: Request):
+    """Force-clear history cache so the next /api/history call triggers a fresh fetch."""
+    if (r := _auth_required(request)):
+        return r
+    state["history_cache"] = None
+    return {"status": "ok", "message": "History cache cleared — refresh the Charts tab in ~30s"}
+
+
 @app.post("/api/upload")
 async def upload_transactions(request: Request, file: UploadFile = File(...)):
     """Upload a DeGiro transactions xlsx. Saved to data/transactions/, then reloads positions."""
