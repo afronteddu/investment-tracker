@@ -324,77 +324,19 @@ class Scheduler:
         except Exception:
             pass
 
-    def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
-        """Fetch weekly+daily history via Yahoo cookie session. Returns list of {date, close, currency}."""
-        import requests as _req
-        from datetime import date, timedelta
-        from src.quotes import _session, _crumb, _ensure_session, _HEADERS
-        _ensure_session()
-
-        tomorrow = (date.today() + timedelta(days=1)).isoformat()
-        points_raw = []
-        for interval, range_start, range_end in [
-            ("1wk", start, end_daily),
-            ("1d",  end_daily, tomorrow),
-        ]:
-            params = {
-                "interval": interval,
-                "period1": self._to_ts(range_start),
-                "period2": self._to_ts(range_end),
-            }
-            if _crumb:
-                params["crumb"] = _crumb
-            try:
-                from src.positions import YAHOO_FETCH_TICKER
-                fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
-                url = f"https://query2.finance.yahoo.com/v8/finance/chart/{fetch_ticker}"
-                r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
-                if r.status_code == 401:
-                    _ensure_session()
-                    params["crumb"] = _crumb
-                    r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
-                if r.status_code != 200:
-                    continue
-                data = r.json()
-                result = data["chart"]["result"][0]
-                meta = result["meta"]
-                currency = meta.get("currency", "?")
-                timestamps = result.get("timestamp", [])
-                closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
-                import datetime as _dt
-                for ts, c in zip(timestamps, closes):
-                    if c is None:
-                        continue
-                    date_str = _dt.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
-                    points_raw.append({"date": date_str, "close": c, "currency": currency})
-            except Exception:
-                continue
-        # Deduplicate by date, keep last
-        seen = {}
-        for p in points_raw:
-            seen[p["date"]] = p
-        return sorted(seen.values(), key=lambda x: x["date"])
-
-    @staticmethod
-    def _to_ts(date_str: str) -> int:
-        from datetime import datetime
-        return int(datetime.strptime(date_str, "%Y-%m-%d").timestamp())
-
     def _refresh_history_sync(self):
+        import yfinance as yf
         from datetime import date, datetime, timedelta
-        from src.quotes import get_fx_rates, currency_to_eur_rate
-        from src.positions import TICKER_NAMES, compute_closed_positions
+        from src.quotes import get_fx_rates, currency_to_eur_rate, fetch_quotes
+        from src.positions import TICKER_NAMES, YAHOO_FETCH_TICKER, compute_closed_positions
 
         positions = self.state.get("positions", {})
         if not positions:
             return
 
         fx = get_fx_rates()
-
-        # Closed positions — for historical context only
         closed = compute_closed_positions()
 
-        # Determine global earliest date across open + closed
         earliest = None
         for pos in positions.values():
             if pos.first_buy_date:
@@ -410,34 +352,43 @@ class Scheduler:
             earliest = date.today() - timedelta(days=365)
         earliest = max(earliest, date.today() - timedelta(days=365 * 3))
 
-        daily_start = (date.today() - timedelta(days=90)).isoformat()
         result = []
         ticker_value_series: dict[str, dict[str, float]] = {}
 
         # ── Open positions ────────────────────────────────────────────
+        # Use YAHOO_FETCH_TICKER overrides (INVEB.ST → IVSD.F, NVDA → NVD.DE)
+        fetch_map = {t: YAHOO_FETCH_TICKER.get(t, t) for t in positions}
+        fetch_tickers = list(set(fetch_map.values()))
+        try:
+            batch = yf.Tickers(" ".join(fetch_tickers))
+        except Exception:
+            batch = None
+
         for ticker, pos in positions.items():
             try:
-                raw = self._fetch_history_series(ticker, earliest.isoformat(), daily_start)
+                fetch_ticker = fetch_map[ticker]
+                t_obj = batch.tickers[fetch_ticker] if batch else yf.Ticker(fetch_ticker)
+                hist = t_obj.history(start=earliest.isoformat(), interval="1wk", auto_adjust=True)
+                currency = getattr(t_obj.fast_info, "currency", None) or "EUR"
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
                 val_by_date: dict[str, float] = {}
-                currency = raw[0]["currency"] if raw else "EUR"
-                for p in raw:
-                    row_date = datetime.strptime(p["date"], "%Y-%m-%d").date()
+                for dt, row in hist.iterrows():
+                    row_date = dt.date() if hasattr(dt, "date") else dt
                     if row_date < buy_date:
                         continue
-                    close = p["close"]
+                    close = row.get("Close")
+                    if close is None or close != close:  # NaN
+                        continue
+                    close = float(close)
                     close_eur = close * currency_to_eur_rate(currency)
-                    # pct anchored to avg cost — never rebased on period filter
                     pct = (close_eur - pos.avg_cost_eur) / pos.avg_cost_eur * 100 if pos.avg_cost_eur else 0
                     val = pos.shares * close_eur
-                    points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
-                    val_by_date[p["date"]] = val
-                # Newly bought tickers may have no Yahoo history yet (bought today/yesterday,
-                # Yahoo last non-None close is before buy_date). Synthesise a single point
-                # from the live quote so the ticker appears in charts.
+                    date_str = dt.strftime("%Y-%m-%d")
+                    points.append({"date": date_str, "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
+                    val_by_date[date_str] = val
+                # Newly bought tickers may have no history yet — synthesise from live quote
                 if not points:
-                    from src.quotes import fetch_quotes
                     live = fetch_quotes([ticker]).get(ticker, {})
                     live_price = live.get("price")
                     if live_price and pos.avg_cost_eur:
@@ -461,40 +412,37 @@ class Scheduler:
             except Exception:
                 continue
 
-        # ── Closed positions — history only between first buy and last sell ──
+        # ── Closed positions ──────────────────────────────────────────
         closed_value_series: dict[str, dict[str, float]] = {}
         for cp in closed:
             ticker = cp["ticker"]
             if not cp["first_buy_date"] or not cp["last_sell_date"]:
                 continue
             try:
-                raw = self._fetch_history_series(ticker, cp["first_buy_date"], cp["last_sell_date"])
-                if not raw:
+                fetch_ticker = YAHOO_FETCH_TICKER.get(ticker, ticker)
+                t_obj = yf.Ticker(fetch_ticker)
+                hist = t_obj.history(start=cp["first_buy_date"], end=cp["last_sell_date"], interval="1wk", auto_adjust=True)
+                if hist.empty:
                     continue
-                currency = raw[0]["currency"]
+                currency = getattr(t_obj.fast_info, "currency", None) or "EUR"
                 peak_shares = cp.get("peak_shares", 0)
-                buy_date = datetime.strptime(cp["first_buy_date"], "%Y-%m-%d").date()
-                sell_date = datetime.strptime(cp["last_sell_date"], "%Y-%m-%d").date()
-                # avg_cost_eur per share = total_cost / peak_shares
                 avg_cost_per_share = cp["total_cost_eur"] / peak_shares if peak_shares else 0
                 first_close_eur = None
                 points = []
                 val_by_date: dict[str, float] = {}
-                for p in raw:
-                    row_date = datetime.strptime(p["date"], "%Y-%m-%d").date()
-                    if row_date < buy_date or row_date > sell_date:
+                for dt, row in hist.iterrows():
+                    close = row.get("Close")
+                    if close is None or close != close:
                         continue
-                    close = p["close"]
+                    close = float(close)
                     close_eur = close * currency_to_eur_rate(currency)
                     if first_close_eur is None:
                         first_close_eur = close_eur
-                    # % anchored to first yahoo close in holding period — transaction
-                    # cost can't be used because Yahoo adjusts historical prices after
-                    # fund restructuring/consolidation, causing fake returns.
                     pct = (close_eur - first_close_eur) / first_close_eur * 100 if first_close_eur else 0
                     val = peak_shares * close_eur
-                    points.append({"date": p["date"], "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
-                    val_by_date[p["date"]] = val
+                    date_str = dt.strftime("%Y-%m-%d")
+                    points.append({"date": date_str, "pct": round(pct, 2), "price": round(close, 2), "value_eur": round(val, 2)})
+                    val_by_date[date_str] = val
                 if points:
                     result.append({
                         "ticker": ticker,
@@ -512,9 +460,7 @@ class Scheduler:
 
         # Build portfolio total (open positions only, forward-filled)
         all_dates = sorted({d for vs in ticker_value_series.values() for d in vs})
-        portfolio_by_date: dict[str, float] = {}
-        for d in all_dates:
-            portfolio_by_date[d] = 0.0
+        portfolio_by_date: dict[str, float] = {d: 0.0 for d in all_dates}
         for vs in ticker_value_series.values():
             last_val = 0.0
             for d in all_dates:
@@ -522,24 +468,22 @@ class Scheduler:
                     last_val = vs[d]
                 portfolio_by_date[d] += last_val
 
-        # Build historic portfolio total (open + closed) for the pre-exit grey line.
-        # Closed tickers must NOT be forward-filled past their last_sell_date.
+        # Build historic portfolio total (open + closed)
         closed_sell_dates = {cp["ticker"]: cp["last_sell_date"] for cp in closed if cp.get("last_sell_date")}
         all_dates_hist = sorted({d for vs in {**ticker_value_series, **closed_value_series}.values() for d in vs})
         portfolio_historic: dict[str, float] = {d: 0.0 for d in all_dates_hist}
-        for ticker, vs in ticker_value_series.items():
+        for t2, vs in ticker_value_series.items():
             last_val = 0.0
             for d in all_dates_hist:
                 if d in vs:
                     last_val = vs[d]
                 portfolio_historic[d] += last_val
-        for ticker, vs in closed_value_series.items():
-            sell_date = closed_sell_dates.get(ticker)
+        for t2, vs in closed_value_series.items():
+            sell_date = closed_sell_dates.get(t2)
             last_val = 0.0
             for d in all_dates_hist:
                 if d in vs:
                     last_val = vs[d]
-                # Stop contributing after sell date — do not forward-fill past exit
                 if sell_date and d <= sell_date:
                     portfolio_historic[d] += last_val
 
