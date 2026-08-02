@@ -46,7 +46,7 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
             from openai import OpenAI
             client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
             resp = client.chat.completions.create(
-                model="nvidia/nemotron-3-ultra-550b-a55b:free",
+                model="google/gemma-4-31b-it:free",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -283,7 +283,7 @@ def ai_health_check() -> dict:
             from openai import OpenAI
             client = OpenAI(api_key=groq_key, base_url="https://openrouter.ai/api/v1")
             resp = client.chat.completions.create(
-                model="nvidia/nemotron-3-ultra-550b-a55b:free", max_tokens=5,
+                model="google/gemma-4-31b-it:free", max_tokens=5,
                 messages=[{"role": "user", "content": "Reply OK"}],
             )
             if resp.choices[0].message.content:
