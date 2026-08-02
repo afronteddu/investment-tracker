@@ -380,6 +380,17 @@ class Scheduler:
         return int(datetime.strptime(date_str, "%Y-%m-%d").timestamp())
 
     def _refresh_history_sync(self):
+        try:
+            self._refresh_history_sync_inner()
+        except Exception as e:
+            import traceback
+            print(f"[history] CRASH in sync: {e}")
+            traceback.print_exc()
+            # Write empty cache so the endpoint stops returning loading:True
+            if not self.state.get("history_cache"):
+                self.state["history_cache"] = {"series": [], "portfolio": [], "portfolio_historic": []}
+
+    def _refresh_history_sync_inner(self):
         from datetime import date, datetime, timedelta
         from src.quotes import get_fx_rates, currency_to_eur_rate
         from src.positions import TICKER_NAMES, compute_closed_positions
