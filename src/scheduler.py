@@ -320,9 +320,14 @@ class Scheduler:
     async def _refresh_history(self):
         loop = asyncio.get_event_loop()
         try:
-            await loop.run_in_executor(None, self._refresh_history_sync)
-        except Exception:
-            pass
+            await asyncio.wait_for(
+                loop.run_in_executor(None, self._refresh_history_sync),
+                timeout=120,
+            )
+        except asyncio.TimeoutError:
+            print("[history] refresh timed out after 120s — cache left as-is")
+        except Exception as e:
+            print(f"[history] refresh error: {e}")
 
     def _fetch_history_series(self, ticker: str, start: str, end_daily: str) -> list[dict]:
         """Fetch weekly+daily history via Yahoo cookie session. Returns list of {date, close, currency}."""
@@ -417,6 +422,7 @@ class Scheduler:
         # ── Open positions ────────────────────────────────────────────
         for ticker, pos in positions.items():
             try:
+                print(f"[history] fetching {ticker}")
                 raw = self._fetch_history_series(ticker, earliest.isoformat(), daily_start)
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
                 points = []
