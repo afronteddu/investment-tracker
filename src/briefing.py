@@ -23,7 +23,9 @@ _GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-late
 
 def _ask(prompt: str, max_tokens: int = 900) -> str:
     google_key = os.getenv("GOOGLE_API_KEY", "")
+    groq_key = os.getenv("GROQ_API_KEY", "")
     openai_key = os.getenv("OPENAI_API_KEY", "")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
 
     if google_key:
         from google import genai
@@ -37,7 +39,23 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
                 if any(x in err for x in ("quota", "429", "resource_exhausted", "not_found", "404", "not found", "not supported")):
                     continue  # try next model
                 return f"Gemini error ({model}): {str(e)[:200]}"
-        # all Gemini models exhausted, fall through to OpenAI
+        # all Gemini models exhausted, fall through to Groq
+
+    if groq_key:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            err = str(e)
+            if "rate_limit" not in err and "429" not in err:
+                return f"Groq error: {err[:200]}"
+            # rate limited — fall through to OpenAI
 
     if openai_key:
         try:
@@ -51,11 +69,24 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
             return resp.choices[0].message.content.strip()
         except Exception as e:
             err = str(e)
-            if "insufficient_quota" in err or "429" in err:
-                return "All AI quotas reached. Add billing credits to OpenAI or wait for Gemini daily reset."
-            return f"OpenAI error: {err[:200]}"
+            if "insufficient_quota" not in err and "429" not in err:
+                return f"OpenAI error: {err[:200]}"
+            # quota exhausted — fall through to Anthropic
 
-    return "No AI key configured — add GOOGLE_API_KEY (free) or OPENAI_API_KEY to .env."
+    if anthropic_key:
+        try:
+            from anthropic import Anthropic
+            client = Anthropic(api_key=anthropic_key)
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return resp.content[0].text.strip()
+        except Exception as e:
+            return f"Anthropic error: {str(e)[:200]}"
+
+    return "No AI key configured — add GOOGLE_API_KEY or GROQ_API_KEY (both free) to .env."
 
 
 def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dict]) -> str:
@@ -233,8 +264,10 @@ def _fetch_fundamentals(ticker: str) -> dict:
 def ai_health_check() -> dict:
     """Lightweight probe — returns which providers are live."""
     google_key = os.getenv("GOOGLE_API_KEY", "")
+    groq_key = os.getenv("GROQ_API_KEY", "")
     openai_key = os.getenv("OPENAI_API_KEY", "")
-    result = {"gemini": False, "openai": False, "active": None}
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+    result = {"gemini": False, "groq": False, "openai": False, "anthropic": False, "active": None}
     if google_key:
         try:
             from google import genai
@@ -243,6 +276,19 @@ def ai_health_check() -> dict:
             if resp.text:
                 result["gemini"] = True
                 result["active"] = "gemini"
+        except Exception:
+            pass
+    if groq_key and not result["active"]:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile", max_tokens=5,
+                messages=[{"role": "user", "content": "Reply OK"}],
+            )
+            if resp.choices[0].message.content:
+                result["groq"] = True
+                result["active"] = "groq"
         except Exception:
             pass
     if openai_key and not result["active"]:
@@ -256,6 +302,19 @@ def ai_health_check() -> dict:
             if resp.choices[0].message.content:
                 result["openai"] = True
                 result["active"] = "openai"
+        except Exception:
+            pass
+    if anthropic_key and not result["active"]:
+        try:
+            from anthropic import Anthropic
+            client = Anthropic(api_key=anthropic_key)
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001", max_tokens=5,
+                messages=[{"role": "user", "content": "Reply OK"}],
+            )
+            if resp.content[0].text:
+                result["anthropic"] = True
+                result["active"] = "anthropic"
         except Exception:
             pass
     return result

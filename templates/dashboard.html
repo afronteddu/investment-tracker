@@ -679,7 +679,7 @@
       <span class="section-title">AI Daily Briefing</span>
       <button class="btn btn-sm" onclick="generateBriefing()">Generate</button>
     </div>
-    <div id="briefing-text">No briefing yet — click Generate or wait for market close (22:05 Dublin). Requires OPENAI_API_KEY in .env.</div>
+    <div id="briefing-text">No briefing yet — click Generate or wait for market close (22:05 Dublin). Requires GOOGLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY in .env.</div>
   </div>
 
 </div>
@@ -1029,13 +1029,19 @@ function openDrilldown(ticker, positionData) {
       const text = d.analysis || '';
       _drilldownCache[ticker] = text;
       if (text.toLowerCase().includes('quota') || text.toLowerCase().includes('quota reached') || text.toLowerCase().includes('resource_exhausted')) {
-        E('modal-body').innerHTML = '<p style="color:#fbbf24">⚠ AI quota reached. Gemini free tier resets daily; OpenAI needs billing credits. Analysis will resume automatically once quota resets.</p>';
+        const p = document.createElement('p');
+        p.style.color = '#fbbf24';
+        p.textContent = '⚠ AI quota reached. Gemini resets daily; OpenAI/Anthropic need billing credits. Analysis will resume automatically once quota resets.';
+        E('modal-body').replaceChildren(p);
       } else {
         renderAnalysis(text);
       }
     })
     .catch(() => {
-      E('modal-body').innerHTML = '<p style="color:var(--red)">Network error loading analysis. Check server logs.</p>';
+      const p = document.createElement('p');
+      p.style.color = 'var(--red)';
+      p.textContent = 'Network error loading analysis. Check server logs.';
+      E('modal-body').replaceChildren(p);
     });
 }
 
@@ -1724,7 +1730,7 @@ async function generateBriefing() {
     E('briefing-text').className = 'loaded';
     btn.textContent = 'Regenerate';
   } catch(e) {
-    E('briefing-text').textContent = 'Error — check OPENAI_API_KEY in .env';
+    E('briefing-text').textContent = 'Error — check GOOGLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY in .env';
   }
   btn.disabled = false;
 }
