@@ -403,8 +403,8 @@ def generate_bucket_strategy(bucket: str, portfolio_rows: list[dict]) -> str:
 
     positions_text = "\n".join(
         f"  • {p['ticker']} ({p.get('name','')}) — {p['shares']:.1f}sh @ avg €{p['avg_cost_eur']:.2f},"
-        f" value €{p.get('current_value_eur', 0):,.0f},"
-        f" P&L {p.get('pnl_pct', 0):+.1f}%,"
+        f" value €{p.get('current_value_eur') or 0:,.0f},"
+        f" P&L {p.get('pnl_pct') or 0:+.1f}%,"
         f" RSI {p.get('rsi') or 'N/A'} ({p.get('rsi_signal','') or 'N/A'}),"
         f" first buy {p.get('first_buy_date','?')}"
         for p in bucket_rows
