@@ -330,7 +330,7 @@ def generate_challenge(
     """AI response to a user challenge on a suggested addition."""
     positions_text = "\n".join(
         f"- {p['ticker']} ({p['bucket']}): {p['shares']:.1f}sh @ avg €{p['avg_cost_eur']:.2f}, "
-        f"P&L {p.get('pnl_pct', 0):+.1f}%, value €{p.get('current_value_eur', 0):,.0f}"
+        f"P&L {p.get('pnl_pct') or 0:+.1f}%, value €{p.get('current_value_eur') or 0:,.0f}"
         for p in portfolio_snapshot
     )
 
