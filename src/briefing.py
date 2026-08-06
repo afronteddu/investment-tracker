@@ -411,7 +411,7 @@ def generate_bucket_strategy(bucket: str, portfolio_rows: list[dict]) -> str:
     )
 
     all_text = "\n".join(
-        f"  {p['ticker']} ({p['bucket']}) €{p.get('current_value_eur',0):,.0f} {p.get('pnl_pct',0):+.1f}%"
+        f"  {p['ticker']} ({p['bucket']}) €{p.get('current_value_eur') or 0:,.0f} {p.get('pnl_pct') or 0:+.1f}%"
         for p in all_rows
     )
 
