@@ -23,7 +23,7 @@ _GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-late
 
 def _ask(prompt: str, max_tokens: int = 900) -> str:
     google_key = os.getenv("GOOGLE_API_KEY", "")
-    groq_key = os.getenv("GROQ_API_KEY", "")
+    groq_key = os.getenv("MISTRAL_API_KEY", "") or os.getenv("GROQ_API_KEY", "")
     openai_key = os.getenv("OPENAI_API_KEY", "")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
 
@@ -264,7 +264,7 @@ def _fetch_fundamentals(ticker: str) -> dict:
 def ai_health_check() -> dict:
     """Lightweight probe — returns which providers are live."""
     google_key = os.getenv("GOOGLE_API_KEY", "")
-    groq_key = os.getenv("GROQ_API_KEY", "")
+    groq_key = os.getenv("MISTRAL_API_KEY", "") or os.getenv("GROQ_API_KEY", "")
     openai_key = os.getenv("OPENAI_API_KEY", "")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
     result = {"gemini": False, "groq": False, "openai": False, "anthropic": False, "active": None}
