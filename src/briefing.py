@@ -86,7 +86,7 @@ def _ask(prompt: str, max_tokens: int = 900) -> str:
         except Exception as e:
             return f"Anthropic error: {str(e)[:200]}"
 
-    return "No AI key configured — add GOOGLE_API_KEY or GROQ_API_KEY (both free) to .env."
+    return "No AI key configured — add GOOGLE_API_KEY or MISTRAL_API_KEY (both free) to .env."
 
 
 def generate_briefing(portfolio_snapshot: list[dict], scanner_snapshot: list[dict]) -> str:
