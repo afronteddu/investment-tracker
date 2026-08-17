@@ -644,7 +644,8 @@ async def price_chart(ticker: str, request: Request):
             if r.status_code in (401, 403):
                 from src.quotes import _init_session
                 _init_session()
-                params["crumb"] = _crumb
+                import src.quotes as _sq
+                params["crumb"] = _sq._crumb
                 r = _session.get(url, headers=_HEADERS, params=params, timeout=15)
             if r.status_code != 200:
                 return []
