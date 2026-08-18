@@ -493,7 +493,7 @@
     <!-- Chart 2: % return from purchase date, each starting at 0 -->
     <div class="card" style="margin-bottom:16px;padding:20px">
       <div class="card-label" style="margin-bottom:4px">Return per Holding from Purchase Date (%)</div>
-      <div class="muted" style="font-size:11px;margin-bottom:12px">each line starts at 0% on your actual buy date</div>
+      <div class="muted" style="font-size:11px;margin-bottom:12px">% return vs blended avg cost — starts from your first weekly close after buy date</div>
       <div style="position:relative;height:260px">
         <canvas id="chart-combined"></canvas>
       </div>
@@ -2446,7 +2446,7 @@ function renderPlaybook(positions, lifetime) {
   const aiVal = positions.filter(p=>aiTickers.includes(p.ticker)).reduce((s,p)=>s+(p.current_value_eur||0),0);
   const aiConc2 = totalValue>0 ? (aiVal/totalValue*100).toFixed(0) : 0;
 
-  const usdVal = positions.filter(p=>{ const ccy=(window._fxRates&&Object.keys(window._fxRates||{})); return p.currency==='USD'; }).reduce((s,p)=>s+(p.current_value_eur||0),0);
+  const usdVal = positions.filter(p=>{ const ccy = (TICKER_META[p.ticker]||{}).ccy || TICKER_CCY[p.ticker] || p.currency; return ccy==='USD'; }).reduce((s,p)=>s+(p.current_value_eur||0),0);
   const usdConc2 = totalValue>0 ? (usdVal/totalValue*100).toFixed(0) : '—';
 
   // SoRR phase from FIRE inputs
@@ -2495,7 +2495,7 @@ function renderPlaybook(positions, lifetime) {
   const section2 = card('2. Bucket Rules — Live', 'var(--text)',
     row('Retirement', retPct + '% of portfolio (target 40%)', Math.abs(retPct-40)>10?'#fbbf24':'#4ade80')
     + row('Growth', groPct + '% (target 35%)', Math.abs(groPct-35)>10?'#fbbf24':'#4ade80')
-    + row('High Conviction', hcPct2 + '% (target 25%)', Math.abs(hcPct2-25)>10?'#fbbf24':'#4ade80')
+    + row('High Conviction (HC-1+HC-3)', (+hcPct2 + +hc3Pct) + '% (target 25%)', Math.abs(+hcPct2 + +hc3Pct - 25)>10?'#fbbf24':'#4ade80')
     + row('House Savings', hsPct2 + '% (tracked separately)', '#94a3b8')
     + row('AI/data-centre cluster', aiConc2 + '% of portfolio', aiConc2>40?'#f87171':aiConc2>30?'#fbbf24':'#4ade80')
     + row('Holdings', heldStr, 'var(--muted)')
