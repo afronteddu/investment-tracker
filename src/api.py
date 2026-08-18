@@ -619,7 +619,7 @@ async def drilldown(ticker: str, request: Request):
         if position:
             position["day_pct"] = quote_ctx["day_pct"]
 
-    analysis = await loop.run_in_executor(None, generate_drilldown, ticker, position, quote_ctx)
+    analysis = await loop.run_in_executor(None, generate_drilldown, ticker, position, quote_ctx, portfolio_rows)
     return {"ticker": ticker, "analysis": analysis}
 
 

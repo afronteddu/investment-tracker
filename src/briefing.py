@@ -615,7 +615,7 @@ Give a brief status (3 bullet points: status, top risk, top action). Max 150 wor
     return _ask(prompt, max_tokens=800)
 
 
-def generate_drilldown(ticker: str, position: dict | None, quote: dict | None) -> str:
+def generate_drilldown(ticker: str, position: dict | None, quote: dict | None, portfolio_rows: list[dict] | None = None) -> str:
     name = position.get("name", ticker) if position else ticker
     bucket = position.get("bucket", "watchlist") if position else "watchlist"
 
@@ -712,7 +712,19 @@ Plain English. Reference the actual numbers. No disclaimers. Max 650 words."""
         price_context = f"\nCurrent price: {price_q:.2f} {currency_q} ({day_pct:+.1f}% today) — NOT HELD"
 
     # Portfolio context summary (what the investor already owns)
-    portfolio_context = """
+    if portfolio_rows:
+        held_lines = ", ".join(
+            f"{p['ticker']} ({p.get('bucket','?')})"
+            for p in portfolio_rows
+        )
+        portfolio_context = f"""
+INVESTOR'S EXISTING PORTFOLIO (for fit assessment):
+Positions: {held_lines}
+Watchlist buckets: QUALITY (long-run compounders), GROWTH (AI-cycle timed), DEFENCE (NATO structural),
+HOUSE (capital preservation 2028-2029, Dublin FTB purchase ~€500k), MOONSHOT (speculative, <5% allocation).
+Irish tax: 33% CGT on stocks (stocks only — never ETFs due to 41% exit tax + deemed disposal)."""
+    else:
+        portfolio_context = """
 INVESTOR'S EXISTING PORTFOLIO (for fit assessment):
 Positions: NVDA (AI GPU, Growth), ASML.AS (EUV monopoly, Growth), VRT (AI data centre power, HC-1),
 APLD (AI data centre infra, HC-1), NBIS (GPU cloud/AI inference, HC-1), SNDK (storage, Growth),
