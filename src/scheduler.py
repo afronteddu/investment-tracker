@@ -593,7 +593,7 @@ class Scheduler:
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
         signals = self.state.get("signals_cache", {})
-        all_tickers = list(positions.keys()) + watchlist
+        all_tickers = list(set(list(positions.keys()) + watchlist))
         loop = asyncio.get_event_loop()
         quotes = await loop.run_in_executor(None, fetch_quotes, all_tickers)
 
