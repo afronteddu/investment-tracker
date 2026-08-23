@@ -41,7 +41,6 @@ def _fetch_history_via_session(ticker: str, period_days: int, interval: str) -> 
     """Fetch closing prices using the shared cookie+crumb session from quotes.py.
     Falls back to yfinance if the session fetch fails (e.g. local dev)."""
     from src.quotes import _session, _crumb, _ensure_session, _HEADERS
-    import datetime as _dt
     _ensure_session()
     end_ts = int(time.time()) + 86400
     start_ts = int(time.time()) - period_days * 86400
