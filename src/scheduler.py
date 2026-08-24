@@ -799,10 +799,10 @@ class Scheduler:
         else:
             ok.append(f"✅ {len(positions)} positions loaded")
 
-        # 2. Prices returning values
+        # 2. Prices returning values — read from pre-built cache (refreshed every 60s)
         if positions:
             tickers = list(positions.keys())
-            quotes = fetch_quotes(tickers)
+            quotes = self.state.get("quotes_cache", {})
             missing_price = [t for t in tickers if quotes.get(t, {}).get("price") is None]
             live_price = [t for t in tickers if quotes.get(t, {}).get("price") is not None]
             if missing_price:
