@@ -171,7 +171,7 @@ class Scheduler:
         hot_picks = set(self.state.get("hot_picks", []))
         signals = self.state.get("signals_cache", {})
 
-        all_tickers = list(set(list(positions.keys()) + watchlist))
+        all_tickers = list(dict.fromkeys(list(positions.keys()) + watchlist))
         _log.info("fetching quotes for %d tickers: %s", len(all_tickers), all_tickers[:5])
         quotes = fetch_quotes(all_tickers)
         fx = get_fx_rates()
@@ -511,7 +511,7 @@ class Scheduler:
         loop = asyncio.get_event_loop()
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
-        all_tickers = list(set(list(positions.keys()) + watchlist))
+        all_tickers = list(dict.fromkeys(list(positions.keys()) + watchlist))
         cache = dict(self.state.get("signals_cache", {}))  # keep stale data while refreshing
         for ticker in all_tickers:
             try:
@@ -593,7 +593,7 @@ class Scheduler:
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
         signals = self.state.get("signals_cache", {})
-        all_tickers = list(set(list(positions.keys()) + watchlist))
+        all_tickers = list(dict.fromkeys(list(positions.keys()) + watchlist))
         loop = asyncio.get_event_loop()
         quotes = await loop.run_in_executor(None, fetch_quotes, all_tickers)
 
