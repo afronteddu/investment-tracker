@@ -587,15 +587,14 @@ class Scheduler:
         )
 
     async def _run_eod_briefing(self):
-        from src.quotes import fetch_quotes, day_change_pct, currency_to_eur_rate
+        from src.quotes import day_change_pct, currency_to_eur_rate
         from src.briefing import generate_briefing
 
         positions = self.state.get("positions", {})
         watchlist = self.state.get("watchlist", [])
         signals = self.state.get("signals_cache", {})
-        all_tickers = list(dict.fromkeys(list(positions.keys()) + watchlist))
         loop = asyncio.get_event_loop()
-        quotes = await loop.run_in_executor(None, fetch_quotes, all_tickers)
+        quotes = self.state.get("quotes_cache", {})
 
         portfolio_snapshot = []
         for ticker, pos in positions.items():
