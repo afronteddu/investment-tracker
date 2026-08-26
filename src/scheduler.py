@@ -883,8 +883,6 @@ class Scheduler:
         positions = self.state.get("positions", {})
         quotes = self.state.get("quotes_cache", {})
         signals = self.state.get("signals_cache", {})
-        from src.positions import BUCKET_MAP
-
         # Build portfolio_rows (same shape as _build_portfolio_data in api.py)
         portfolio_rows = []
         for ticker, pos in positions.items():
