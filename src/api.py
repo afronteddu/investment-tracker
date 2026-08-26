@@ -46,7 +46,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.positions import compute_positions, compute_lifetime_stats, TICKER_NAMES
 from src.quotes import fetch_quotes, day_change_pct, is_market_open_us, is_market_open_eu, to_eur, get_fx_rates, currency_to_eur_rate
-from src.scheduler import Scheduler
+from src.scheduler import Scheduler, now_dublin
 
 # Base watchlist — always scanned
 # Rules: no ticker with persistent negative 52W return stays here. Each has a bucket + thesis.
@@ -499,8 +499,8 @@ async def reload_history(request: Request):
         return r
     state["history_cache"] = None
     if _scheduler:
-        _scheduler._last_history_refresh = None  # reset so next tick re-triggers
         asyncio.create_task(_scheduler._refresh_history())
+        _scheduler._last_history_refresh = now_dublin()
     return {"status": "ok", "message": "History refresh triggered — check Charts tab in ~60s"}
 
 
