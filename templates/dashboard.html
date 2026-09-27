@@ -686,6 +686,20 @@
 
 <script>
 const E = id => document.getElementById(id);
+// Patch fetch to include Basic Auth for all same-origin API calls
+(function() {
+  const _b64 = "{{ auth_b64 }}";
+  if (!_b64) return;
+  const _orig = window.fetch.bind(window);
+  window.fetch = (url, opts = {}) => {
+    if (typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin))) {
+      const headers = new Headers(opts.headers || {});
+      if (!headers.has('Authorization')) headers.set('Authorization', 'Basic ' + _b64);
+      return _orig(url, { ...opts, headers });
+    }
+    return _orig(url, opts);
+  };
+})();
 const fmt = (n, d=2) => n != null ? n.toFixed(d) : '—';
 const fmtK = n => {
   if (n == null) return '—';

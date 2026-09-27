@@ -352,7 +352,10 @@ def _signal(pct) -> str:
 async def dashboard(request: Request):
     if (r := _auth_required(request)):
         return r
-    return templates.TemplateResponse("dashboard.html", {"request": request, "ws_token": _make_ws_token()})
+    user = os.getenv("DASHBOARD_USER", "")
+    passwd = os.getenv("DASHBOARD_PASS", "")
+    auth_b64 = base64.b64encode(f"{user}:{passwd}".encode()).decode() if user else ""
+    return templates.TemplateResponse("dashboard.html", {"request": request, "ws_token": _make_ws_token(), "auth_b64": auth_b64})
 
 
 @app.get("/public", response_class=HTMLResponse)
