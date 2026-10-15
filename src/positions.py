@@ -34,6 +34,9 @@ ISIN_TO_TICKER = {
     "US81758H1068": "SERV",       # Serve Robotics (autonomous delivery)
     # Retirement compounder — 109-agent adversarial deep research Jul 2026
     "SE0015811963": "INVEB.ST",   # Investor AB B (Wallenberg, Stockholm) — BRK-B non-USD pair
+    # European insurance compounders — retirement DCA Oct 2026
+    "DE0008430026": "MUV2.DE",    # Munich Re (Münchener Rück) — reinsurance, climate tailwind
+    "DE0008404005": "ALV.DE",     # Allianz SE — global insurance, EUR, div ~4%
 }
 
 TICKER_NAMES = {
@@ -157,6 +160,7 @@ TICKER_NAMES = {
     "BKSY":  "BlackSky Technology",
     # Retirement compounder — DCA pair to BRK-B, started Jul 2026
     "INVEB.ST": "Investor AB B",
+    "ALV.DE":   "Allianz SE",
 }
 
 # ETFs/ETCs — Irish 41% exit tax + deemed disposal every 8 years makes trimming
@@ -189,6 +193,8 @@ BUCKET_MAP = {
     "LUNR": "hc_3",
     "BKSY": "hc_3",
     "SERV": "hc_3",
+    "MUV2.DE": "retirement",
+    "ALV.DE": "retirement",
     "IGLN.L": "retirement",
     "ISLN.L": "retirement",
     "IWDA.AS": "retirement",
