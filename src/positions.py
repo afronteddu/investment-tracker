@@ -37,6 +37,13 @@ ISIN_TO_TICKER = {
     # European insurance compounders — retirement DCA Oct 2026
     "DE0008430026": "MUV2.DE",    # Munich Re (Münchener Rück) — reinsurance, climate tailwind
     "DE0008404005": "ALV.DE",     # Allianz SE — global insurance, EUR, div ~4%
+    # DCA shortlist Oct 2026 — steady compounders, all EUR, all 33% CGT
+    "FR0000120628": "AXA.PA",     # AXA SA — insurance, Euronext Paris
+    "ES0148396007": "ITX.MC",     # Inditex — retail, Bolsa Madrid
+    "IT0000072618": "ISP.MI",     # Intesa Sanpaolo — bank, Borsa Italiana
+    "ES0113211835": "BBVA.MC",    # BBVA — bank, Bolsa Madrid
+    "IT0005239360": "UCG.MI",     # UniCredit — bank, Borsa Italiana
+    "ES0113900J37": "SAN.MC",     # Banco Santander — bank, Bolsa Madrid
 }
 
 TICKER_NAMES = {
@@ -161,6 +168,13 @@ TICKER_NAMES = {
     # Retirement compounder — DCA pair to BRK-B, started Jul 2026
     "INVEB.ST": "Investor AB B",
     "ALV.DE":   "Allianz SE",
+    # DCA shortlist Oct 2026
+    "AXA.PA":   "AXA SA",
+    "ITX.MC":   "Inditex SA",
+    "ISP.MI":   "Intesa Sanpaolo",
+    "BBVA.MC":  "BBVA SA",
+    "UCG.MI":   "UniCredit SpA",
+    "SAN.MC":   "Banco Santander SA",
 }
 
 # ETFs/ETCs — Irish 41% exit tax + deemed disposal every 8 years makes trimming

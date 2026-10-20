@@ -643,6 +643,20 @@
     </div>
     <div id="strat-diversification" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:24px"></div>
 
+    <!-- Monthly DCA Plan -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">Monthly DCA Plan</span>
+      <span class="muted" style="font-size:11px">rolling 3-month schedule · live prices</span>
+    </div>
+    <div id="strat-dca-plan" style="margin-bottom:24px"></div>
+
+    <!-- CGT Exit Alerts -->
+    <div class="section-header" style="margin-top:0">
+      <span class="section-title">CGT Exit Alerts</span>
+      <span class="muted" style="font-size:11px">Ireland · €1,270 annual exemption · 33% CGT</span>
+    </div>
+    <div id="strat-cgt-alerts" style="margin-bottom:24px"></div>
+
     <!-- Risk dashboard -->
     <div class="section-header" style="margin-top:0">
       <span class="section-title">Risk Signals</span>
@@ -3175,6 +3189,224 @@ function renderStrategy(positions, lifetime) {
     _divCard('By Sector', sectorMap, '#60a5fa') +
     _divCard('By Geography', geoMap, '#34d399') +
     _divCard('By Asset Type', typeMap, '#a78bfa');
+
+  // ── Monthly DCA Plan ─────────────────────────────────────────────
+  // All interpolated values are hardcoded shortlist data or computed numbers from internal API.
+  // Tickers come from ISIN_TO_TICKER map (backend-validated, uppercase alphanumeric).
+  // No user-supplied strings are interpolated — XSS not applicable here.
+  // DCA backbone: BRK-B + INVEB.ST are the two core "ETF-like" positions that get bought every cycle.
+  // BRK-B at ~€473/share can only fit 1 share per month — so it alternates with INVEB-heavy months.
+  // Gap-fillers (AXA, ISP, ALV, BBVA, ITX) are secondary — start after backbone is balanced.
+  const DCA_SHORTLIST = [
+    { ticker:'BRK-B',  exchange:'NYSE',           isin:'US0846707026',  div:'0%',   conviction:'CORE',   ccy:'USD', note:'US diversified conglomerate — insurance, railroads, energy, consumer. Backbone #1.' },
+    { ticker:'INVEB.ST',exchange:'Nasdaq Stockholm',isin:'SE0000107419', div:'~2%',  conviction:'CORE',   ccy:'SEK', note:'Wallenberg holding — ABB, Atlas Copco, AstraZeneca, Saab, Ericsson. Backbone #2. Currently underweight vs BRK-B.' },
+    { ticker:'AXA.PA',  exchange:'Euronext Paris', isin:'FR0000120628',  div:'5.5%', conviction:'HIGH',   ccy:'EUR', note:'Insurance β0.59, steady chart, +36% EPS, Buy consensus, 23% to PT' },
+    { ticker:'ALV.DE',  exchange:'Xetra',          isin:'DE0008404005',  div:'4.0%', conviction:'HIGH',   ccy:'EUR', note:'4yr linear uptrend, European Berkshire-equivalent insurance giant' },
+    { ticker:'ITX.MC',  exchange:'Bolsa Madrid',   isin:'ES0148396007',  div:'1.2%', conviction:'HIGH',   ccy:'EUR', note:'Cleanest price trend of all 15 analysed, near multi-year high' },
+    { ticker:'ISP.MI',  exchange:'Borsa Italiana', isin:'IT0000072618',  div:'6.3%', conviction:'MEDIUM', ccy:'EUR', note:'⚠ LIVE M&A: active €35.3B MPS bid (Monte dei Paschi). Monitor before buying. 5yr div streak, β0.86.' },
+    { ticker:'BBVA.MC', exchange:'Bolsa Madrid',   isin:'ES0113211835',  div:'4.5%', conviction:'HIGH',   ccy:'EUR', note:'Sabadell bid resolved, $4.6B buyback, LatAm insulates ECB cuts' },
+    { ticker:'UCG.MI',  exchange:'Borsa Italiana', isin:'IT0005239360',  div:'4.2%', conviction:'MEDIUM', ccy:'EUR', note:'Strong earnings, 27% to analyst PT, Commerzbank M&A overhang' },
+    { ticker:'SAN.MC',  exchange:'Bolsa Madrid',   isin:'ES0113900J37',  div:'2.1%', conviction:'MEDIUM', ccy:'EUR', note:'Most diversified bank (LatAm+EU+UK), 10% div increase Sep 2026' },
+  ];
+  // 2-month alternating cycle:
+  // Month A: INVEB heavy (catch-up) + AXA (gap-filler start)
+  // Month B: BRK-B 1 share + INVEB lighter  (BRK-B is ~€473 — nearly half the budget)
+  const DCA_CYCLE = [
+    { label:'Month A — INVEB catch-up + AXA start', buys:[
+      { ticker:'INVEB.ST', amount:600, why:'INVEB.ST is massively underweight vs BRK-B (€980 vs €4,940 cost basis). Aggressive catch-up. Swedish industrial/pharma/defence holding — EUR/SEK diversification.' },
+      { ticker:'AXA.PA',   amount:400, why:'Starts insurance position. Zero insurance in portfolio. β0.59, 5.5% div, steady upward chart. EUR — dilutes USD concentration.' },
+    ]},
+    { label:'Month B — BRK-B 1 share + INVEB continue', buys:[
+      { ticker:'BRK-B',    amount:473, why:'1 share (~€473). BRK-B is the US backbone — keep compounding but at €473/share it dominates the budget, so alternate monthly.' },
+      { ticker:'INVEB.ST', amount:527, why:'INVEB.ST continues every month regardless. Building toward parity with BRK-B over 12–18 months.' },
+    ]},
+  ];
+  const _dcaBaseMonths = 2026 * 12 + 9; // Oct 2026 = cycle A (index 0)
+  const _dcaNow2 = new Date();
+  const _dcaElapsed = (_dcaNow2.getFullYear() * 12 + _dcaNow2.getMonth()) - _dcaBaseMonths;
+  const _dcaCyclePos = ((_dcaElapsed % 2) + 2) % 2;
+  const _MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  const _renderDcaPlan = (priceMap) => {
+    const dcaEl = E('strat-dca-plan');
+    if (!dcaEl) return;
+    const ownedSet = new Set(positions.map(p => p.ticker));
+    const schedule = [0,1,2].map(off => {
+      const ci = (_dcaCyclePos + off) % 2;
+      const absM = _dcaNow2.getMonth() + off;
+      return { mName: _MON[absM % 12] + ' ' + (_dcaNow2.getFullYear() + Math.floor(absM / 12)), cycle: DCA_CYCLE[ci], cur: off === 0 };
+    });
+    let schedHtml = '';
+    schedule.forEach(s => {
+      const bc = s.cur ? '#60a5fa' : 'var(--border)';
+      const bg = s.cur ? '#60a5fa08' : 'transparent';
+      let buysHtml = '';
+      s.cycle.buys.forEach(b => {
+        const q = priceMap[b.ticker];
+        const pStr = q && q.price != null ? q.price.toFixed(2) + ' ' + (q.currency||'') : '—';
+        const dPct = q && q.day_pct != null ? q.day_pct : null;
+        const dStr = dPct != null ? ' (' + (dPct>=0?'+':'') + dPct.toFixed(1) + '%)' : '';
+        const dCol = dPct != null ? (dPct>=0?'var(--green)':'var(--red)') : 'var(--muted)';
+        const m = DCA_SHORTLIST.find(d => d.ticker === b.ticker) || {};
+        buysHtml += '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff08">'
+          + '<div style="min-width:80px">'
+          + '<div style="font-weight:700;font-size:13px;color:var(--blue)">' + b.ticker + '</div>'
+          + '<div style="font-size:10px;color:var(--muted)">' + (m.exchange||'') + '</div>'
+          + '<div style="font-size:9px;color:#475569">' + (m.isin||'') + '</div>'
+          + '</div><div style="flex:1">'
+          + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:3px;align-items:center">'
+          + '<span style="font-size:12px;font-weight:700;color:var(--green)">€' + b.amount + '</span>'
+          + '<span style="font-size:12px;color:var(--muted)">' + pStr + '</span>'
+          + (dPct != null ? '<span style="font-size:10px;color:' + dCol + '">' + dStr + '</span>' : '')
+          + '<span style="font-size:10px;color:#fbbf24;font-weight:600">div ' + (m.div||'—') + '</span>'
+          + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);line-height:1.5">' + b.why + '</div>'
+          + '</div></div>';
+      });
+      const badge = s.cur ? ' <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:#60a5fa22;color:#60a5fa">THIS MONTH</span>' : '';
+      const cycleLabel = s.cycle.label ? ' <span style="font-size:9px;color:#475569;margin-left:6px">' + s.cycle.label + '</span>' : '';
+      schedHtml += '<div style="border:1px solid ' + bc + ';background:' + bg + ';border-radius:8px;padding:12px;margin-bottom:10px">'
+        + '<div style="font-size:11px;font-weight:700;color:' + (s.cur?'#60a5fa':'var(--muted)') + ';margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">' + s.mName + badge + cycleLabel + '</div>'
+        + buysHtml + '</div>';
+    });
+    let tableRows = '';
+    DCA_SHORTLIST.forEach(d => {
+      const q = priceMap[d.ticker];
+      const pStr = q && q.price != null ? q.price.toFixed(2) : '—';
+      const owned = ownedSet.has(d.ticker);
+      const sLabel = owned ? 'OWNED' : d.conviction === 'HIGH' ? 'NEXT BUY' : 'WATCH';
+      const sCol = owned ? '#4ade80' : d.conviction === 'HIGH' ? '#60a5fa' : '#fbbf24';
+      const cCol = d.conviction === 'HIGH' ? '#4ade80' : '#fbbf24';
+      tableRows += '<tr>'
+        + '<td style="padding:5px 7px;font-weight:700">' + d.ticker + '</td>'
+        + '<td style="padding:5px 7px;font-size:11px;color:var(--muted)">' + d.exchange + '</td>'
+        + '<td style="padding:5px 7px;font-size:11px;font-family:monospace">' + pStr + '</td>'
+        + '<td style="padding:5px 7px;font-size:11px;color:#fbbf24;font-weight:700">' + d.div + '</td>'
+        + '<td style="padding:5px 7px"><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:' + cCol + '22;color:' + cCol + '">' + d.conviction + '</span></td>'
+        + '<td style="padding:5px 7px"><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:' + sCol + '22;color:' + sCol + '">' + sLabel + '</span></td>'
+        + '<td style="padding:5px 7px;font-size:10px;color:var(--muted)">' + d.note + '</td>'
+        + '</tr>';
+    });
+    let html = '<div class="strat-card">'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">3-month rolling cycle. All individual stocks (33% CGT). All EUR-denominated — reduces USD concentration. Rotate each month. If budget varies, prioritise the name furthest from analyst PT.</div>'
+      + schedHtml
+      + '<div style="margin-top:16px"><div class="strat-label" style="margin-bottom:8px">Full shortlist reference</div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.4px">'
+      + '<th style="padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)">Ticker</th>'
+      + '<th style="padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)">Exchange</th>'
+      + '<th style="padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)">Price</th>'
+      + '<th style="padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)">Div</th>'
+      + '<th style="padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)">Conv</th>'
+      + '<th style="padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)">Status</th>'
+      + '<th style="padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)">Notes</th>'
+      + '</tr></thead><tbody>' + tableRows + '</tbody></table></div></div>'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:10px;padding:6px 10px;background:#ffffff08;border-radius:5px;border-left:3px solid #60a5fa40">⚠ Verify each ticker in DeGiro by ISIN before buying. Use the primary exchange listed for tightest spread. All are individual stocks — 33% CGT, €1,270 annual exemption applies.</div>'
+      + '</div>';
+    dcaEl.innerHTML = html;
+  };
+  _renderDcaPlan({});
+  fetch('/api/quotes?tickers=' + encodeURIComponent(DCA_SHORTLIST.map(d => d.ticker).join(',')))
+    .then(r => r.json()).then(pm => _renderDcaPlan(pm)).catch(() => {});
+
+  // ── CGT Exit Alerts ──────────────────────────────────────────────
+  // All interpolated values are computed numbers or hardcoded labels.
+  // Position tickers from ISIN_TO_TICKER map — backend-validated, not user input.
+  (() => {
+    const cgtEl = E('strat-cgt-alerts');
+    if (!cgtEl) return;
+    const _CGT_RATE = 0.33, _CGT_EXEMPT = 1270;
+    const _HC_LOCKED = new Set(['NBIS','VRT','APLD','RCAT','LUNR','BKSY','SERV']);
+    const _n = new Date(), _mo = _n.getMonth(), _dy = _n.getDate();
+    let urgBg, urgBorder, urgCol, urgText, urgBadge;
+    if (_mo === 11 && _dy >= 15) {
+      urgBg='#7f1d1d15'; urgBorder='#7f1d1d'; urgCol='#f87171'; urgBadge='DEC 15+ PASSED';
+      urgText='LAST CHANCE: Dec disposals must be paid by 31 Jan 2027. If Jan–Nov deadline (Dec 15) was missed, settle immediately via ROS. File CG1 by 31 Oct 2027.';
+    } else if (_mo === 11) {
+      urgBg='#7f1d1d10'; urgBorder='#ef4444'; urgCol='#f87171'; urgBadge='ACT NOW';
+      urgText='ACT NOW — deadline 15 Dec 2026 for all Jan–Nov 2026 disposals. Pay via ROS → Capital Gains Tax. Dec disposals: pay by 31 Jan 2027.';
+    } else if (_mo === 10) {
+      urgBg='#fbbf2408'; urgBorder='#fbbf24'; urgCol='#fbbf24'; urgBadge='PREPARE';
+      urgText='November — prepare. Review positions now. December is your last chance to use the €1,270 exemption for 2026. Payment deadline: 15 Dec 2026.';
+    } else {
+      const dToNov = Math.ceil((new Date(_n.getFullYear(),10,1)-_n)/86400000);
+      urgBg='transparent'; urgBorder='var(--border)'; urgCol='var(--muted)'; urgBadge='OPEN';
+      urgText='€1,270 annual exemption resets Jan 1. Payment deadline: 15 Dec 2026 (Jan–Nov disposals). ' + (dToNov>0 ? dToNov+' days to November review window.' : '');
+    }
+    const withPnl = positions.filter(p => p.pnl_eur != null).sort((a,b)=>b.pnl_eur-a.pnl_eur);
+    const totGain = withPnl.filter(p=>p.pnl_eur>0).reduce((s,p)=>s+p.pnl_eur,0);
+    const totLoss = withPnl.filter(p=>p.pnl_eur<0).reduce((s,p)=>s+p.pnl_eur,0);
+    let exemUsed = 0;
+    let rowsHtml = '';
+    withPnl.forEach(p => {
+      const g = p.pnl_eur, pct = p.pnl_pct||0;
+      const gc = g>0?'var(--green)':g<0?'var(--red)':'var(--muted)';
+      const gAbs = Math.abs(Math.round(g));
+      const pStr = (pct>=0?'+':'')+pct.toFixed(1)+'%';
+      let act, actCol, actNote, taxLine='';
+      if (_HC_LOCKED.has(p.ticker)) {
+        act='LOCKED'; actCol='#a78bfa';
+        actNote='HC position — exit at scheduled window/target only. Do not harvest ad-hoc.';
+      } else if (g > 0) {
+        const remEx = Math.max(0, _CGT_EXEMPT - exemUsed);
+        const taxable = Math.max(0, g - remEx);
+        const tax = Math.round(taxable * _CGT_RATE);
+        if (_mo >= 10 && g <= _CGT_EXEMPT && exemUsed < _CGT_EXEMPT) {
+          act='HARVEST GAIN'; actCol='#4ade80';
+          actNote='Gain €' + Math.round(g).toLocaleString() + ' is under €1,270 exemption. Sell = zero CGT. Re-buy after 4 weeks to reset cost basis.';
+          exemUsed += g;
+        } else {
+          act='HOLD'; actCol='var(--muted)';
+          taxLine = '<span style="font-size:10px;color:var(--red);margin-left:6px">CGT if sold: €' + tax.toLocaleString() + '</span>';
+          actNote='CGT due if sold: €' + tax.toLocaleString() + ' (33% \xd7 €' + Math.round(taxable).toLocaleString() + ' taxable). Hold unless exit thesis triggered.';
+        }
+      } else if (g < 0) {
+        const saving = Math.round(Math.abs(g)*_CGT_RATE);
+        act='HARVEST LOSS'; actCol='#fbbf24';
+        actNote='Realising this loss saves €' + saving.toLocaleString() + ' in CGT by offsetting gains elsewhere. Re-buy after 4 weeks if still bullish.';
+      } else {
+        act='HOLD'; actCol='var(--muted)'; actNote='No material P&L to crystallise.';
+      }
+      rowsHtml += '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff08">'
+        + '<div style="min-width:70px">'
+        + '<div style="font-weight:700;font-size:13px">' + p.ticker + '</div>'
+        + '<div style="font-size:11px;color:' + gc + ';font-weight:700">' + (g>=0?'+':'−') + '€' + gAbs.toLocaleString() + '</div>'
+        + '<div style="font-size:10px;color:' + gc + '">' + pStr + '</div>'
+        + '</div><div style="flex:1">'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:3px;align-items:center">'
+        + '<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;background:' + actCol + '22;color:' + actCol + '">' + act + '</span>' + taxLine
+        + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);line-height:1.5">' + actNote + '</div>'
+        + '</div></div>';
+    });
+    const net = totGain + totLoss;
+    const exRem = Math.max(0, _CGT_EXEMPT - exemUsed);
+    let html = '<div class="strat-card">'
+      + '<div style="padding:8px 12px;background:' + urgBg + ';border:1px solid ' + urgBorder + ';border-radius:7px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">'
+      + '<div style="flex:1;font-size:11px;color:var(--muted);line-height:1.6">' + urgText + '</div>'
+      + '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;background:' + urgCol + '22;color:' + urgCol + ';white-space:nowrap">' + urgBadge + '</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;background:#ffffff06;border-radius:8px">'
+      + '<div><div style="font-size:10px;color:var(--muted)">Unrealised gains</div><div style="font-size:14px;font-weight:700;color:var(--green)">+€' + Math.round(totGain).toLocaleString() + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">Unrealised losses</div><div style="font-size:14px;font-weight:700;color:var(--red)">−€' + Math.abs(Math.round(totLoss)).toLocaleString() + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">Net P&L</div><div style="font-size:14px;font-weight:700;color:' + (net>=0?'var(--green)':'var(--red)') + '">' + (net>=0?'+':'−') + '€' + Math.abs(Math.round(net)).toLocaleString() + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">2026 exemption left</div><div style="font-size:14px;font-weight:700;color:#fbbf24">€' + Math.round(exRem).toLocaleString() + ' / €1,270</div></div>'
+      + '</div>'
+      + '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">Action per position (largest gain → largest loss):</div>'
+      + (rowsHtml || '<div style="color:var(--muted);font-size:12px">Waiting for live prices…</div>')
+      + '<div style="margin-top:14px;padding:10px 12px;background:#ffffff06;border-radius:8px;border-left:3px solid #60a5fa40">'
+      + '<div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:6px">How to declare (Ireland)</div>'
+      + '<div style="font-size:11px;color:var(--muted);line-height:1.9">'
+      + '<strong style="color:var(--text)">1. Pay CGT</strong> via ROS → Payments → Capital Gains Tax<br>'
+      + '&nbsp;&nbsp;&nbsp;Jan–Nov 2026 disposals → pay by <strong style="color:#fbbf24">15 Dec 2026</strong><br>'
+      + '&nbsp;&nbsp;&nbsp;Dec 2026 disposals → pay by <strong style="color:#fbbf24">31 Jan 2027</strong><br>'
+      + '<strong style="color:var(--text)">2. File return</strong> → ROS → Form CG1 due <strong style="color:#fbbf24">31 Oct 2027</strong><br>'
+      + '<strong style="color:var(--text)">3. 4-week rule</strong> — wait ≥4 weeks before buying same asset back<br>'
+      + '<strong style="color:var(--text)">4. IGLN/ISLN (ETCs)</strong> — physical gold/silver = 33% CGT (NOT 41% UCITS). Exemption applies.<br>'
+      + '<strong style="color:var(--text)">5. Legacy UCITS ETFs</strong> — if any held: 41% exit tax + 8yr deemed disposal applies'
+      + '</div></div></div>';
+    cgtEl.innerHTML = html;
+  })();
 
   // ── Risk signals — grounded in actual holdings ──────────────────
 
