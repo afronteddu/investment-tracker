@@ -374,10 +374,12 @@ class Scheduler:
         except Exception:
             batch = None
 
+        ticker_errors: list[str] = []
         for ticker, pos in positions.items():
             try:
                 fetch_ticker = fetch_map[ticker]
-                t_obj = batch.tickers[fetch_ticker] if batch else yf.Ticker(fetch_ticker)
+                # Use .get() fallback — yfinance may normalise ticker names in the batch dict
+                t_obj = (batch.tickers.get(fetch_ticker) if batch else None) or yf.Ticker(fetch_ticker)
                 print(f"[history] fetching {ticker} (as {fetch_ticker}) start={earliest.isoformat()}")
                 hist = t_obj.history(start=earliest.isoformat(), interval="1wk", auto_adjust=True)
                 print(f"[history] {ticker}: {len(hist)} rows")
@@ -423,10 +425,12 @@ class Scheduler:
                     ticker_value_series[ticker] = val_by_date
             except Exception as e:
                 import traceback
+                err_msg = f"{ticker}: {e}"
+                ticker_errors.append(err_msg)
                 print(f"[history] {ticker} FAILED: {e}\n{traceback.format_exc()}")
                 continue
 
-        print(f"[history] open positions done: {len(result)} series built")
+        print(f"[history] open positions done: {len(result)} series built, {len(ticker_errors)} errors")
         # ── Closed positions ──────────────────────────────────────────
         closed_value_series: dict[str, dict[str, float]] = {}
         for cp in closed:
@@ -505,11 +509,20 @@ class Scheduler:
         result.sort(key=lambda x: x["first_buy_date"] or "")
         portfolio_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_by_date.items())]
         portfolio_historic_points = [{"date": d, "value_eur": round(v, 2)} for d, v in sorted(portfolio_historic.items())]
-        self.state["history_cache"] = {
-            "series": result,
-            "portfolio": portfolio_points,
-            "portfolio_historic": portfolio_historic_points,
-        }
+        if ticker_errors:
+            self.state["history_error"] = "; ".join(ticker_errors)
+        if result:
+            self.state["history_cache"] = {
+                "series": result,
+                "portfolio": portfolio_points,
+                "portfolio_historic": portfolio_historic_points,
+            }
+        else:
+            # Keep cache as None so the frontend shows loading/error rather than blank
+            self.state["history_cache"] = None
+            if not ticker_errors:
+                self.state["history_error"] = "all tickers returned no data"
+        print(f"[history] cache {'set' if result else 'NOT set (empty)'}: {len(result)} series")
 
     async def _refresh_signals(self):
         """Fetch RSI/earnings/news per ticker, one at a time in a thread, yielding between each."""

@@ -901,17 +901,34 @@ async function loadCharts() {
 
   E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Loading charts… (ready in ~30s after first deploy)</div>';
 
+  let retries = 0;
   const tryFetch = async () => {
-    const r = await fetch('/api/history');
-    const d = await r.json();
-    if (d.loading) {
-      setTimeout(tryFetch, 5000); // retry in 5s while background is building
-      return;
+    try {
+      const r = await fetch('/api/history');
+      const d = await r.json();
+      if (d.loading) {
+        retries++;
+        if (retries >= 6 && d.error) {
+          E('sparkline-grid').innerHTML = `<div style="padding:20px;font-size:12px;color:#f85149">Charts failed to load.<br><code style="font-size:11px;word-break:break-all">${d.error}</code><br><br><button onclick="triggerHistoryReload()" style="margin-top:8px;padding:4px 10px;background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:4px;cursor:pointer">↻ Retry</button></div>`;
+          return;
+        }
+        setTimeout(tryFetch, 5000);
+        return;
+      }
+      _historyCache = d;
+      _renderCharts(d);
+    } catch(e) {
+      E('sparkline-grid').innerHTML = `<div style="padding:20px;font-size:12px;color:#f85149">Network error loading charts: ${e.message}</div>`;
     }
-    _historyCache = d;
-    _renderCharts(d);
   };
   tryFetch();
+}
+
+async function triggerHistoryReload() {
+  E('sparkline-grid').innerHTML = '<div class="muted" style="padding:20px;font-size:12px">Reloading history…</div>';
+  await fetch('/api/reload-history', {method:'POST'});
+  _historyCache = null;
+  loadCharts();
 }
 
 function _renderCharts(d) {
