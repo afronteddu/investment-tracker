@@ -207,6 +207,7 @@ BUCKET_MAP = {
     "LUNR": "hc_3",
     "BKSY": "hc_3",
     "SERV": "hc_3",
+    "AXA.PA": "retirement",
     "MUV2.DE": "retirement",
     "ALV.DE": "retirement",
     "IGLN.L": "retirement",

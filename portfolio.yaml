@@ -1,7 +1,7 @@
 # Investment Tracker — Portfolio Config
 # ticker must be the Yahoo Finance symbol.
-# cost_basis: average price per share in EUR (converted from transactions)
-# Last updated: 17 Aug 2026 — updated from Transactions13_3107.xlsx (single source of truth)
+# cost_basis: average price per share in EUR (derived from all transaction exports)
+# Last updated: 24 Oct 2026 — recomputed from all transaction files (Transactions15_2010.xlsx latest)
 
 settings:
   refresh_seconds: 60
@@ -17,7 +17,7 @@ positions:
 
   # ── QUALITY / LONG-HOLD ─────────────────────────────────────────────────
   - ticker: BRK-B
-    shares: 12
+    shares: 24
     cost_basis: 411.71
     target_price: 0
     stop_loss: 350.00
@@ -25,40 +25,48 @@ positions:
     notes: "Core compounder. DCA since Jan 2026."
 
   - ticker: INVEB.ST
-    shares: 13
-    cost_basis: 37.78
+    shares: 54
+    cost_basis: 37.70
     target_price: 0
     stop_loss: 28.00
     bucket: retirement
     notes: "Investor AB B — Wallenberg holding co. DCA pair to BRK-B. Non-USD EUR retirement compounder. Bought Tradegate (IVSD.F). First buy 31 Jul 2026."
 
   - ticker: ASML.AS
-    shares: 2
+    shares: 4
     cost_basis: 1196.60
     target_price: 0
     stop_loss: 950.00
     bucket: retirement
     notes: "EUV monopoly. Long-hold."
 
+  - ticker: AXA.PA
+    shares: 10
+    cost_basis: 42.74
+    target_price: 0
+    stop_loss: 32.00
+    bucket: retirement
+    notes: "AXA SA — European insurance compounder, 5.5% div. EUR. First buy Oct 2026."
+
   - ticker: NVDA
-    shares: 23
+    shares: 46
     cost_basis: 121.74
     target_price: 280.00
     stop_loss: 140.00
     bucket: growth
-    notes: "AI infra. +47% unrealised. Watch 280 target."
+    notes: "AI infra. Watch 280 target."
 
   - ticker: SNDK
-    shares: 2
+    shares: 4
     cost_basis: 982.86
     target_price: 2200.00
     stop_loss: 1200.00
     bucket: growth
-    notes: "SanDisk Corp. +58% unrealised. Flash storage cycle recovery."
+    notes: "SanDisk Corp. Flash storage cycle recovery."
 
   # ── HIGH CONVICTION / TIMED BETS ────────────────────────────────────────
   - ticker: NBIS
-    shares: 11
+    shares: 22
     cost_basis: 172.85
     target_price: 350.00
     stop_loss: 120.00
@@ -66,57 +74,57 @@ positions:
     notes: "Nebius Group — AI cloud infra. 3-tranche entry complete (May 2026)."
 
   - ticker: VRT
-    shares: 6
+    shares: 12
     cost_basis: 294.27
     target_price: 450.00
     stop_loss: 220.00
     bucket: high_conviction
-    notes: "Vertiv — AI data centre power. -9.5% vs entry. Thesis intact."
+    notes: "Vertiv — AI data centre power. Thesis intact."
 
   - ticker: APLD
-    shares: 24
+    shares: 48
     cost_basis: 37.36
     target_price: 65.00
     stop_loss: 20.00
     bucket: high_conviction
-    notes: "Applied Digital — HPC/AI cloud. -33% vs entry. Watch closely."
+    notes: "Applied Digital — HPC/AI cloud. Watch closely."
 
   # ── SPECULATIVE / SMALL CAPS ─────────────────────────────────────────────
   - ticker: RCAT
-    shares: 67
+    shares: 134
     cost_basis: 9.33
     target_price: 18.00
     stop_loss: 6.00
-    bucket: growth
-    notes: "Red Cat Holdings — drone defence. -17% vs entry."
+    bucket: hc_3
+    notes: "Red Cat Holdings — drone defence."
 
   - ticker: BKSY
-    shares: 32
+    shares: 64
     cost_basis: 25.10
     target_price: 45.00
     stop_loss: 17.00
-    bucket: growth
-    notes: "BlackSky Technology — geospatial intelligence. -8%."
+    bucket: hc_3
+    notes: "BlackSky Technology — geospatial intelligence."
 
   - ticker: SERV
-    shares: 83
+    shares: 166
     cost_basis: 5.79
     target_price: 12.00
     stop_loss: 3.50
-    bucket: growth
-    notes: "Serve Robotics — autonomous delivery. -11%. Small position."
+    bucket: hc_3
+    notes: "Serve Robotics — autonomous delivery."
 
   - ticker: LUNR
-    shares: 11
+    shares: 22
     cost_basis: 18.66
     target_price: 35.00
     stop_loss: 10.00
-    bucket: growth
-    notes: "Intuitive Machines — lunar logistics. -27% vs entry. Small position."
+    bucket: hc_3
+    notes: "Intuitive Machines — lunar logistics."
 
   # ── COMMODITIES (ETCs — held only, no new purchases: 33% CGT applies) ───
   - ticker: IGLN.L
-    shares: 16
+    shares: 32
     cost_basis: 81.90
     target_price: 0
     stop_loss: 55.00
@@ -124,12 +132,12 @@ positions:
     notes: "iShares Physical Gold ETC (LSE, GBP). Hold."
 
   - ticker: ISLN.L
-    shares: 8
+    shares: 16
     cost_basis: 68.09
     target_price: 0
     stop_loss: 45.00
     bucket: retirement
-    notes: "iShares Physical Silver ETC (LSE, GBP). -4% vs entry. Hold."
+    notes: "iShares Physical Silver ETC (LSE, GBP). Hold."
 
 # --- WATCHLIST ---
 watchlist:
