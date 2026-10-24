@@ -492,6 +492,8 @@ async def reload(request: Request):
     if (r := _auth_required(request)):
         return r
     state["positions"] = compute_positions()
+    state["lifetime_cache"] = compute_lifetime_stats()
+    state["ws_payload_cache"] = None
     return {"status": "ok", "positions_loaded": len(state["positions"])}
 
 
@@ -519,6 +521,8 @@ async def upload_transactions(request: Request, file: UploadFile = File(...)):
     dest = data_dir / file.filename
     dest.write_bytes(await file.read())
     state["positions"] = compute_positions()
+    state["lifetime_cache"] = compute_lifetime_stats()
+    state["ws_payload_cache"] = None
     return {"status": "ok", "saved": file.filename, "positions_loaded": len(state["positions"])}
 
 
