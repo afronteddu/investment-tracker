@@ -199,6 +199,31 @@
     .suggest-ticker { font-weight:700; font-size:13px; width:70px; flex-shrink:0; }
     .suggest-why { font-size:12px; color:var(--muted); line-height:1.5; }
 
+    /* ── Emerging Markets ── */
+    .em-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:8px; }
+    .em-card:hover { border-color:var(--accent); }
+    .em-card-header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .em-ticker { font-weight:700; font-size:15px; color:var(--text); min-width:60px; }
+    .em-name { font-size:12px; color:var(--muted); flex:1; }
+    .em-region-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:4px; background:var(--surface2); color:var(--muted); }
+    .em-verdict-buy  { background:rgba(74,222,128,.12); color:var(--green); font-weight:700; padding:2px 9px; border-radius:4px; font-size:12px; }
+    .em-verdict-watch{ background:rgba(251,191,36,.12); color:#fbbf24; font-weight:700; padding:2px 9px; border-radius:4px; font-size:12px; }
+    .em-verdict-discard{ background:rgba(248,113,113,.12); color:var(--red); font-weight:700; padding:2px 9px; border-radius:4px; font-size:12px; }
+    .em-qual-row { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+    .em-qual-star { color:#fbbf24; }
+    .em-qual-star-off { color:var(--border); }
+    .em-meta { display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--muted); }
+    .em-meta span strong { color:var(--text); }
+    .em-thesis { font-size:13px; color:var(--text); line-height:1.6; }
+    .em-bear { font-size:12px; color:#fb923c; line-height:1.5; }
+    .em-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+    .em-filter-btn { font-size:11px; padding:4px 12px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; transition:.15s; }
+    .em-filter-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(99,102,241,.1); }
+    .em-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px; }
+    .em-valuation-cheap { color:var(--green); font-weight:700; }
+    .em-valuation-fair  { color:#fbbf24; font-weight:700; }
+    .em-valuation-expensive { color:var(--red); font-weight:700; }
+
     /* ── Briefing ── */
     .briefing-card {
       background: var(--surface); border: 1px solid var(--border);
@@ -421,6 +446,7 @@
     <div class="tab" onclick="switchTab('performance',event)">Charts</div>
     <div class="tab" onclick="switchTab('scanner',event)">Scanner</div>
     <div class="tab" onclick="switchTab('strategy',event)">Strategy</div>
+    <div class="tab" onclick="switchTab('em',event)">EM</div>
     <div class="tab" onclick="switchTab('briefing',event)">Briefing</div>
   </div>
 
@@ -430,6 +456,7 @@
     <button class="btn-ghost" id="nav-performance" onclick="showDesktopPanel('performance',this)">Charts</button>
     <button class="btn-ghost" id="nav-scanner" onclick="showDesktopPanel('scanner',this)">Scanner</button>
     <button class="btn-ghost" id="nav-strategy" onclick="showDesktopPanel('strategy',this)">Strategy</button>
+    <button class="btn-ghost" id="nav-em" onclick="showDesktopPanel('em',this)">Emerging Markets</button>
     <button class="btn-ghost" id="nav-briefing" onclick="showDesktopPanel('briefing',this)">Briefing</button>
     <button class="btn-ghost" id="nav-playbook" onclick="showDesktopPanel('playbook',this)">Playbook</button>
     <button class="btn-ghost" id="nav-studio" onclick="showDesktopPanel('studio',this)">Studio</button>
@@ -685,6 +712,25 @@
       <span id="ai-health-badge" style="margin-left:8px;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:#ffffff10;color:var(--muted)">AI ···</span>
     </div>
     <div id="strat-suggestions"></div>
+  </div>
+
+  <!-- Emerging Markets -->
+  <div class="section-panel" id="panel-em">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <span class="section-title">Emerging Markets</span>
+      <button class="btn btn-sm" onclick="triggerEMRefresh()">Refresh Analysis</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">High-growth demographics exposure — stocks accessible on DeGiro. AI analysis refreshed weekly (Sunday 11:00). Irish 33% CGT applies.</p>
+    <div class="em-filter-bar" id="em-filter-bar">
+      <button class="em-filter-btn active" onclick="filterEM('all',this)">All</button>
+      <button class="em-filter-btn" onclick="filterEM('Africa',this)">Africa</button>
+      <button class="em-filter-btn" onclick="filterEM('South Asia',this)">India</button>
+      <button class="em-filter-btn" onclick="filterEM('SE Asia',this)">SE Asia</button>
+      <button class="em-filter-btn" onclick="filterEM('Latin America',this)">LatAm</button>
+      <button class="em-filter-btn" onclick="filterEM('BUY',this)">BUY only</button>
+    </div>
+    <div class="em-grid" id="em-grid"><div style="color:var(--muted);font-size:13px;">Loading...</div></div>
+    <div id="em-ts" style="font-size:11px;color:var(--muted);margin-top:12px;"></div>
   </div>
 
   <!-- Briefing -->
@@ -1745,6 +1791,136 @@ function renderDeployments(deployments) {
   }).join('');
 }
 
+// ── Emerging Markets ─────────────────────────────────────────────
+let _emData = null;
+let _emRegionFilter = 'all';
+
+function _esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadEM() {
+  try {
+    const r = await fetch('/api/emerging-markets');
+    const d = await r.json();
+    _emData = d;
+    renderEM(d);
+  } catch(e) {
+    E('em-grid').innerHTML = '';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:var(--red);font-size:13px';
+    msg.textContent = 'Failed to load EM data. ' + e.message;
+    E('em-grid').appendChild(msg);
+  }
+}
+
+function renderEM(d) {
+  const picks = (d.picks || []).filter(p => {
+    if (_emRegionFilter === 'all') return true;
+    if (_emRegionFilter === 'BUY') return p.verdict === 'BUY';
+    return p.region === _emRegionFilter;
+  });
+
+  const grid = E('em-grid');
+  grid.innerHTML = '';
+
+  if (!picks.length) {
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:var(--muted);font-size:13px';
+    msg.textContent = 'No results for this filter.';
+    grid.appendChild(msg);
+    return;
+  }
+
+  function stars(n) {
+    n = parseInt(n) || 3;
+    return Array.from({length:5}, (_,i) =>
+      '<span class="' + (i < n ? 'em-qual-star' : 'em-qual-star-off') + '">&#9733;</span>'
+    ).join('');
+  }
+
+  function verdictClass(v) {
+    if (v === 'BUY') return 'em-verdict-buy';
+    if (v === 'DISCARD') return 'em-verdict-discard';
+    return 'em-verdict-watch';
+  }
+
+  function valClass(v) {
+    if (v === 'CHEAP') return 'em-valuation-cheap';
+    if (v === 'EXPENSIVE') return 'em-valuation-expensive';
+    return 'em-valuation-fair';
+  }
+
+  function fmtNum(v, suffix) {
+    if (v == null || v === 'N/A') return '<span style="color:var(--muted)">&#8212;</span>';
+    if (typeof v === 'number' && v > 1e9) return '<strong>' + _esc((v/1e9).toFixed(1)) + 'B' + _esc(suffix||'') + '</strong>';
+    return '<strong>' + _esc(typeof v === 'number' ? v.toFixed(2) : String(v)) + _esc(suffix||'') + '</strong>';
+  }
+
+  picks.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'em-card';
+    card.dataset.region = p.region || '';
+    card.dataset.verdict = p.verdict || '';
+
+    const thesis = p.thesis ? `<div class="em-thesis">${_esc(p.thesis)}</div>` : '';
+    const bear   = p.bear_case ? `<div class="em-bear">&#9888; ${_esc(p.bear_case)}</div>` : '';
+
+    card.innerHTML = `
+      <div class="em-card-header">
+        <span class="em-ticker">${_esc(p.ticker)}</span>
+        <span class="em-name">${_esc(p.name)}</span>
+        <span class="em-region-label">${_esc(p.country||p.region||'')}</span>
+        <span class="${_esc(verdictClass(p.verdict))}">${_esc(p.verdict||'WATCH')}</span>
+      </div>
+      <div class="em-qual-row">
+        <span>Quality: ${stars(p.quality_score)}</span>
+        <span style="margin-left:10px;">Valuation: <span class="${_esc(valClass(p.valuation))}">${_esc(p.valuation||'FAIR')}</span></span>
+        <span style="margin-left:10px;color:var(--muted);">${_esc(p.sector||'')}</span>
+      </div>
+      <div class="em-meta">
+        <span>Price: ${fmtNum(p.price)} ${_esc(p.currency||'')}</span>
+        <span>Fwd P/E: ${fmtNum(p.fwd_pe,'x')}</span>
+        <span>Mkt Cap: ${fmtNum(p.mktcap)}</span>
+        <span>Rev Growth: ${fmtNum(p.rev_growth,'%')}</span>
+        <span>Exchange: ${_esc(p.exchange||'')}</span>
+      </div>
+      ${thesis}${bear}`;
+    grid.appendChild(card);
+  });
+
+  const ts = E('em-ts');
+  if (d.ts) {
+    const dt = new Date(d.ts * 1000);
+    ts.textContent = 'Last analysis: ' + dt.toLocaleString('en-IE', {timeZone:'Europe/Dublin'});
+  } else {
+    ts.textContent = 'Analysis not yet run — click Refresh Analysis to trigger.';
+  }
+}
+
+function filterEM(region, btn) {
+  _emRegionFilter = region;
+  document.querySelectorAll('.em-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (_emData) renderEM(_emData);
+}
+
+async function triggerEMRefresh() {
+  const btn = document.querySelector('#panel-em .btn');
+  const orig = btn.textContent;
+  btn.textContent = 'Triggering...'; btn.disabled = true;
+  try {
+    await fetch('/api/emerging-markets/refresh', {method:'POST'});
+    btn.textContent = 'Queued — check back in ~60s';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 10000);
+    setTimeout(() => { _emData = null; loadEM(); }, 15000);
+  } catch(e) {
+    btn.textContent = orig; btn.disabled = false;
+    alert('Failed: ' + e.message);
+  }
+}
+
 // ── Briefing ─────────────────────────────────────────────────────
 async function generateBriefing() {
   const btn = E('briefing-btn');
@@ -1777,6 +1953,7 @@ function _switchPanel(name) {
   document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
   E('panel-' + name).classList.add('active');
   if (name === 'performance') loadCharts();
+  if (name === 'em' && !_emData) loadEM();
 }
 
 function showDesktopPanel(name, btn) {

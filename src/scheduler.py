@@ -48,6 +48,7 @@ class Scheduler:
         self._last_history_refresh = None
         self._last_health_check = None
         self._last_bucket_strategy = None  # weekly refresh (Sunday 10:00)
+        self._last_em_refresh = None       # weekly refresh (Sunday 11:00)
 
     async def run(self):
         await asyncio.sleep(5)  # let uvicorn finish startup before any fetches
@@ -99,6 +100,11 @@ class Scheduler:
         if now.weekday() == 6 and now.hour == 10 and now.minute < 5 and self._last_bucket_strategy != week_str:
             self._last_bucket_strategy = week_str
             asyncio.create_task(self._refresh_bucket_strategies())
+
+        # Weekly EM refresh — Sunday 11:00 Dublin
+        if now.weekday() == 6 and now.hour == 11 and now.minute < 5 and self._last_em_refresh != week_str:
+            self._last_em_refresh = week_str
+            asyncio.create_task(self._refresh_emerging_markets())
 
         # EU market open briefing (08:05 Dublin)
         if now.hour == 8 and now.minute >= 5 and self._last_eu_open != date_str and now.weekday() < 5:
@@ -924,3 +930,26 @@ class Scheduler:
             f"All 4 buckets analysed — retirement, growth, HC-1, HC-3. View in Strategy → Suggested Additions.",
             alert_key=f"bucket_strategy_{now_dublin().strftime('%Y-W%W')}",
         )
+
+    async def _refresh_emerging_markets(self):
+        import logging
+        import time as _t
+        _log = logging.getLogger(__name__)
+        _log.info("EM analysis refresh starting")
+        loop = asyncio.get_event_loop()
+        from src.briefing import generate_emerging_markets_analysis
+        from src.api import EM_UNIVERSE
+        try:
+            picks = await loop.run_in_executor(None, generate_emerging_markets_analysis, EM_UNIVERSE)
+            self.state["em_cache"] = {
+                "picks": picks,
+                "ts": int(_t.time()),
+            }
+            _log.info("EM analysis refreshed: %d picks", len(picks))
+            notify(
+                "🌍 Emerging Markets analysis refreshed",
+                f"{len(picks)} picks analysed across Africa, South Asia, SE Asia, LatAm.",
+                alert_key=f"em_{now_dublin().strftime('%Y-W%W')}",
+            )
+        except Exception as e:
+            _log.error("EM analysis failed: %s", e)

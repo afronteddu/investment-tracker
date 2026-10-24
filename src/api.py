@@ -138,6 +138,21 @@ WATCHLIST_BASE = [
 
 DEPLOYMENTS = []
 
+EM_UNIVERSE = [
+    {"ticker": "JMIA",  "name": "Jumia Technologies",  "country": "Nigeria/Pan-Africa",     "region": "Africa",        "sector": "E-Commerce",                   "exchange": "NYSE"},
+    {"ticker": "IHS",   "name": "IHS Towers",          "country": "Nigeria/Cameroon/CIV",   "region": "Africa",        "sector": "Telecom Infrastructure",       "exchange": "NYSE"},
+    {"ticker": "AAF.L", "name": "Airtel Africa",       "country": "14 African nations",     "region": "Africa",        "sector": "Telecom / Mobile Money",       "exchange": "LSE"},
+    {"ticker": "HDB",   "name": "HDFC Bank",           "country": "India",                  "region": "South Asia",    "sector": "Banking",                      "exchange": "NYSE"},
+    {"ticker": "IBN",   "name": "ICICI Bank",          "country": "India",                  "region": "South Asia",    "sector": "Banking",                      "exchange": "NYSE"},
+    {"ticker": "INFY",  "name": "Infosys",             "country": "India",                  "region": "South Asia",    "sector": "IT Services",                  "exchange": "NYSE"},
+    {"ticker": "TTM",   "name": "Tata Motors",         "country": "India",                  "region": "South Asia",    "sector": "Automotive / EVs",             "exchange": "NYSE"},
+    {"ticker": "SE",    "name": "Sea Limited",         "country": "Southeast Asia",         "region": "SE Asia",       "sector": "E-Commerce / Gaming / Fintech", "exchange": "NYSE"},
+    {"ticker": "GRAB",  "name": "Grab Holdings",       "country": "Southeast Asia",         "region": "SE Asia",       "sector": "Super App / Fintech",          "exchange": "NASDAQ"},
+    {"ticker": "MELI",  "name": "MercadoLibre",        "country": "Brazil / LatAm",         "region": "Latin America", "sector": "E-Commerce / Fintech",         "exchange": "NASDAQ"},
+    {"ticker": "NU",    "name": "Nubank",              "country": "Brazil/Mexico/Colombia", "region": "Latin America", "sector": "Digital Banking",              "exchange": "NYSE"},
+    {"ticker": "XP",    "name": "XP Inc",              "country": "Brazil",                 "region": "Latin America", "sector": "Financial Services",           "exchange": "NASDAQ"},
+]
+
 # Shared state — mutated by scheduler, read by API handlers
 state: dict = {}
 _scheduler: "Scheduler | None" = None
@@ -159,6 +174,7 @@ async def lifespan(app: FastAPI):
     state["ws_payload_cache"] = None
     state["history_cache"] = None
     state["bucket_strategy_cache"] = {}   # bucket → {text, ts}
+    state["em_cache"] = None
     # All network fetches happen in scheduler background tasks
     global _scheduler
     _scheduler = Scheduler(state)
@@ -494,6 +510,10 @@ async def reload(request: Request):
     state["positions"] = compute_positions()
     state["lifetime_cache"] = compute_lifetime_stats()
     state["ws_payload_cache"] = None
+    state["history_cache"] = None
+    if _scheduler:
+        asyncio.create_task(_scheduler._refresh_history())
+        _scheduler._last_history_refresh = now_dublin()
     return {"status": "ok", "positions_loaded": len(state["positions"])}
 
 
@@ -523,6 +543,10 @@ async def upload_transactions(request: Request, file: UploadFile = File(...)):
     state["positions"] = compute_positions()
     state["lifetime_cache"] = compute_lifetime_stats()
     state["ws_payload_cache"] = None
+    state["history_cache"] = None
+    if _scheduler:
+        asyncio.create_task(_scheduler._refresh_history())
+        _scheduler._last_history_refresh = now_dublin()
     return {"status": "ok", "saved": file.filename, "positions_loaded": len(state["positions"])}
 
 
@@ -753,6 +777,25 @@ async def suggest_challenge(request: Request):
         None, generate_challenge, ticker, suggestion_meta, user_query, portfolio_rows, live_quote
     )
     return {"ticker": ticker, "query": user_query, "analysis": analysis}
+
+
+@app.get("/api/emerging-markets")
+async def emerging_markets(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    cached = state.get("em_cache")
+    if cached:
+        return cached
+    return {"picks": [], "loading": True, "ts": None}
+
+
+@app.post("/api/emerging-markets/refresh")
+async def emerging_markets_refresh(request: Request):
+    if (r := _auth_required(request)):
+        return r
+    if _scheduler:
+        asyncio.create_task(_scheduler._refresh_emerging_markets())
+    return {"status": "ok", "message": "EM analysis refresh triggered — check back in ~60s"}
 
 
 @app.websocket("/ws")

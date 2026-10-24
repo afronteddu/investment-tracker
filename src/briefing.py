@@ -772,3 +772,99 @@ One clear paragraph: buy now / wait for better entry / avoid. Give the specific 
 Plain English. Quote actual numbers from the live data. Max 750 words total."""
 
     return _ask(prompt, max_tokens=1200)
+
+
+def generate_emerging_markets_analysis(universe: list[dict]) -> list[dict]:
+    """Deep AI analysis of EM picks accessible on DeGiro. Returns universe list enriched with
+    verdict, quality_score, valuation, thesis, bear_case from a single AI call."""
+    import json as _json
+
+    # Fetch live fundamentals for each ticker
+    enriched = []
+    stock_lines = []
+    for item in universe:
+        ticker = item["ticker"]
+        f = _fetch_fundamentals(ticker)
+        meta = {**item}
+        if "error" not in f:
+            meta["price"] = f.get("price")
+            meta["currency"] = f.get("currency", "USD")
+            meta["fwd_pe"] = f.get("forward_pe", "N/A")
+            meta["mktcap"] = f.get("market_cap", "N/A")
+            meta["rev_growth"] = f.get("revenue_growth", "N/A")
+            meta["roe"] = f.get("roe", "N/A")
+            meta["gross_margin"] = f.get("gross_margin", "N/A")
+            meta["beta"] = f.get("beta", "N/A")
+            meta["52w_change"] = f.get("52w_change", "N/A")
+            meta["recommendation"] = f.get("recommendation", "N/A")
+            stock_lines.append(
+                f"{ticker} | {item['name']} | {item['country']} | {item['sector']} | "
+                f"price {meta['price']} {meta['currency']} | mcap {meta['mktcap']} | "
+                f"fwdPE {meta['fwd_pe']} | revGrowth {meta['rev_growth']} | ROE {meta['roe']} | "
+                f"grossMargin {meta['gross_margin']} | beta {meta['beta']} | "
+                f"52wChange {meta['52w_change']} | analysts: {meta['recommendation']}"
+            )
+        else:
+            meta["price"] = None
+            meta["currency"] = "USD"
+            meta["fwd_pe"] = "N/A"
+            meta["mktcap"] = "N/A"
+            stock_lines.append(f"{ticker} | {item['name']} | {item['country']} | {item['sector']} | (live data unavailable)")
+        enriched.append(meta)
+
+    today_str = _now_dublin().strftime("%d %B %Y")
+    n = len(universe)
+    stocks_block = "\n".join(stock_lines)
+
+    prompt = f"""You are an emerging markets equity analyst. Today is {today_str}. Analyse these {n} stocks for a Dublin, Ireland retail investor seeking long-term exposure to high-growth demographics (Sub-Saharan Africa, India, Southeast Asia, Latin America). All are accessible on DeGiro.
+
+For EACH stock, assess quality (business model strength, profitability, competitive moat) and valuation vs growth prospects. Consider the Irish investor context (EUR base, 33% CGT on stocks, 10yr+ horizon for EM).
+
+STOCKS WITH LIVE DATA:
+{stocks_block}
+
+Return ONLY a JSON array. No prose, no markdown fences, no explanation. Example format:
+[{{"ticker":"X","verdict":"BUY","quality_score":4,"valuation":"FAIR","thesis":"2-3 sentence thesis.","bear_case":"1-2 sentence main risk."}},...]
+
+Rules:
+- verdict: exactly BUY, WATCH, or DISCARD
+- quality_score: integer 1-5 (1=poor quality, 5=excellent business)
+- valuation: exactly CHEAP, FAIR, or EXPENSIVE
+- thesis: 2-3 sentences, specific, reference actual numbers from the data
+- bear_case: 1-2 sentences, the single biggest structural risk
+- Include ALL {n} tickers in the array"""
+
+    raw = _ask(prompt, max_tokens=2000)
+
+    # Parse JSON — strip markdown fences if present
+    parsed = []
+    try:
+        text = raw.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        parsed = _json.loads(text.strip())
+    except Exception:
+        # Fallback: return enriched items with default analysis values
+        return [
+            {**m, "verdict": "WATCH", "quality_score": 3, "valuation": "FAIR",
+             "thesis": raw[:300] if i == 0 else "Analysis unavailable — try refreshing.",
+             "bear_case": ""}
+            for i, m in enumerate(enriched)
+        ]
+
+    # Merge AI output back into enriched metadata
+    ai_by_ticker = {p.get("ticker"): p for p in parsed if isinstance(p, dict)}
+    result = []
+    for meta in enriched:
+        ai = ai_by_ticker.get(meta["ticker"], {})
+        result.append({
+            **meta,
+            "verdict": ai.get("verdict", "WATCH"),
+            "quality_score": ai.get("quality_score", 3),
+            "valuation": ai.get("valuation", "FAIR"),
+            "thesis": ai.get("thesis", ""),
+            "bear_case": ai.get("bear_case", ""),
+        })
+    return result
