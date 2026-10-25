@@ -385,11 +385,14 @@ class Scheduler:
                 print(f"[history] {ticker}: {len(hist)} rows")
                 currency = getattr(t_obj.fast_info, "currency", None) or "EUR"
                 buy_date = datetime.strptime(pos.first_buy_date, "%Y-%m-%d").date() if pos.first_buy_date else earliest
+                # Round buy_date back to Monday so weekly candles (keyed Mon) aren't
+                # filtered out when the stock was bought mid-week
+                week_start = buy_date - timedelta(days=buy_date.weekday())
                 points = []
                 val_by_date: dict[str, float] = {}
                 for dt, row in hist.iterrows():
                     row_date = dt.date() if hasattr(dt, "date") else dt
-                    if row_date < buy_date:
+                    if row_date < week_start:
                         continue
                     close = row.get("Close")
                     if close is None or close != close:  # NaN
