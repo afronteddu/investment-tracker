@@ -162,6 +162,7 @@ _scheduler: "Scheduler | None" = None
 async def lifespan(app: FastAPI):
     # Startup — sync-only work, zero network calls
     state["positions"] = compute_positions()
+    state["lifetime_cache"] = compute_lifetime_stats()
     state["watchlist"] = list(WATCHLIST_BASE)
     state["deployments"] = DEPLOYMENTS
     state["latest_briefing"] = None
@@ -169,7 +170,6 @@ async def lifespan(app: FastAPI):
     state["signals_cache"] = {}
     state["quotes_cache"] = {}
     state["fx_cache"] = {"USD": 0.92, "GBP": 1.17, "EUR": 1.0}  # rough fallback until scheduler fills it
-    state["lifetime_cache"] = {"total_deployed": 0, "total_returned": 0, "realized_pnl": 0, "monthly_flows": []}
     state["scanner_cache"] = []
     state["ws_payload_cache"] = None
     state["history_cache"] = None
