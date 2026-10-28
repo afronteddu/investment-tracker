@@ -275,11 +275,14 @@ def load_transactions(data_dir: str = "data/transactions") -> list[dict]:
             #          Tasso cambio, AutoFX, Costi EUR, Totale EUR, ID Ordine, ...
             order_id = row[16] if len(row) > 16 else None
 
-            # Deduplicate: prefer order_id when present, otherwise use content key
-            dedup_key = order_id if order_id else (row[0], row[3], str(row[6]), str(row[15]))
-            if dedup_key in seen_orders:
+            # Deduplicate using BOTH order_id and content key — old exports lack order IDs
+            # while new exports have them, so the same trade would otherwise appear twice.
+            content_key = (row[0], row[3], str(row[6]), str(row[15]))
+            if (order_id and order_id in seen_orders) or content_key in seen_orders:
                 continue
-            seen_orders.add(dedup_key)
+            if order_id:
+                seen_orders.add(order_id)
+            seen_orders.add(content_key)
 
             rows.append({
                 "date": row[0],
