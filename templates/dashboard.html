@@ -2721,7 +2721,7 @@ function renderPlaybook(positions, lifetime) {
     + row('House Savings', hsPct2 + '% (tracked separately)', '#94a3b8')
     + row('AI/data-centre cluster', aiConc2 + '% of portfolio', aiConc2>40?'#f87171':aiConc2>30?'#fbbf24':'#4ade80')
     + row('Holdings', heldStr, 'var(--muted)')
-    + '<div style="font-size:10px;color:var(--muted);margin-top:6px">HC exit: Nov 2026 – May 2027. Next HC: European defence (LDO.MI/RHM.DE) May/Jun 2027. House savings full exit H1 2029.</div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px"><span style="color:#4ade80;font-weight:700">⚡ HC exit window ACTIVE</span> (Nov 2026–May 2027). Next HC: European defence (LDO.MI/RHM.DE) May/Jun 2027. House savings full exit H1 2029.</div>'
   );
 
   const section3 = card('3. Signal Interpretation', 'var(--text)',
@@ -3026,21 +3026,23 @@ function renderStrategy(positions, lifetime) {
   const hcAction = `
   <div style="margin:8px 0 6px">
     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
-      <span>Cost €${Math.round(hcCost).toLocaleString()}</span>
+      <span>€0</span>
+      <span style="color:#fbbf24">B/E €${Math.round(hcCost).toLocaleString()}</span>
       <span style="color:#f472b6">€15k</span>
       <span style="color:var(--muted)">€20k</span>
     </div>
     <div style="position:relative;height:12px;background:var(--border);border-radius:6px;overflow:visible">
       <div style="position:absolute;left:0;top:0;height:100%;width:${currentBarPct.toFixed(1)}%;background:${barColor};border-radius:6px;transition:width 0.6s"></div>
+      <div style="position:absolute;left:${costBarPct.toFixed(1)}%;top:-3px;width:2px;height:18px;background:#fbbf24;border-radius:1px"></div>
       <div style="position:absolute;left:${lowMarkerPct}%;top:-3px;width:2px;height:18px;background:#f472b6;border-radius:1px"></div>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
       <span style="color:${barColor};font-weight:700">€${Math.round(hcVal).toLocaleString()} · ${(hcPnlPct>=0?'+':'')+hcPnlPct.toFixed(1)}% · ${hcMultiplier.toFixed(2)}×</span>
-      <span style="color:var(--muted)">${neededLow > 0 ? `need +€${Math.round(neededLow).toLocaleString()} (${multNeededLow.toFixed(1)}× cost)` : '✓ Lower target reached'}</span>
+      <span style="color:var(--muted)">${hcVal >= hcCost ? '✓ Break-even reached' : `need +€${Math.round(hcCost - hcVal).toLocaleString()} to break even`}</span>
     </div>
   </div>
   <div style="font-size:12px;color:var(--muted);margin-top:6px">${windowLabel}</div>
-  <div style="font-size:11px;color:var(--muted);margin-top:4px">Position locked — no further additions. Need ${multNeededLow.toFixed(1)}× to hit €15k · ${multNeededHigh.toFixed(1)}× for €20k.</div>`;
+  <div style="font-size:11px;color:var(--muted);margin-top:4px">Position locked — no further additions. Realistic exit: €6k–€8k (1.3–1.75×). Original €15k target needs ${multNeededLow.toFixed(1)}× — requires major reversal.</div>`;
 
   // ── HC-3 card (Space / Defence / Lunar — 12-24 mo exit, 10-20× target) ──
   const hc3Val    = hc3Pos.reduce((s,p)=>s+(p.current_value_eur||0),0);
@@ -3058,7 +3060,7 @@ function renderStrategy(positions, lifetime) {
     const pnl = p.pnl_pct || 0;
     const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
     const notes = { RCAT:'Defence drones — margin recovery thesis, Q1 FY2026 12.7% gross margin', BKSY:'Satellite ISR — $345M backlog, H2 2026 revenue recognition', LUNR:'NASA lunar — conditional on Q2 earnings Aug 2026', SERV:'Robotics last-mile — Nvidia-backed, autonomous delivery at scale' };
-    const exits = { RCAT:'Exit: 2× within 12mo or margin reversal', BKSY:'Exit: revenue recognition confirmed or $1.5B mkt cap hit', LUNR:'Exit: post-Q2 earnings if thesis intact, or loss >40%', SERV:'Exit: revenue inflection visible or position >18mo old' };
+    const exits = { RCAT:'Exit window Jul 2027–Jun 2028. ⚠ Down 49% YTD — hold for Dec 2026 tax harvest review', BKSY:'Exit: revenue recognition confirmed or $1.5B mkt cap hit', LUNR:'Exit: post-Q2 earnings if thesis intact, or loss >40%', SERV:'Exit: revenue inflection visible or position >18mo old' };
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff0f">
       <div style="width:44px;font-weight:700;color:#f87171;flex-shrink:0">${p.ticker}</div>
       <div style="flex:1;min-width:0">
